@@ -228,8 +228,126 @@ If you did not request this password change, please secure your account immediat
   });
 };
 
+// Send account activation email
+const sendAccountActivationEmail = async ({
+  to,
+  fullName,
+  activationUrl,
+}) => {
+  const subject = "Activate Your LSA Account";
+
+  const text = `
+Hello ${fullName || "User"},
+
+An administrator has created an LSA dashboard account for you.
+
+Use the link below to activate your account and create your password:
+
+${activationUrl}
+
+This activation link will expire in 24 hours.
+
+If you were not expecting this email, you can safely ignore it.
+  `.trim();
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Activate Your Account</title>
+      </head>
+
+      <body style="margin: 0; padding: 0; background-color: #f4f7fb; font-family: Arial, Helvetica, sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f7fb; padding: 40px 16px;">
+          <tr>
+            <td align="center">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 620px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 35px rgba(15, 23, 42, 0.08);">
+                <tr>
+                  <td style="background-color: #072b61; padding: 32px; text-align: center;">
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: 0.5px;">
+                      LSA
+                    </h1>
+
+                    <p style="margin: 10px 0 0; color: rgba(255, 255, 255, 0.75); font-size: 14px;">
+                      Account Activation
+                    </p>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding: 40px 32px;">
+                    <h2 style="margin: 0 0 20px; color: #0f172a; font-size: 24px; font-weight: 700;">
+                      Welcome to LSA
+                    </h2>
+
+                    <p style="margin: 0 0 16px; color: #475569; font-size: 16px; line-height: 1.7;">
+                      Hello ${fullName || "User"},
+                    </p>
+
+                    <p style="margin: 0 0 28px; color: #475569; font-size: 16px; line-height: 1.7;">
+                      An administrator has created an account for you on the LSA dashboard.
+                      Click the button below to activate your account and create your password.
+                    </p>
+
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="center">
+                          <a
+                            href="${activationUrl}"
+                            style="display: inline-block; padding: 14px 28px; background-color: #d97706; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 700;"
+                          >
+                            Activate Account
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <p style="margin: 28px 0 12px; color: #475569; font-size: 14px; line-height: 1.7;">
+                      This activation link will expire in 24 hours.
+                    </p>
+
+                    <p style="margin: 0 0 8px; color: #64748b; font-size: 13px; line-height: 1.7;">
+                      If the button does not work, copy and paste this link into your browser:
+                    </p>
+
+                    <p style="margin: 0; color: #2563eb; font-size: 12px; line-height: 1.7; word-break: break-all;">
+                      ${activationUrl}
+                    </p>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding: 24px 32px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
+                    <p style="margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.6;">
+                      This is an automated message. Please do not reply to this email.
+                    </p>
+
+                    <p style="margin: 8px 0 0; color: #64748b; font-size: 12px;">
+                      © ${new Date().getFullYear()} LSA. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+
+  await sendEmail({
+    to,
+    subject,
+    text,
+    html,
+  });
+};
+
 module.exports = {
   sendPasswordResetEmail,
   sendSignupVerificationEmail,
   sendPasswordChangeVerificationEmail,
+  sendAccountActivationEmail,
 };

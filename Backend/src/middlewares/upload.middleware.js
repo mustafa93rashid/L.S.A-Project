@@ -1,9 +1,11 @@
 const multer = require('multer');
-const { allowedMimeTypes } = require('../services/cloudinary.service');
+const {
+  ALLOWED_MIME_TYPES,
+} = require("../services/cloudinary.service");
 
 const fileFilter = (req, file, cb) => {
-  if (allowedMimeTypes.includes(file.mimetype)) {
-    return cb(null, true);
+if (ALLOWED_MIME_TYPES.includes(file.mimetype)) { 
+     return cb(null, true);
   }
 
   return cb(new Error('Only JPEG, PNG, GIF, and WebP images are allowed'), false);

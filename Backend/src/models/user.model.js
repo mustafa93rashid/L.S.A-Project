@@ -77,6 +77,23 @@ const userSchema = new mongoose.Schema(
       default: undefined,
     },
 
+    activationToken: {
+      type: String,
+      select: false,
+      default: undefined,
+    },
+
+    activationTokenExpires: {
+      type: Date,
+      select: false,
+      default: undefined,
+    },
+
+    isAccountActivated: {
+      type: Boolean,
+      default: false,
+    },
+
     isActive: {
       type: Boolean,
       default: true,

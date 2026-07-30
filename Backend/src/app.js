@@ -38,6 +38,7 @@ app.get("/api/health", (req, res) => {
 
 // Auth and User routes
 app.use("/api/v1/auth", require("./routers/auth.routes"));
+app.use("/api/v1/users", require("./routers/user.routes"));
 
 //=========================================================================
 // Error Handling Middleware
