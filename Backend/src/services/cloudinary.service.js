@@ -30,7 +30,7 @@ const CLOUDINARY_ROOT_FOLDER = "lsa";
 const ALLOWED_FOLDERS = [
   "users",
   "partners",
-  "milestones",
+  "journeys",
   "team-members",
   "services",
   "projects",

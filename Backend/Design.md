@@ -200,10 +200,6 @@
 
   website: String,
 
-  displayOrder: Number,
-
-  isActive: Boolean,
-
   createdAt: Date,
   updatedAt: Date
 }
@@ -231,10 +227,6 @@
     url: String,
     publicId: String
   },
-
-  displayOrder: Number,
-
-  isActive: Boolean,
 
   createdAt: Date,
   updatedAt: Date

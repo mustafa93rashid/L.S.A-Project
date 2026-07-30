@@ -43,6 +43,9 @@ app.use("/api/v1/users", require("./routers/user.routes"));
 // Partner routes
 app.use("/api/v1/partners", require("./routers/partner.routes"));
 
+// Journey routes
+app.use("/api/v1/journeys", require("./routers/journey.routes"));
+
 //=========================================================================
 // Error Handling Middleware
 //=========================================================================
