@@ -1,5 +1,11 @@
 const mongoose = require("mongoose");
 
+/*
+|--------------------------------------------------------------------------
+| Shared Schemas
+|--------------------------------------------------------------------------
+*/
+
 const imageSchema = new mongoose.Schema(
   {
     url: {
@@ -11,27 +17,36 @@ const imageSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+
+    alt: {
+      type: String,
+      trim: true,
+      default: "",
+    },
   },
   {
     _id: false,
   },
 );
 
-const processStepSchema = new mongoose.Schema(
+const deliveryStepSchema = new mongoose.Schema(
   {
     title: {
       type: String,
       required: true,
+      trim: true,
     },
 
     description: {
       type: String,
       required: true,
+      trim: true,
     },
 
     icon: {
       type: String,
       required: true,
+      trim: true,
     },
   },
   {
@@ -39,7 +54,7 @@ const processStepSchema = new mongoose.Schema(
   },
 );
 
-const tableRowSchema = new mongoose.Schema(
+const capabilityTableRowSchema = new mongoose.Schema(
   {
     cells: {
       type: [String],
@@ -51,11 +66,20 @@ const tableRowSchema = new mongoose.Schema(
   },
 );
 
+/*
+|--------------------------------------------------------------------------
+| Service Schema
+|--------------------------------------------------------------------------
+*/
+
 const serviceSchema = new mongoose.Schema(
   {
     title: {
       type: String,
       required: true,
+      trim: true,
+      minlength: 2,
+      maxlength: 150,
     },
 
     slug: {
@@ -66,25 +90,33 @@ const serviceSchema = new mongoose.Schema(
       trim: true,
     },
 
-    categoryLabel: {
-      type: String,
-      required: true,
-    },
+    /*
+    |--------------------------------------------------------------------------
+    | Services Page Card
+    |--------------------------------------------------------------------------
+    |
+    | تظهر هذه البيانات في الكارد الموجود في صفحة الخدمات الرئيسية.
+    |
+    */
 
-    shortDescription: {
-      type: String,
-      required: true,
-    },
-
-    hero: {
-      title: {
+    serviceCard: {
+      label: {
         type: String,
         required: true,
+        trim: true,
+        maxlength: 100,
       },
 
       description: {
         type: String,
         required: true,
+        trim: true,
+        maxlength: 1000,
+      },
+
+      highlights: {
+        type: [String],
+        default: [],
       },
 
       image: {
@@ -93,42 +125,88 @@ const serviceSchema = new mongoose.Schema(
       },
     },
 
-    cardImage: {
-      type: imageSchema,
-      required: true,
-    },
+    /*
+    |--------------------------------------------------------------------------
+    | Service Details Hero
+    |--------------------------------------------------------------------------
+    |
+    | تظهر هذه البيانات في هيرو صفحة تفاصيل الخدمة.
+    |
+    */
 
-    highlights: {
-      type: [String],
-      default: [],
-    },
-
-    processSection: {
+    heroSection: {
       title: {
         type: String,
         required: true,
+        trim: true,
+        maxlength: 150,
       },
 
       description: {
         type: String,
         required: true,
+        trim: true,
+        maxlength: 1500,
+      },
+
+      image: {
+        type: imageSchema,
+        required: true,
+      },
+    },
+
+    /*
+    |--------------------------------------------------------------------------
+    | Delivery Process Section
+    |--------------------------------------------------------------------------
+    |
+    | تظهر هذه البيانات في قسم خطوات تنفيذ الخدمة.
+    |
+    */
+
+    deliveryProcessSection: {
+      title: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 150,
+      },
+
+      description: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 1500,
       },
 
       steps: {
-        type: [processStepSchema],
+        type: [deliveryStepSchema],
         default: [],
       },
     },
+
+    /*
+    |--------------------------------------------------------------------------
+    | Capabilities Section
+    |--------------------------------------------------------------------------
+    |
+    | تظهر هذه البيانات في قسم إمكانيات الخدمة والجدول.
+    |
+    */
 
     capabilitiesSection: {
       title: {
         type: String,
         required: true,
+        trim: true,
+        maxlength: 150,
       },
 
       description: {
         type: String,
         required: true,
+        trim: true,
+        maxlength: 1500,
       },
 
       items: {
@@ -143,21 +221,59 @@ const serviceSchema = new mongoose.Schema(
         },
 
         rows: {
-          type: [tableRowSchema],
+          type: [capabilityTableRowSchema],
           default: [],
         },
       },
     },
 
+    /*
+    |--------------------------------------------------------------------------
+    | Home Capability Card
+    |--------------------------------------------------------------------------
+    |
+    | تظهر هذه البيانات في قسم Our Core Capabilities في الصفحة الرئيسية.
+    | عند الضغط على الكارد يتم الانتقال إلى صفحة تفاصيل نفس الخدمة.
+    |
+    */
+
+    homeCapability: {
+      isVisible: {
+        type: Boolean,
+        default: false,
+      },
+
+      title: {
+        type: String,
+        trim: true,
+        default: "",
+        maxlength: 150,
+      },
+
+      shortDescription: {
+        type: String,
+        trim: true,
+        default: "",
+        maxlength: 500,
+      },
+
+      displayOrder: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+    },
+
+    /*
+    |--------------------------------------------------------------------------
+    | General Settings
+    |--------------------------------------------------------------------------
+    */
+
     displayOrder: {
       type: Number,
       default: 0,
       min: 0,
-    },
-
-    isFeatured: {
-      type: Boolean,
-      default: false,
     },
 
     isActive: {
@@ -167,8 +283,15 @@ const serviceSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    versionKey: false,
   },
 );
+
+/*
+|--------------------------------------------------------------------------
+| Indexes
+|--------------------------------------------------------------------------
+*/
 
 serviceSchema.index({
   isActive: 1,
@@ -176,9 +299,16 @@ serviceSchema.index({
 });
 
 serviceSchema.index({
-  isFeatured: 1,
+  "homeCapability.isVisible": 1,
+  "homeCapability.displayOrder": 1,
   isActive: 1,
 });
+
+/*
+|--------------------------------------------------------------------------
+| Model
+|--------------------------------------------------------------------------
+*/
 
 const Service =
   mongoose.models.Service ||

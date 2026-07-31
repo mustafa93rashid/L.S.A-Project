@@ -84,22 +84,17 @@ const uploadServiceImages = () =>
     },
   ]);
 
-const uploadProjectImages = () =>
-  upload.fields([
-    {
-      name: "cardImage",
-      maxCount: 1,
-    },
-    {
-      name: "heroImage",
-      maxCount: 1,
-    },
-    {
-      name: "gallery",
-      maxCount: 20,
-    },
-  ]);
 
+
+
+  const uploadProjectImages = () => {
+  return upload.fields([
+    { name: "cardImage", maxCount: 1 },
+    { name: "heroImage", maxCount: 1 },
+    { name: "gallery", maxCount: 20 },
+    { name: "certificateImages", maxCount: 10 },
+  ]);
+};
 /*
 |--------------------------------------------------------------------------
 | Exports

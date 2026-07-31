@@ -1,11 +1,6 @@
-const {
-  body,
-  param,
-} = require("express-validator");
+const { body, param } = require("express-validator");
 
-const validate = require(
-  "../middlewares/validate",
-);
+const validate = require("../middlewares/validate");
 
 /*
 |--------------------------------------------------------------------------
@@ -13,24 +8,22 @@ const validate = require(
 |--------------------------------------------------------------------------
 */
 
-const slugRegex =
-  /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-
+const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /*
 |--------------------------------------------------------------------------
-| Helpers
+| JSON Field Parser
 |--------------------------------------------------------------------------
 */
 
-const parseJson = (
-  fieldName,
-  expectedType,
-) => {
+const parseJsonField = (fieldName, expectedType) => {
   return body(fieldName)
     .customSanitizer((value) => {
-      if (value === undefined) {
+      if (
+        value === undefined ||
+        value === null ||
+        value === ""
+      ) {
         return value;
       }
 
@@ -47,7 +40,11 @@ const parseJson = (
       }
     })
     .custom((value) => {
-      if (value === undefined) {
+      if (
+        value === undefined ||
+        value === null ||
+        value === ""
+      ) {
         return true;
       }
 
@@ -77,9 +74,51 @@ const parseJson = (
     });
 };
 
+/*
+|--------------------------------------------------------------------------
+| Shared Helpers
+|--------------------------------------------------------------------------
+*/
+
+const validateNonEmptyString = (
+  value,
+  fieldName,
+  {
+    min = 1,
+    max = 1000,
+  } = {},
+) => {
+  if (
+    typeof value !== "string" ||
+    !value.trim()
+  ) {
+    throw new Error(
+      `${fieldName} must be a non-empty string.`,
+    );
+  }
+
+  const normalizedValue = value.trim();
+
+  if (
+    normalizedValue.length < min ||
+    normalizedValue.length > max
+  ) {
+    throw new Error(
+      `${fieldName} must be between ${min} and ${max} characters.`,
+    );
+  }
+
+  return true;
+};
+
 const validateStringArray = (
   value,
   fieldName,
+  {
+    minItems = 0,
+    maxItems = 20,
+    itemMaxLength = 250,
+  } = {},
 ) => {
   if (!Array.isArray(value)) {
     throw new Error(
@@ -87,22 +126,144 @@ const validateStringArray = (
     );
   }
 
-  const hasInvalidItem = value.some(
-    (item) =>
-      typeof item !== "string" ||
-      item.trim().length === 0,
+  if (
+    value.length < minItems ||
+    value.length > maxItems
+  ) {
+    throw new Error(
+      `${fieldName} must contain between ${minItems} and ${maxItems} items.`,
+    );
+  }
+
+  value.forEach((item, index) => {
+    validateNonEmptyString(
+      item,
+      `${fieldName}.${index}`,
+      {
+        min: 1,
+        max: itemMaxLength,
+      },
+    );
+  });
+
+  return true;
+};
+
+/*
+|--------------------------------------------------------------------------
+| Service Card Validation
+|--------------------------------------------------------------------------
+*/
+
+const validateServiceCard = (value) => {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value)
+  ) {
+    throw new Error(
+      "serviceCard must be an object.",
+    );
+  }
+
+  validateNonEmptyString(
+    value.label,
+    "serviceCard.label",
+    {
+      min: 2,
+      max: 100,
+    },
   );
 
-  if (hasInvalidItem) {
-    throw new Error(
-      `${fieldName} must contain non-empty strings only.`,
+  validateNonEmptyString(
+    value.description,
+    "serviceCard.description",
+    {
+      min: 10,
+      max: 1000,
+    },
+  );
+
+  validateStringArray(
+    value.highlights,
+    "serviceCard.highlights",
+    {
+      minItems: 1,
+      maxItems: 10,
+      itemMaxLength: 150,
+    },
+  );
+
+  if (value.imageAlt !== undefined) {
+    validateNonEmptyString(
+      value.imageAlt,
+      "serviceCard.imageAlt",
+      {
+        min: 2,
+        max: 250,
+      },
     );
   }
 
   return true;
 };
 
-const validateProcessSection = (
+/*
+|--------------------------------------------------------------------------
+| Hero Section Validation
+|--------------------------------------------------------------------------
+*/
+
+const validateHeroSection = (value) => {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value)
+  ) {
+    throw new Error(
+      "heroSection must be an object.",
+    );
+  }
+
+  validateNonEmptyString(
+    value.title,
+    "heroSection.title",
+    {
+      min: 2,
+      max: 150,
+    },
+  );
+
+  validateNonEmptyString(
+    value.description,
+    "heroSection.description",
+    {
+      min: 10,
+      max: 1500,
+    },
+  );
+
+  if (value.imageAlt !== undefined) {
+    validateNonEmptyString(
+      value.imageAlt,
+      "heroSection.imageAlt",
+      {
+        min: 2,
+        max: 250,
+      },
+    );
+  }
+
+  return true;
+};
+
+/*
+|--------------------------------------------------------------------------
+| Delivery Process Validation
+|--------------------------------------------------------------------------
+*/
+
+const validateDeliveryProcessSection = (
   value,
 ) => {
   if (
@@ -111,25 +272,40 @@ const validateProcessSection = (
     Array.isArray(value)
   ) {
     throw new Error(
-      "processSection must be an object.",
+      "deliveryProcessSection must be an object.",
     );
   }
 
-  if (!value.title?.trim()) {
-    throw new Error(
-      "processSection.title is required.",
-    );
-  }
+  validateNonEmptyString(
+    value.title,
+    "deliveryProcessSection.title",
+    {
+      min: 2,
+      max: 150,
+    },
+  );
 
-  if (!value.description?.trim()) {
-    throw new Error(
-      "processSection.description is required.",
-    );
-  }
+  validateNonEmptyString(
+    value.description,
+    "deliveryProcessSection.description",
+    {
+      min: 10,
+      max: 1500,
+    },
+  );
 
   if (!Array.isArray(value.steps)) {
     throw new Error(
-      "processSection.steps must be an array.",
+      "deliveryProcessSection.steps must be an array.",
+    );
+  }
+
+  if (
+    value.steps.length < 1 ||
+    value.steps.length > 12
+  ) {
+    throw new Error(
+      "deliveryProcessSection.steps must contain between 1 and 12 steps.",
     );
   }
 
@@ -140,40 +316,46 @@ const validateProcessSection = (
       Array.isArray(step)
     ) {
       throw new Error(
-        `processSection.steps.${index} must be an object.`,
+        `deliveryProcessSection.steps.${index} must be an object.`,
       );
     }
 
-    if (!step.title?.trim()) {
-      throw new Error(
-        `processSection.steps.${index}.title is required.`,
-      );
-    }
+    validateNonEmptyString(
+      step.title,
+      `deliveryProcessSection.steps.${index}.title`,
+      {
+        min: 2,
+        max: 100,
+      },
+    );
 
-    if (!step.description?.trim()) {
-      throw new Error(
-        `processSection.steps.${index}.description is required.`,
-      );
-    }
+    validateNonEmptyString(
+      step.description,
+      `deliveryProcessSection.steps.${index}.description`,
+      {
+        min: 5,
+        max: 1000,
+      },
+    );
 
-    if (!step.icon?.trim()) {
-      throw new Error(
-        `processSection.steps.${index}.icon is required.`,
-      );
-    }
-
-if (
-  typeof step.icon !== "string" ||
-  !step.icon.trim()
-) {
-  throw new Error(
-    `processSection.steps.${index}.icon is required.`,
-  );
-}
+    validateNonEmptyString(
+      step.icon,
+      `deliveryProcessSection.steps.${index}.icon`,
+      {
+        min: 2,
+        max: 100,
+      },
+    );
   });
 
   return true;
 };
+
+/*
+|--------------------------------------------------------------------------
+| Capabilities Section Validation
+|--------------------------------------------------------------------------
+*/
 
 const validateCapabilitiesSection = (
   value,
@@ -188,21 +370,32 @@ const validateCapabilitiesSection = (
     );
   }
 
-  if (!value.title?.trim()) {
-    throw new Error(
-      "capabilitiesSection.title is required.",
-    );
-  }
+  validateNonEmptyString(
+    value.title,
+    "capabilitiesSection.title",
+    {
+      min: 2,
+      max: 150,
+    },
+  );
 
-  if (!value.description?.trim()) {
-    throw new Error(
-      "capabilitiesSection.description is required.",
-    );
-  }
+  validateNonEmptyString(
+    value.description,
+    "capabilitiesSection.description",
+    {
+      min: 10,
+      max: 1500,
+    },
+  );
 
   validateStringArray(
     value.items,
     "capabilitiesSection.items",
+    {
+      minItems: 1,
+      maxItems: 20,
+      itemMaxLength: 200,
+    },
   );
 
   if (
@@ -218,31 +411,49 @@ const validateCapabilitiesSection = (
   validateStringArray(
     value.table.headers,
     "capabilitiesSection.table.headers",
+    {
+      minItems: 1,
+      maxItems: 10,
+      itemMaxLength: 150,
+    },
   );
 
-  if (
-    !Array.isArray(value.table.rows)
-  ) {
+  if (!Array.isArray(value.table.rows)) {
     throw new Error(
       "capabilitiesSection.table.rows must be an array.",
     );
   }
 
+  if (value.table.rows.length > 30) {
+    throw new Error(
+      "capabilitiesSection.table.rows cannot contain more than 30 rows.",
+    );
+  }
+
   value.table.rows.forEach(
-    (row, index) => {
+    (row, rowIndex) => {
       if (
         typeof row !== "object" ||
         row === null ||
         Array.isArray(row)
       ) {
         throw new Error(
-          `capabilitiesSection.table.rows.${index} must be an object.`,
+          `capabilitiesSection.table.rows.${rowIndex} must be an object.`,
         );
       }
 
       validateStringArray(
         row.cells,
-        `capabilitiesSection.table.rows.${index}.cells`,
+        `capabilitiesSection.table.rows.${rowIndex}.cells`,
+        {
+          minItems:
+            value.table.headers.length,
+
+          maxItems:
+            value.table.headers.length,
+
+          itemMaxLength: 250,
+        },
       );
 
       if (
@@ -250,7 +461,7 @@ const validateCapabilitiesSection = (
         value.table.headers.length
       ) {
         throw new Error(
-          `capabilitiesSection.table.rows.${index}.cells count must match the headers count.`,
+          `capabilitiesSection.table.rows.${rowIndex}.cells count must match the table headers count.`,
         );
       }
     },
@@ -261,7 +472,141 @@ const validateCapabilitiesSection = (
 
 /*
 |--------------------------------------------------------------------------
-| Shared Fields
+| Home Capability Validation
+|--------------------------------------------------------------------------
+*/
+
+const validateHomeCapability = (value) => {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value)
+  ) {
+    throw new Error(
+      "homeCapability must be an object.",
+    );
+  }
+
+  if (
+    typeof value.isVisible !== "boolean"
+  ) {
+    throw new Error(
+      "homeCapability.isVisible must be true or false.",
+    );
+  }
+
+  if (value.isVisible) {
+    validateNonEmptyString(
+      value.title,
+      "homeCapability.title",
+      {
+        min: 2,
+        max: 150,
+      },
+    );
+
+    validateNonEmptyString(
+      value.shortDescription,
+      "homeCapability.shortDescription",
+      {
+        min: 10,
+        max: 500,
+      },
+    );
+  } else {
+    if (
+      value.title !== undefined &&
+      value.title !== ""
+    ) {
+      validateNonEmptyString(
+        value.title,
+        "homeCapability.title",
+        {
+          min: 2,
+          max: 150,
+        },
+      );
+    }
+
+    if (
+      value.shortDescription !==
+        undefined &&
+      value.shortDescription !== ""
+    ) {
+      validateNonEmptyString(
+        value.shortDescription,
+        "homeCapability.shortDescription",
+        {
+          min: 10,
+          max: 500,
+        },
+      );
+    }
+  }
+
+  if (
+    !Number.isInteger(
+      value.displayOrder,
+    ) ||
+    value.displayOrder < 0
+  ) {
+    throw new Error(
+      "homeCapability.displayOrder must be a non-negative integer.",
+    );
+  }
+
+  return true;
+};
+
+/*
+|--------------------------------------------------------------------------
+| Required Images Validation
+|--------------------------------------------------------------------------
+*/
+
+const requiredServiceImagesValidation = (
+  req,
+  res,
+  next,
+) => {
+  const cardImage =
+    req.files?.cardImage?.[0];
+
+  const heroImage =
+    req.files?.heroImage?.[0];
+
+  const errors = [];
+
+  if (!cardImage) {
+    errors.push({
+      field: "cardImage",
+      message:
+        "Service card image is required.",
+    });
+  }
+
+  if (!heroImage) {
+    errors.push({
+      field: "heroImage",
+      message:
+        "Service hero image is required.",
+    });
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      errors,
+    });
+  }
+
+  return next();
+};
+
+/*
+|--------------------------------------------------------------------------
+| Shared Body Fields
 |--------------------------------------------------------------------------
 */
 
@@ -270,6 +615,8 @@ const titleValidation = body("title")
   .withMessage(
     "Service title must be a string.",
   )
+  .bail()
+  .trim()
   .notEmpty()
   .withMessage(
     "Service title is required.",
@@ -282,125 +629,21 @@ const titleValidation = body("title")
     "Service title must be between 2 and 150 characters.",
   );
 
-const slugFieldValidation =
-  body("slug")
-    .isString()
-    .withMessage(
-      "Service slug must be a string.",
-    )
-    .notEmpty()
-    .withMessage(
-      "Service slug is required.",
-    )
-    .matches(slugRegex)
-    .withMessage(
-      "Service slug must contain lowercase letters, numbers, and hyphens only.",
-    );
-
-const categoryLabelValidation =
-  body("categoryLabel")
-    .isString()
-    .withMessage(
-      "Category label must be a string.",
-    )
-    .notEmpty()
-    .withMessage(
-      "Category label is required.",
-    )
-    .isLength({
-      min: 2,
-      max: 100,
-    })
-    .withMessage(
-      "Category label must be between 2 and 100 characters.",
-    );
-
-const shortDescriptionValidation =
-  body("shortDescription")
-    .isString()
-    .withMessage(
-      "Short description must be a string.",
-    )
-    .notEmpty()
-    .withMessage(
-      "Short description is required.",
-    )
-    .isLength({
-      min: 10,
-      max: 1000,
-    })
-    .withMessage(
-      "Short description must be between 10 and 1000 characters.",
-    );
-
-const heroTitleValidation =
-  body("heroTitle")
-    .isString()
-    .withMessage(
-      "Hero title must be a string.",
-    )
-    .notEmpty()
-    .withMessage(
-      "Hero title is required.",
-    )
-    .isLength({
-      min: 2,
-      max: 150,
-    })
-    .withMessage(
-      "Hero title must be between 2 and 150 characters.",
-    );
-
-const heroDescriptionValidation =
-  body("heroDescription")
-    .isString()
-    .withMessage(
-      "Hero description must be a string.",
-    )
-    .notEmpty()
-    .withMessage(
-      "Hero description is required.",
-    )
-    .isLength({
-      min: 10,
-      max: 1500,
-    })
-    .withMessage(
-      "Hero description must be between 10 and 1500 characters.",
-    );
-
-    const highlightsValidation = [
-  parseJson("highlights", "array"),
-
-  body("highlights").custom((value) =>
-    validateStringArray(
-      value,
-      "highlights",
-    ),
-  ),
-];
-
-const processSectionValidation = [
-  parseJson(
-    "processSection",
-    "object",
-  ),
-
-  body("processSection").custom(
-    validateProcessSection,
-  ),
-];
-
-const capabilitiesSectionValidation = [
-  parseJson(
-    "capabilitiesSection",
-    "object",
-  ),
-
-  body("capabilitiesSection").custom(
-    validateCapabilitiesSection,
-  ),
-];
+const slugFieldValidation = body("slug")
+  .isString()
+  .withMessage(
+    "Service slug must be a string.",
+  )
+  .bail()
+  .trim()
+  .notEmpty()
+  .withMessage(
+    "Service slug is required.",
+  )
+  .matches(slugRegex)
+  .withMessage(
+    "Service slug must contain lowercase letters, numbers, and hyphens only.",
+  );
 
 const displayOrderValidation = body(
   "displayOrder",
@@ -413,16 +656,6 @@ const displayOrderValidation = body(
     "Display order must be a non-negative integer.",
   )
   .toInt();
-
-const isFeaturedValidation = body(
-  "isFeatured",
-)
-  .optional()
-  .isBoolean()
-  .withMessage(
-    "isFeatured must be true or false.",
-  )
-  .toBoolean();
 
 const isActiveValidation = body(
   "isActive",
@@ -445,27 +678,82 @@ const createServiceValidation = [
 
   slugFieldValidation,
 
-  categoryLabelValidation,
+  parseJsonField(
+    "serviceCard",
+    "object",
+  ),
 
-  shortDescriptionValidation,
+  body("serviceCard")
+    .notEmpty()
+    .withMessage(
+      "serviceCard is required.",
+    )
+    .bail()
+    .custom(validateServiceCard),
 
-  heroTitleValidation,
+  parseJsonField(
+    "heroSection",
+    "object",
+  ),
 
-  heroDescriptionValidation,
+  body("heroSection")
+    .notEmpty()
+    .withMessage(
+      "heroSection is required.",
+    )
+    .bail()
+    .custom(validateHeroSection),
 
-  ...highlightsValidation,
+  parseJsonField(
+    "deliveryProcessSection",
+    "object",
+  ),
 
-  ...processSectionValidation,
+  body("deliveryProcessSection")
+    .notEmpty()
+    .withMessage(
+      "deliveryProcessSection is required.",
+    )
+    .bail()
+    .custom(
+      validateDeliveryProcessSection,
+    ),
 
-  ...capabilitiesSectionValidation,
+  parseJsonField(
+    "capabilitiesSection",
+    "object",
+  ),
+
+  body("capabilitiesSection")
+    .notEmpty()
+    .withMessage(
+      "capabilitiesSection is required.",
+    )
+    .bail()
+    .custom(
+      validateCapabilitiesSection,
+    ),
+
+  parseJsonField(
+    "homeCapability",
+    "object",
+  ),
+
+  body("homeCapability")
+    .notEmpty()
+    .withMessage(
+      "homeCapability is required.",
+    )
+    .bail()
+    .custom(validateHomeCapability),
 
   displayOrderValidation,
-
-  isFeaturedValidation,
 
   isActiveValidation,
 
   validate,
+
+  requiredServiceImagesValidation,
 ];
 
 /*
@@ -481,6 +769,8 @@ const updateServiceValidation = [
     .withMessage(
       "Service title must be a string.",
     )
+    .bail()
+    .trim()
     .notEmpty()
     .withMessage(
       "Service title cannot be empty.",
@@ -499,105 +789,47 @@ const updateServiceValidation = [
     .withMessage(
       "Service slug must be a string.",
     )
+    .bail()
+    .trim()
+    .notEmpty()
+    .withMessage(
+      "Service slug cannot be empty.",
+    )
     .matches(slugRegex)
     .withMessage(
       "Service slug must contain lowercase letters, numbers, and hyphens only.",
     ),
 
-  body("categoryLabel")
-    .optional()
-    .isString()
-    .withMessage(
-      "Category label must be a string.",
-    )
-    .notEmpty()
-    .withMessage(
-      "Category label cannot be empty.",
-    )
-    .isLength({
-      min: 2,
-      max: 100,
-    })
-    .withMessage(
-      "Category label must be between 2 and 100 characters.",
-    ),
-
-  body("shortDescription")
-    .optional()
-    .isString()
-    .withMessage(
-      "Short description must be a string.",
-    )
-    .notEmpty()
-    .withMessage(
-      "Short description cannot be empty.",
-    )
-    .isLength({
-      min: 10,
-      max: 1000,
-    })
-    .withMessage(
-      "Short description must be between 10 and 1000 characters.",
-    ),
-
-  body("heroTitle")
-    .optional()
-    .isString()
-    .withMessage(
-      "Hero title must be a string.",
-    )
-    .notEmpty()
-    .withMessage(
-      "Hero title cannot be empty.",
-    )
-    .isLength({
-      min: 2,
-      max: 150,
-    })
-    .withMessage(
-      "Hero title must be between 2 and 150 characters.",
-    ),
-
-  body("heroDescription")
-    .optional()
-    .isString()
-    .withMessage(
-      "Hero description must be a string.",
-    )
-    .notEmpty()
-    .withMessage(
-      "Hero description cannot be empty.",
-    )
-    .isLength({
-      min: 10,
-      max: 1500,
-    })
-    .withMessage(
-      "Hero description must be between 10 and 1500 characters.",
-    ),
-
-  parseJson("highlights", "array")
-    .optional(),
-
-  body("highlights")
-    .optional()
-    .custom((value) =>
-      validateStringArray(
-        value,
-        "highlights",
-      ),
-    ),
-
-  parseJson(
-    "processSection",
+  parseJsonField(
+    "serviceCard",
     "object",
   ).optional(),
 
-  body("processSection")
+  body("serviceCard")
     .optional()
-    .custom(validateProcessSection),
+    .custom(validateServiceCard),
 
-  parseJson(
+  parseJsonField(
+    "heroSection",
+    "object",
+  ).optional(),
+
+  body("heroSection")
+    .optional()
+    .custom(validateHeroSection),
+
+  parseJsonField(
+    "deliveryProcessSection",
+    "object",
+  ).optional(),
+
+  body("deliveryProcessSection")
+    .optional()
+    .custom(
+      validateDeliveryProcessSection,
+    ),
+
+  parseJsonField(
     "capabilitiesSection",
     "object",
   ).optional(),
@@ -608,9 +840,16 @@ const updateServiceValidation = [
       validateCapabilitiesSection,
     ),
 
-  displayOrderValidation,
+  parseJsonField(
+    "homeCapability",
+    "object",
+  ).optional(),
 
-  isFeaturedValidation,
+  body("homeCapability")
+    .optional()
+    .custom(validateHomeCapability),
+
+  displayOrderValidation,
 
   isActiveValidation,
 
@@ -635,6 +874,7 @@ const idValidation = [
 
 const slugValidation = [
   param("slug")
+    .trim()
     .matches(slugRegex)
     .withMessage(
       "Invalid service slug.",

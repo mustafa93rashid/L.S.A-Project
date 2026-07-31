@@ -366,7 +366,6 @@
   ],
 
   hero: {
-
     title: String,
 
     description: String,
@@ -382,11 +381,50 @@
     publicId: String
   },
 
+  projectDetails: {
+    client: String,
+    location: String,
+    completionDate: Date,
+    duration: String,
+    status: String
+  },
+
+  detailedScope: {
+    title: String,
+    description: String,
+
+    items: [
+      {
+        title: String,
+        description: String,
+        icon: String
+      }
+    ]
+  },
+
   gallery: [
     {
       url: String,
       publicId: String,
-      alt: String
+      alt: String,
+      displayOrder: Number
+    }
+  ],
+
+  certificates: [
+    {
+      title: String,
+      description: String,
+
+      image: {
+        url: String,
+        publicId: String
+      },
+
+      file: {
+        url: String,
+        publicId: String
+      }
     }
   ],
 
@@ -407,98 +445,7 @@
   },
 
   createdAt: Date,
-  updatedAt: Date
-}
-```
 
----
-
-## equipment-categories
-
-```ts
-{
-  _id: ObjectId,
-
-  name: String,
-
-  slug: {
-    type: String,
-    unique: true,
-    lowercase: true,
-    trim: true
-  },
-
-  displayOrder: Number,
-
-  isActive: Boolean,
-
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
----
-
-## equipment
-
-```ts
-{
-  _id: ObjectId,
-
-  title: String,
-
-  slug: {
-    type: String,
-    unique: true,
-    lowercase: true,
-    trim: true
-  },
-
-  category: {
-    type: ObjectId,
-    ref: "EquipmentCategory"
-  },
-
-  shortDescription: String,
-
-  description: String,
-
-  image: {
-    url: String,
-    publicId: String
-  },
-
-  capacity: String,
-
-  location: String,
-
-  totalQuantity: Number,
-
-  availableUnits: Number,
-
-  safetyCertificate: {
-    url: String,
-    publicId: String,
-    expiresAt: Date
-  },
-
-  displayOrder: Number,
-
-  isFeatured: Boolean,
-
-  isActive: Boolean,
-
-  createdBy: {
-    type: ObjectId,
-    ref: "User"
-  },
-
-  updatedBy: {
-    type: ObjectId,
-    ref: "User"
-  },
-
-  createdAt: Date,
   updatedAt: Date
 }
 ```

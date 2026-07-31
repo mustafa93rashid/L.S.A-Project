@@ -1,81 +1,184 @@
 const Service = require("../models/service.model");
+const Project = require("../models/project.model");
 
 const {
   uploadMulterImage,
   replaceImage,
-  deleteImage,
+  deleteImages,
 } = require("../services/cloudinary.service");
 
 /*
 |--------------------------------------------------------------------------
-| Helper Functions
+| Constants
 |--------------------------------------------------------------------------
 */
 
-const uploadServiceImages = async (cardImageFile, heroImageFile) => {
-  const cardImage = await uploadMulterImage({
-    file: cardImageFile,
-    folder: "services/cards",
-    prefix: "service-card",
-  });
+const MAX_HOME_CAPABILITIES = 6;
 
-  const heroImage = await uploadMulterImage({
-    file: heroImageFile,
-    folder: "services/heroes",
-    prefix: "service-hero",
-  });
+/*
+|--------------------------------------------------------------------------
+| Image Helpers
+|--------------------------------------------------------------------------
+*/
 
+// ==================================================
+// Format Uploaded Image
+// ==================================================
+const formatImage = (uploadedImage, alt = "") => {
   return {
-    cardImage,
-    heroImage,
+    url: uploadedImage.url,
+    publicId: uploadedImage.publicId,
+    alt,
   };
 };
 
-const deleteServiceImages = async (cardImage, heroImage) => {
-  if (cardImage?.publicId) {
-    await deleteImage(cardImage.publicId);
-  }
+// ==================================================
+// Upload Service Images
+// ==================================================
+const uploadServiceImages = async ({
+  cardImageFile,
+  heroImageFile,
+  cardImageAlt,
+  heroImageAlt,
+}) => {
+  const uploadedImages = {
+    cardImage: null,
+    heroImage: null,
+  };
 
-  if (heroImage?.publicId) {
-    await deleteImage(heroImage.publicId);
+  try {
+    uploadedImages.cardImage =
+      await uploadMulterImage({
+        file: cardImageFile,
+        folder: "services/cards",
+        prefix: "service-card",
+      });
+
+    uploadedImages.heroImage =
+      await uploadMulterImage({
+        file: heroImageFile,
+        folder: "services/heroes",
+        prefix: "service-hero",
+      });
+
+    return {
+      cardImage: formatImage(
+        uploadedImages.cardImage,
+        cardImageAlt,
+      ),
+
+      heroImage: formatImage(
+        uploadedImages.heroImage,
+        heroImageAlt,
+      ),
+    };
+  } catch (error) {
+    await deleteImages(
+      [
+        uploadedImages.cardImage?.publicId,
+        uploadedImages.heroImage?.publicId,
+      ].filter(Boolean),
+    );
+
+    throw error;
   }
 };
 
-const replaceServiceImages = async (service, cardImageFile, heroImageFile) => {
+// ==================================================
+// Replace Service Images
+// ==================================================
+const replaceServiceImages = async ({
+  service,
+  cardImageFile,
+  heroImageFile,
+}) => {
   if (cardImageFile) {
-    const uploadedCardImage = await replaceImage({
-      oldPublicId: service.cardImage.publicId,
+    const uploadedCardImage =
+      await replaceImage({
+        oldPublicId:
+          service.serviceCard.image.publicId,
 
-      file: cardImageFile,
+        file: cardImageFile,
+        folder: "services/cards",
+        prefix: "service-card",
+      });
 
-      folder: "services/cards",
-
-      prefix: "service-card",
-    });
-
-    service.cardImage = {
-      url: uploadedCardImage.url,
-      publicId: uploadedCardImage.publicId,
-    };
+    service.serviceCard.image = formatImage(
+      uploadedCardImage,
+      service.serviceCard.image.alt ||
+        service.title,
+    );
   }
 
   if (heroImageFile) {
-    const uploadedHeroImage = await replaceImage({
-      oldPublicId: service.hero.image.publicId,
+    const uploadedHeroImage =
+      await replaceImage({
+        oldPublicId:
+          service.heroSection.image.publicId,
 
-      file: heroImageFile,
+        file: heroImageFile,
+        folder: "services/heroes",
+        prefix: "service-hero",
+      });
 
-      folder: "services/heroes",
-
-      prefix: "service-hero",
-    });
-
-    service.hero.image = {
-      url: uploadedHeroImage.url,
-      publicId: uploadedHeroImage.publicId,
-    };
+    service.heroSection.image = formatImage(
+      uploadedHeroImage,
+      service.heroSection.image.alt ||
+        service.title,
+    );
   }
 };
+
+// ==================================================
+// Delete Service Images
+// ==================================================
+const deleteServiceImages = async (service) => {
+  const publicIds = [
+    service.serviceCard?.image?.publicId,
+    service.heroSection?.image?.publicId,
+  ].filter(Boolean);
+
+  await deleteImages(publicIds);
+};
+
+/*
+|--------------------------------------------------------------------------
+| Business Logic Helpers
+|--------------------------------------------------------------------------
+*/
+
+// ==================================================
+// Check Home Capability Limit
+// ==================================================
+const hasReachedHomeCapabilityLimit =
+  async ({
+    isVisible,
+    isActive,
+    excludedServiceId = null,
+  }) => {
+    if (!isVisible || !isActive) {
+      return false;
+    }
+
+    const filter = {
+      isActive: true,
+      "homeCapability.isVisible": true,
+    };
+
+    if (excludedServiceId) {
+      filter._id = {
+        $ne: excludedServiceId,
+      };
+    }
+
+    const visibleServicesCount =
+      await Service.countDocuments(filter);
+
+    return (
+      visibleServicesCount >=
+      MAX_HOME_CAPABILITIES
+    );
+  };
 
 /*
 |--------------------------------------------------------------------------
@@ -86,21 +189,28 @@ const replaceServiceImages = async (service, cardImageFile, heroImageFile) => {
 class ServiceController {
   /*
   |--------------------------------------------------------------------------
-  | Get Public Services
+  | Get Public Service Cards
   |--------------------------------------------------------------------------
+  |
+  | يعيد الكاردات التي تظهر في صفحة الخدمات.
+  |
   */
 
-  getPublicServices = async (req, res) => {
+  getPublicServiceCards = async (
+    req,
+    res,
+  ) => {
     const services = await Service.find({
       isActive: true,
     })
       .select(
-        "title slug categoryLabel shortDescription cardImage highlights displayOrder isFeatured",
+        "title slug serviceCard displayOrder",
       )
       .sort({
         displayOrder: 1,
         createdAt: 1,
-      });
+      })
+      .lean();
 
     return res.status(200).json({
       success: true,
@@ -111,15 +221,59 @@ class ServiceController {
 
   /*
   |--------------------------------------------------------------------------
-  | Get Public Service By Slug
+  | Get Home Capabilities
   |--------------------------------------------------------------------------
+  |
+  | يعيد ست خدمات كحد أقصى لقسم Our Core Capabilities.
+  |
   */
 
-  getPublicServiceBySlug = async (req, res) => {
+  getHomeCapabilities = async (
+    req,
+    res,
+  ) => {
+    const services = await Service.find({
+      isActive: true,
+      "homeCapability.isVisible": true,
+    })
+      .select(
+        "title slug homeCapability",
+      )
+      .sort({
+        "homeCapability.displayOrder": 1,
+        createdAt: 1,
+      })
+      .limit(MAX_HOME_CAPABILITIES)
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      count: services.length,
+      data: services,
+    });
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Get Public Service Details
+  |--------------------------------------------------------------------------
+  |
+  | يعيد تفاصيل الخدمة والمشاريع المرتبطة بها.
+  |
+  */
+
+  getPublicServiceBySlug = async (
+    req,
+    res,
+  ) => {
     const service = await Service.findOne({
       slug: req.params.slug,
       isActive: true,
-    }).select("-cardImage.publicId -hero.image.publicId");
+    })
+      .select(
+        "-serviceCard.image.publicId -heroSection.image.publicId",
+      )
+      .lean();
 
     if (!service) {
       return res.status(404).json({
@@ -128,13 +282,19 @@ class ServiceController {
       });
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Related Projects
-    |--------------------------------------------------------------------------
-    */
-
-    const relatedProjects = [];
+    const relatedProjects =
+      await Project.find({
+        services: service._id,
+        isActive: true,
+      })
+        .select(
+          "title slug shortDescription cardImage displayOrder",
+        )
+        .sort({
+          displayOrder: 1,
+          createdAt: -1,
+        })
+        .lean();
 
     return res.status(200).json({
       success: true,
@@ -149,13 +309,18 @@ class ServiceController {
   |--------------------------------------------------------------------------
   | Get All Services
   |--------------------------------------------------------------------------
+  |
+  | يعيد جميع الخدمات للوحة التحكم.
+  |
   */
 
   getAllServices = async (req, res) => {
-    const services = await Service.find().sort({
-      displayOrder: 1,
-      createdAt: 1,
-    });
+    const services = await Service.find()
+      .sort({
+        displayOrder: 1,
+        createdAt: 1,
+      })
+      .lean();
 
     return res.status(200).json({
       success: true,
@@ -171,7 +336,9 @@ class ServiceController {
   */
 
   getServiceById = async (req, res) => {
-    const service = await Service.findById(req.params.id);
+    const service = await Service.findById(
+      req.params.id,
+    ).lean();
 
     if (!service) {
       return res.status(404).json({
@@ -193,78 +360,118 @@ class ServiceController {
   */
 
   createService = async (req, res) => {
-    const cardImageFile = req.files.cardImage[0];
+    const {
+      title,
+      slug,
+      serviceCard,
+      heroSection,
+      deliveryProcessSection,
+      capabilitiesSection,
+      homeCapability,
+      displayOrder,
+      isActive,
+    } = req.body;
 
-    const heroImageFile = req.files.heroImage[0];
-
-    const existingService = await Service.findOne({
-      slug: req.body.slug,
-    });
+    const existingService =
+      await Service.findOne({
+        slug,
+      }).lean();
 
     if (existingService) {
       return res.status(409).json({
         success: false,
-        message: "Service slug already exists.",
+        message:
+          "A service with this slug already exists.",
       });
     }
 
-    let uploadedImages = null;
+    const serviceIsActive =
+      isActive !== undefined
+        ? isActive
+        : true;
+
+    const homeLimitReached =
+      await hasReachedHomeCapabilityLimit({
+        isVisible:
+          homeCapability.isVisible,
+
+        isActive: serviceIsActive,
+      });
+
+    if (homeLimitReached) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only 6 services can be displayed in the Home Capabilities section.",
+      });
+    }
+
+    const cardImageFile =
+      req.files?.cardImage?.[0];
+
+    const heroImageFile =
+      req.files?.heroImage?.[0];
+
+    const uploadedImages =
+      await uploadServiceImages({
+        cardImageFile,
+        heroImageFile,
+
+        cardImageAlt:
+          serviceCard.imageAlt || title,
+
+        heroImageAlt:
+          heroSection.imageAlt || title,
+      });
 
     try {
-      uploadedImages = await uploadServiceImages(cardImageFile, heroImageFile);
-
       const service = await Service.create({
-        title: req.body.title,
+        title,
+        slug,
 
-        slug: req.body.slug,
+        serviceCard: {
+          label: serviceCard.label,
 
-        categoryLabel: req.body.categoryLabel,
+          description:
+            serviceCard.description,
 
-        shortDescription: req.body.shortDescription,
+          highlights:
+            serviceCard.highlights,
 
-        cardImage: {
-          url: uploadedImages.cardImage.url,
-
-          publicId: uploadedImages.cardImage.publicId,
+          image: uploadedImages.cardImage,
         },
 
-        hero: {
-          title: req.body.heroTitle,
+        heroSection: {
+          title: heroSection.title,
 
-          description: req.body.heroDescription,
+          description:
+            heroSection.description,
 
-          image: {
-            url: uploadedImages.heroImage.url,
-
-            publicId: uploadedImages.heroImage.publicId,
-          },
+          image: uploadedImages.heroImage,
         },
 
-        highlights: req.body.highlights,
+        deliveryProcessSection,
 
-        processSection: req.body.processSection,
+        capabilitiesSection,
 
-        capabilitiesSection: req.body.capabilitiesSection,
+        homeCapability,
 
-        displayOrder: req.body.displayOrder,
+        displayOrder,
 
-        isFeatured: req.body.isFeatured,
-
-        isActive: req.body.isActive,
+        isActive: serviceIsActive,
       });
 
       return res.status(201).json({
         success: true,
-        message: "Service created successfully.",
+        message:
+          "Service created successfully.",
         data: service,
       });
     } catch (error) {
-      if (uploadedImages) {
-        await deleteServiceImages(
-          uploadedImages.cardImage,
-          uploadedImages.heroImage,
-        );
-      }
+      await deleteImages([
+        uploadedImages.cardImage.publicId,
+        uploadedImages.heroImage.publicId,
+      ]);
 
       throw error;
     }
@@ -277,7 +484,9 @@ class ServiceController {
   */
 
   updateService = async (req, res) => {
-    const service = await Service.findById(req.params.id);
+    const service = await Service.findById(
+      req.params.id,
+    );
 
     if (!service) {
       return res.status(404).json({
@@ -286,65 +495,149 @@ class ServiceController {
       });
     }
 
-    if (req.body.slug && req.body.slug !== service.slug) {
-      const existingService = await Service.findOne({
-        slug: req.body.slug,
+    const {
+      title,
+      slug,
+      serviceCard,
+      heroSection,
+      deliveryProcessSection,
+      capabilitiesSection,
+      homeCapability,
+      displayOrder,
+      isActive,
+    } = req.body;
 
-        _id: {
-          $ne: service._id,
-        },
-      });
+    if (
+      slug !== undefined &&
+      slug !== service.slug
+    ) {
+      const existingService =
+        await Service.findOne({
+          slug,
+
+          _id: {
+            $ne: service._id,
+          },
+        }).lean();
 
       if (existingService) {
         return res.status(409).json({
           success: false,
-          message: "Service slug already exists.",
+          message:
+            "A service with this slug already exists.",
         });
       }
     }
 
-    await replaceServiceImages(
-      service,
-      req.files?.cardImage?.[0],
-      req.files?.heroImage?.[0],
-    );
+    const finalHomeVisibility =
+      homeCapability?.isVisible ??
+      service.homeCapability.isVisible;
 
-    Object.assign(service, {
-      title: req.body.title ?? service.title,
+    const finalActiveStatus =
+      isActive ?? service.isActive;
 
-      slug: req.body.slug ?? service.slug,
+    const homeLimitReached =
+      await hasReachedHomeCapabilityLimit({
+        isVisible: finalHomeVisibility,
+        isActive: finalActiveStatus,
 
-      categoryLabel: req.body.categoryLabel ?? service.categoryLabel,
+        excludedServiceId:
+          service._id,
+      });
 
-      shortDescription: req.body.shortDescription ?? service.shortDescription,
-
-      highlights: req.body.highlights ?? service.highlights,
-
-      processSection: req.body.processSection ?? service.processSection,
-
-      capabilitiesSection:
-        req.body.capabilitiesSection ?? service.capabilitiesSection,
-
-      displayOrder: req.body.displayOrder ?? service.displayOrder,
-
-      isFeatured: req.body.isFeatured ?? service.isFeatured,
-
-      isActive: req.body.isActive ?? service.isActive,
-    });
-
-    if (req.body.heroTitle) {
-      service.hero.title = req.body.heroTitle;
+    if (homeLimitReached) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only 6 services can be displayed in the Home Capabilities section.",
+      });
     }
 
-    if (req.body.heroDescription) {
-      service.hero.description = req.body.heroDescription;
+    await replaceServiceImages({
+      service,
+
+      cardImageFile:
+        req.files?.cardImage?.[0],
+
+      heroImageFile:
+        req.files?.heroImage?.[0],
+    });
+
+    if (title !== undefined) {
+      service.title = title;
+    }
+
+    if (slug !== undefined) {
+      service.slug = slug;
+    }
+
+    if (serviceCard !== undefined) {
+      service.serviceCard.label =
+        serviceCard.label;
+
+      service.serviceCard.description =
+        serviceCard.description;
+
+      service.serviceCard.highlights =
+        serviceCard.highlights;
+
+      if (
+        serviceCard.imageAlt !== undefined
+      ) {
+        service.serviceCard.image.alt =
+          serviceCard.imageAlt;
+      }
+    }
+
+    if (heroSection !== undefined) {
+      service.heroSection.title =
+        heroSection.title;
+
+      service.heroSection.description =
+        heroSection.description;
+
+      if (
+        heroSection.imageAlt !== undefined
+      ) {
+        service.heroSection.image.alt =
+          heroSection.imageAlt;
+      }
+    }
+
+    if (
+      deliveryProcessSection !== undefined
+    ) {
+      service.deliveryProcessSection =
+        deliveryProcessSection;
+    }
+
+    if (
+      capabilitiesSection !== undefined
+    ) {
+      service.capabilitiesSection =
+        capabilitiesSection;
+    }
+
+    if (homeCapability !== undefined) {
+      service.homeCapability =
+        homeCapability;
+    }
+
+    if (displayOrder !== undefined) {
+      service.displayOrder =
+        displayOrder;
+    }
+
+    if (isActive !== undefined) {
+      service.isActive = isActive;
     }
 
     await service.save();
 
     return res.status(200).json({
       success: true,
-      message: "Service updated successfully.",
+      message:
+        "Service updated successfully.",
       data: service,
     });
   };
@@ -356,7 +649,9 @@ class ServiceController {
   */
 
   deleteService = async (req, res) => {
-    const service = await Service.findById(req.params.id);
+    const service = await Service.findById(
+      req.params.id,
+    );
 
     if (!service) {
       return res.status(404).json({
@@ -365,13 +660,27 @@ class ServiceController {
       });
     }
 
-    await deleteServiceImages(service.cardImage, service.hero.image);
+    const relatedProjectsCount =
+      await Project.countDocuments({
+        services: service._id,
+      });
+
+    if (relatedProjectsCount > 0) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "This service cannot be deleted because it is assigned to one or more projects.",
+      });
+    }
+
+    await deleteServiceImages(service);
 
     await service.deleteOne();
 
     return res.status(200).json({
       success: true,
-      message: "Service deleted successfully.",
+      message:
+        "Service deleted successfully.",
     });
   };
 }
