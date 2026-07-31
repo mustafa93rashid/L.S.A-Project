@@ -259,14 +259,6 @@
 }
 ```
 
-# LSA Dashboard System Design
-
-## Part 2 - Services, Projects, Equipment Categories, Equipment & Equipment Requests
-
----
-
-# Collections
-
 ## services
 
 ```ts
