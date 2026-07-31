@@ -95,6 +95,19 @@ const uploadServiceImages = () =>
     { name: "certificateImages", maxCount: 10 },
   ]);
 };
+
+const uploadEquipmentFiles = () => {
+  return upload.fields([
+    {
+      name: "image",
+      maxCount: 1,
+    },
+    {
+      name: "safetyCertificate",
+      maxCount: 1,
+    },
+  ]);
+};
 /*
 |--------------------------------------------------------------------------
 | Exports
@@ -111,6 +124,7 @@ module.exports = {
   uploadTeamMemberImage,
   uploadServiceImages,
   uploadProjectImages,
+  uploadEquipmentFiles,
 
   fileFilter,
 };

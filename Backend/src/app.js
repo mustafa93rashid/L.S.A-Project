@@ -55,6 +55,9 @@ app.use("/api/v1/services", require("./routers/service.routes"));
 // Project routes
 app.use("/api/v1/projects", require("./routers/project.routes"));
 
+// Project routes
+app.use("/api/v1/equipments", require("./routers/equipment.routes"));
+
 //=========================================================================
 // Error Handling Middleware
 //=========================================================================
