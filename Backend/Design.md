@@ -219,8 +219,6 @@
 
   description: String,
 
-  badge: String,
-
   icon: String,
 
   image: {
