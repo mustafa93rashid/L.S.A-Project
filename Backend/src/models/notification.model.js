@@ -6,156 +6,103 @@ const mongoose = require("mongoose");
 |--------------------------------------------------------------------------
 */
 
-const EQUIPMENT_REQUEST_STATUSES = [
-  "new",
-  "contacted",
-  "quoted",
-  "approved",
-  "rejected",
-  "completed",
+const NOTIFICATION_TYPES = [
+  "equipmentRequest",
+  "careerApplication",
+  "contactMessage",
+  "system",
+];
+
+const NOTIFICATION_REFERENCE_MODELS = [
+  "EquipmentRequest",
+  "Career",
+  "Contact",
 ];
 
 /*
 |--------------------------------------------------------------------------
-| Equipment Request Schema
+| Notification Schema
 |--------------------------------------------------------------------------
 */
 
-const equipmentRequestSchema = new mongoose.Schema(
+const notificationSchema = new mongoose.Schema(
   {
     /*
     |--------------------------------------------------------------------------
-    | Requested Equipment
+    | Notification Type
     |--------------------------------------------------------------------------
     */
 
-    equipment: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Equipment",
+    type: {
+      type: String,
+      enum: NOTIFICATION_TYPES,
       required: true,
       index: true,
     },
 
     /*
     |--------------------------------------------------------------------------
-    | Customer Information
+    | Content
     |--------------------------------------------------------------------------
     */
 
-    fullName: {
+    title: {
       type: String,
       required: true,
       trim: true,
-      minlength: 2,
       maxlength: 150,
     },
 
-    email: {
-      type: String,
-      required: true,
-      lowercase: true,
-      trim: true,
-      maxlength: 254,
-    },
-
-    phone: {
+    message: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 30,
-    },
-
-    company: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 200,
+      maxlength: 1000,
     },
 
     /*
     |--------------------------------------------------------------------------
-    | Work Information
+    | Reference
     |--------------------------------------------------------------------------
     */
 
-    workLocation: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 250,
-    },
+    reference: {
+      model: {
+        type: String,
+        enum: NOTIFICATION_REFERENCE_MODELS,
+        required: true,
+      },
 
-    estimatedRequiredDays: {
-      type: Number,
-      required: true,
-      min: 1,
-    },
-
-    workDescription: {
-      type: String,
-      required: true,
-      trim: true,
-      minlength: 10,
-      maxlength: 5000,
+      id: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+      },
     },
 
     /*
     |--------------------------------------------------------------------------
-    | Request Status
+    | Extra Data
     |--------------------------------------------------------------------------
     */
 
-    status: {
-      type: String,
-      enum: EQUIPMENT_REQUEST_STATUSES,
-      default: "new",
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+
+    /*
+    |--------------------------------------------------------------------------
+    | Read Status
+    |--------------------------------------------------------------------------
+    */
+
+    isRead: {
+      type: Boolean,
+      default: false,
       index: true,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Timeline
-    |--------------------------------------------------------------------------
-    */
-
-    contactedAt: {
-      type: Date,
-      default: null,
-    },
-
-    completedAt: {
-      type: Date,
-      default: null,
-    },
-
-    /*
-    |--------------------------------------------------------------------------
-    | Email Tracking
-    |--------------------------------------------------------------------------
-    */
-
-    customerEmailSent: {
-      type: Boolean,
-      default: false,
-    },
-
-    customerEmailSentAt: {
-      type: Date,
-      default: null,
-    },
-
-    /*
-    |--------------------------------------------------------------------------
-    | Notification Tracking
-    |--------------------------------------------------------------------------
-    */
-
-    dashboardNotificationCreated: {
-      type: Boolean,
-      default: false,
-    },
-
-    dashboardNotificationCreatedAt: {
+    readAt: {
       type: Date,
       default: null,
     },
@@ -166,7 +113,7 @@ const equipmentRequestSchema = new mongoose.Schema(
     |--------------------------------------------------------------------------
     */
 
-    updatedBy: {
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
@@ -184,19 +131,19 @@ const equipmentRequestSchema = new mongoose.Schema(
 |--------------------------------------------------------------------------
 */
 
-equipmentRequestSchema.index({
-  status: 1,
+notificationSchema.index({
+  isRead: 1,
   createdAt: -1,
 });
 
-equipmentRequestSchema.index({
-  equipment: 1,
+notificationSchema.index({
+  type: 1,
   createdAt: -1,
 });
 
-equipmentRequestSchema.index({
-  email: 1,
-  createdAt: -1,
+notificationSchema.index({
+  "reference.model": 1,
+  "reference.id": 1,
 });
 
 /*
@@ -205,11 +152,11 @@ equipmentRequestSchema.index({
 |--------------------------------------------------------------------------
 */
 
-const EquipmentRequest =
-  mongoose.models.EquipmentRequest ||
+const Notification =
+  mongoose.models.Notification ||
   mongoose.model(
-    "EquipmentRequest",
-    equipmentRequestSchema,
+    "Notification",
+    notificationSchema,
   );
 
 /*
@@ -219,6 +166,6 @@ const EquipmentRequest =
 */
 
 module.exports = {
-  EquipmentRequest,
-  EQUIPMENT_REQUEST_STATUSES,
+  Notification,
+  NOTIFICATION_TYPES,
 };
