@@ -6,9 +6,19 @@ const auth = require("../middlewares/auth");
 const role = require("../middlewares/role");
 const asyncHandler = require("../utils/asyncHandler");
 
-const { uploadEquipmentFiles } = require("../middlewares/upload.middleware");
+const { uploadEquipmentImage } = require("../middlewares/upload.middleware");
 
-const { createCategoryValidation, updateCategoryValidation, createEquipmentValidation, updateEquipmentValidation, equipmentIdValidation, categoryIdValidation, equipmentSlugValidation, equipmentPublicQueryValidation, equipmentDashboardQueryValidation } = require("../validation/equipment.validate");
+const {
+  createCategoryValidation,
+  updateCategoryValidation,
+  createEquipmentValidation,
+  updateEquipmentValidation,
+  equipmentIdValidation,
+  categoryIdValidation,
+  equipmentSlugValidation,
+  equipmentPublicQueryValidation,
+  equipmentDashboardQueryValidation,
+} = require("../validation/equipment.validate");
 
 const router = express.Router();
 
@@ -56,11 +66,11 @@ router.get("/public/:slug", ...equipmentSlugValidation, asyncHandler(equipmentCo
 
 router.get("/", auth, role(["superadmin", "contentManager"]), ...equipmentDashboardQueryValidation, asyncHandler(equipmentController.getAllEquipment));
 
-router.post("/", auth, role(["superadmin", "contentManager"]), uploadEquipmentFiles(), ...createEquipmentValidation, asyncHandler(equipmentController.createEquipment));
+router.post("/", auth, role(["superadmin", "contentManager"]), uploadEquipmentImage(), ...createEquipmentValidation, asyncHandler(equipmentController.createEquipment));
 
 router.get("/:id", auth, role(["superadmin", "contentManager"]), ...equipmentIdValidation, asyncHandler(equipmentController.getEquipmentById));
 
-router.patch("/:id", auth, role(["superadmin", "contentManager"]), uploadEquipmentFiles(), ...equipmentIdValidation, ...updateEquipmentValidation, asyncHandler(equipmentController.updateEquipment));
+router.patch("/:id", auth, role(["superadmin", "contentManager"]), uploadEquipmentImage(), ...equipmentIdValidation, ...updateEquipmentValidation, asyncHandler(equipmentController.updateEquipment));
 
 router.delete("/:id", auth, role(["superadmin", "contentManager"]), ...equipmentIdValidation, asyncHandler(equipmentController.deleteEquipment));
 

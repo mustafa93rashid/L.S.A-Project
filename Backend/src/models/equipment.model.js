@@ -6,16 +6,22 @@ const mongoose = require("mongoose");
 |--------------------------------------------------------------------------
 */
 
+// ==================================================
+// Image Schema
+// ==================================================
+
 const imageSchema = new mongoose.Schema(
   {
     url: {
       type: String,
       required: true,
+      trim: true,
     },
 
     publicId: {
       type: String,
       required: true,
+      trim: true,
     },
 
     alt: {
@@ -30,38 +36,23 @@ const imageSchema = new mongoose.Schema(
   },
 );
 
+// ==================================================
+// Safety Certificate Schema
+// ==================================================
+
 const safetyCertificateSchema = new mongoose.Schema(
   {
     isAvailable: {
       type: Boolean,
+      required: true,
       default: false,
     },
 
-    url: {
-      type: String,
-      default: null,
-    },
-
-    publicId: {
-      type: String,
-      default: null,
-    },
-
-    originalName: {
+    message: {
       type: String,
       trim: true,
-      default: null,
-    },
-
-    resourceType: {
-      type: String,
-      enum: ["image", "raw"],
-      default: null,
-    },
-
-    expiresAt: {
-      type: Date,
-      default: null,
+      default: "",
+      maxlength: 500,
     },
   },
   {
@@ -77,6 +68,12 @@ const safetyCertificateSchema = new mongoose.Schema(
 
 const equipmentSchema = new mongoose.Schema(
   {
+    /*
+    |--------------------------------------------------------------------------
+    | Basic Information
+    |--------------------------------------------------------------------------
+    */
+
     title: {
       type: String,
       required: true,
@@ -91,12 +88,14 @@ const equipmentSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
+      minlength: 2,
+      maxlength: 180,
     },
 
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "EquipmentCategory",
-  default: null,
+      required: true,
     },
 
     shortDescription: {
@@ -130,15 +129,6 @@ const equipmentSchema = new mongoose.Schema(
     |--------------------------------------------------------------------------
     | Primary Specification
     |--------------------------------------------------------------------------
-    |
-    | Examples:
-    |
-    | label: Capacity
-    | value: 50 Tons
-    |
-    | label: Power
-    | value: 500 KVA
-    |
     */
 
     primarySpecification: {
@@ -146,6 +136,7 @@ const equipmentSchema = new mongoose.Schema(
         type: String,
         required: true,
         trim: true,
+        minlength: 2,
         maxlength: 100,
       },
 
@@ -153,46 +144,51 @@ const equipmentSchema = new mongoose.Schema(
         type: String,
         required: true,
         trim: true,
+        minlength: 1,
         maxlength: 150,
       },
     },
+
+    /*
+    |--------------------------------------------------------------------------
+    | Location And Availability
+    |--------------------------------------------------------------------------
+    */
 
     location: {
       type: String,
       required: true,
       trim: true,
+      minlength: 2,
       maxlength: 150,
     },
-
-    /*
-    |--------------------------------------------------------------------------
-    | Availability
-    |--------------------------------------------------------------------------
-    */
 
     availableUnits: {
       type: Number,
       required: true,
       default: 0,
       min: 0,
+      validate: {
+        validator: Number.isInteger,
+        message: "Available units must be an integer.",
+      },
     },
 
     /*
     |--------------------------------------------------------------------------
-    | Safety Certificate
+    | Safety Certificate Information
     |--------------------------------------------------------------------------
+    |
+    | This contains text information only.
+    | It does not contain an uploaded file.
+    |
     */
 
     safetyCertificate: {
       type: safetyCertificateSchema,
-
       default: () => ({
         isAvailable: false,
-        url: null,
-        publicId: null,
-        originalName: null,
-        resourceType: null,
-        expiresAt: null,
+        message: "",
       }),
     },
 
@@ -206,6 +202,10 @@ const equipmentSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: 0,
+      validate: {
+        validator: Number.isInteger,
+        message: "Display order must be an integer.",
+      },
     },
 
     isActive: {
@@ -255,9 +255,17 @@ equipmentSchema.index({
 });
 
 equipmentSchema.index({
+  "safetyCertificate.isAvailable": 1,
+  isActive: 1,
+});
+
+equipmentSchema.index({
   title: "text",
   shortDescription: "text",
+  description: "text",
   location: "text",
+  "primarySpecification.label": "text",
+  "primarySpecification.value": "text",
 });
 
 /*
@@ -266,7 +274,6 @@ equipmentSchema.index({
 |--------------------------------------------------------------------------
 */
 
-const Equipment =
-  mongoose.models.Equipment || mongoose.model("Equipment", equipmentSchema);
+const Equipment = mongoose.models.Equipment || mongoose.model("Equipment", equipmentSchema);
 
 module.exports = Equipment;
