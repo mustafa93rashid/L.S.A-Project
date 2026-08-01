@@ -535,13 +535,6 @@
 
   title: String,
 
-  slug: {
-    type: String,
-    unique: true,
-    lowercase: true,
-    trim: true
-  },
-
   shortDescription: String,
 
   description: String,
@@ -570,7 +563,7 @@
     String
   ],
 
-  displayOrder: Number,
+deadline : string,
 
   publishedAt: Date,
 
