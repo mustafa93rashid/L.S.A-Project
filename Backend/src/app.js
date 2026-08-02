@@ -66,6 +66,9 @@ app.use("/api/v1/job-requests", require("./routers/jobRequest.routes"));
 // Contacts routes
 app.use("/api/v1/contacts", require("./routers/contactInfo.routes"));
 
+// Contact Message routes
+app.use("/api/v1/contact-messages", require("./routers/contactMessage.routes"));
+
 //=========================================================================
 // Error Handling Middleware
 //=========================================================================

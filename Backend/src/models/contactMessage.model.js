@@ -6,99 +6,97 @@ const mongoose = require("mongoose");
 |--------------------------------------------------------------------------
 */
 
-const NOTIFICATION_TYPES = [
-  "equipmentRequest",
-"jobRequest",  
-  "contactMessage",
-  "system",
+const CONTACT_MESSAGE_SERVICES = [
+  "General Inquiry",
+  "EPC Projects",
+  "Pipeline Services",
+  "Process Piping",
+  "Hot Tapping",
+  "Pipeline Integrity",
+  "Storage Tanks",
+  "Mechanical Works",
+  "Cathodic Protection",
+  "Civil Works",
+  "Electrical and Instrumentation",
+  "Auger Boring & HDD",
 ];
 
-const NOTIFICATION_REFERENCE_MODELS = [
-  "EquipmentRequest",
-"JobRequest",
-  "ContactMessage",
+const CONTACT_MESSAGE_STATUSES = [
+  "new",
+  "read",
+  "replied",
+  "archived",
 ];
 
 /*
 |--------------------------------------------------------------------------
-| Notification Schema
+| Contact Message Schema
 |--------------------------------------------------------------------------
 */
 
-const notificationSchema = new mongoose.Schema(
+const contactMessageSchema = new mongoose.Schema(
   {
     /*
     |--------------------------------------------------------------------------
-    | Notification Type
+    | Customer Information
     |--------------------------------------------------------------------------
     */
 
-    type: {
-      type: String,
-      enum: NOTIFICATION_TYPES,
-      required: true,
-      index: true,
-    },
-
-    /*
-    |--------------------------------------------------------------------------
-    | Content
-    |--------------------------------------------------------------------------
-    */
-
-    title: {
+    fullName: {
       type: String,
       required: true,
       trim: true,
+      minlength: 2,
       maxlength: 150,
     },
 
-    message: {
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+      maxlength: 254,
+      index: true,
+    },
+
+    phone: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 1000,
+      maxlength: 30,
     },
 
     /*
     |--------------------------------------------------------------------------
-    | Reference
+    | Inquiry
     |--------------------------------------------------------------------------
     */
 
-    reference: {
-      model: {
-        type: String,
-        enum: NOTIFICATION_REFERENCE_MODELS,
-        required: true,
-      },
+    service: {
+      type: String,
+      enum: CONTACT_MESSAGE_SERVICES,
+      default: "General Inquiry",
+      index: true,
+    },
 
-      id: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: true,
-      },
+    projectDescription: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 10,
+      maxlength: 5000,
     },
 
     /*
     |--------------------------------------------------------------------------
-    | Extra Data
+    | Dashboard
     |--------------------------------------------------------------------------
     */
 
-    metadata: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
-
-    /*
-    |--------------------------------------------------------------------------
-    | Read Status
-    |--------------------------------------------------------------------------
-    */
-
-    isRead: {
-      type: Boolean,
-      default: false,
+    status: {
+      type: String,
+      enum: CONTACT_MESSAGE_STATUSES,
+      default: "new",
       index: true,
     },
 
@@ -107,13 +105,17 @@ const notificationSchema = new mongoose.Schema(
       default: null,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Audit
-    |--------------------------------------------------------------------------
-    */
+    repliedAt: {
+      type: Date,
+      default: null,
+    },
 
-    createdBy: {
+    archivedAt: {
+      type: Date,
+      default: null,
+    },
+
+    updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
@@ -131,19 +133,19 @@ const notificationSchema = new mongoose.Schema(
 |--------------------------------------------------------------------------
 */
 
-notificationSchema.index({
-  isRead: 1,
+contactMessageSchema.index({
+  status: 1,
   createdAt: -1,
 });
 
-notificationSchema.index({
-  type: 1,
+contactMessageSchema.index({
+  service: 1,
   createdAt: -1,
 });
 
-notificationSchema.index({
-  "reference.model": 1,
-  "reference.id": 1,
+contactMessageSchema.index({
+  email: 1,
+  createdAt: -1,
 });
 
 /*
@@ -152,11 +154,11 @@ notificationSchema.index({
 |--------------------------------------------------------------------------
 */
 
-const Notification =
-  mongoose.models.Notification ||
+const ContactMessage =
+  mongoose.models.ContactMessage ||
   mongoose.model(
-    "Notification",
-    notificationSchema,
+    "ContactMessage",
+    contactMessageSchema,
   );
 
 /*
@@ -166,6 +168,7 @@ const Notification =
 */
 
 module.exports = {
-  Notification,
-  NOTIFICATION_TYPES,
+  ContactMessage,
+  CONTACT_MESSAGE_SERVICES,
+  CONTACT_MESSAGE_STATUSES,
 };

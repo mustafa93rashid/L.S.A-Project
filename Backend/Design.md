@@ -685,11 +685,24 @@ deadline : string,
 
   phone: String,
 
-  service: {
-    type: ObjectId,
-    ref: "Service",
-    default: null
-  },
+service: {
+  type: String,
+  enum: [
+    "General Inquiry",
+    "EPC Projects",
+    "Pipeline Services",
+    "Process Piping",
+    "Hot Tapping",
+    "Pipeline Integrity",
+    "Storage Tanks",
+    "Mechanical Works",
+    "Cathodic Protection",
+    "Civil Works",
+    "Electrical and Instrumentation",
+    "Auger Boring & HDD"
+  ],
+  default: "General Inquiry",
+}
 
   projectDescription: String,
 

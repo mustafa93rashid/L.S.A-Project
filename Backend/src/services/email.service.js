@@ -1731,6 +1731,152 @@ LSA Human Resources Team
     html,
   });
 };
+
+// ==================================================
+// Send Contact Message Received Email
+// ==================================================
+
+const sendContactMessageReceivedEmail = async ({
+  to,
+  fullName,
+  service,
+  messageId,
+}) => {
+  const subject =
+    "We Received Your Message";
+
+  const text = `
+Hello ${fullName || "Customer"},
+
+Thank you for contacting LSA.
+
+We have successfully received your inquiry and our team will review it as soon as possible.
+
+Service:
+${service}
+
+Reference ID:
+${messageId}
+
+We appreciate your interest in our services and will get back to you shortly.
+
+Best regards,
+LSA Team
+  `.trim();
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+/>
+<title>Message Received</title>
+</head>
+
+<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:40px 16px;background:#f4f7fb;">
+
+<tr>
+<td align="center">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 35px rgba(15,23,42,.08);">
+
+<tr>
+<td style="background:#072b61;padding:32px;text-align:center;">
+
+<h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;">
+LSA
+</h1>
+
+<p style="margin:10px 0 0;color:rgba(255,255,255,.75);font-size:14px;">
+Engineering & Energy Solutions
+</p>
+
+</td>
+</tr>
+
+<tr>
+<td style="padding:40px 32px;">
+
+<h2 style="margin:0 0 20px;color:#0f172a;font-size:24px;">
+Message Received Successfully
+</h2>
+
+<p style="margin:0 0 18px;color:#475569;font-size:16px;line-height:1.7;">
+Hello <strong>${fullName || "Customer"}</strong>,
+</p>
+
+<p style="margin:0 0 20px;color:#475569;font-size:16px;line-height:1.7;">
+Thank you for contacting LSA.
+Your inquiry has been received successfully and one of our specialists will contact you as soon as possible.
+</p>
+
+<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:22px;">
+
+<p style="margin:0 0 10px;color:#64748b;font-size:13px;font-weight:700;text-transform:uppercase;">
+Selected Service
+</p>
+
+<p style="margin:0 0 20px;color:#0f172a;font-size:16px;font-weight:700;">
+${service}
+</p>
+
+<p style="margin:0 0 10px;color:#64748b;font-size:13px;font-weight:700;text-transform:uppercase;">
+Reference Number
+</p>
+
+<p style="margin:0;color:#0f172a;font-size:14px;font-weight:700;word-break:break-all;">
+${messageId}
+</p>
+
+</div>
+
+<p style="margin:24px 0 0;color:#475569;font-size:15px;line-height:1.7;">
+We appreciate your interest in our services and look forward to assisting you.
+</p>
+
+</td>
+</tr>
+
+<tr>
+<td style="padding:24px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
+
+<p style="margin:0;color:#94a3b8;font-size:12px;">
+This is an automated email. Please do not reply.
+</p>
+
+<p style="margin:8px 0 0;color:#64748b;font-size:12px;">
+© ${new Date().getFullYear()} LSA. All rights reserved.
+</p>
+
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+
+</table>
+
+</body>
+
+</html>
+  `;
+
+  await sendEmail({
+    to,
+    subject,
+    text,
+    html,
+  });
+};
+
 /*
 |--------------------------------------------------------------------------
 | Exports
@@ -1754,6 +1900,8 @@ module.exports = {
 
     sendJobRequestReceivedEmail,
 
-    sendJobRequestStatusEmail
+    sendJobRequestStatusEmail,
+
+    sendContactMessageReceivedEmail
 
 };

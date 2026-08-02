@@ -76,6 +76,41 @@ const createJobRequestNotification = async ({
   });
 };
 
+// ==================================================
+// Create Contact Message Notification
+// ==================================================
+
+const createContactMessageNotification = async ({
+  contactMessage,
+}) => {
+  return Notification.create({
+    type: "contactMessage",
+
+    title: "New Contact Message",
+
+    message: `${contactMessage.fullName} submitted a new inquiry about "${contactMessage.service}".`,
+
+    reference: {
+      model: "ContactMessage",
+      id: contactMessage._id,
+    },
+
+    metadata: {
+      senderName: contactMessage.fullName,
+
+      senderEmail: contactMessage.email,
+
+      senderPhone: contactMessage.phone,
+
+      service: contactMessage.service,
+
+      status: contactMessage.status,
+    },
+
+    isRead: false,
+  });
+};
+
 /*
 |--------------------------------------------------------------------------
 | Exports
@@ -85,4 +120,6 @@ const createJobRequestNotification = async ({
 module.exports = {
   createEquipmentRequestNotification,
   createJobRequestNotification,
+    createContactMessageNotification,
+
 };
