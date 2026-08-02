@@ -1477,6 +1477,260 @@ Thank you for choosing <strong>LSA</strong>.
     html,
   });
 };
+
+// ==================================================
+// Send Job Request Status Email
+// ==================================================
+
+const sendJobRequestStatusEmail = async ({
+  to,
+  fullName,
+  jobTitle,
+  status,
+}) => {
+  const statusConfig = {
+    accepted: {
+      subject: `Application Accepted - ${jobTitle}`,
+      heading: "Congratulations!",
+      message:
+        "We are pleased to inform you that your job application has been accepted. Our Human Resources team will contact you shortly with the next steps.",
+    },
+
+    rejected: {
+      subject: `Application Update - ${jobTitle}`,
+      heading: "Application Update",
+      message:
+        "Thank you for your interest in joining LSA. After reviewing your application, we regret to inform you that you have not been selected for this opportunity.",
+    },
+  };
+
+  const emailData = statusConfig[status];
+
+  if (!emailData) {
+    return;
+  }
+
+  const text = `
+Hello ${fullName || "Applicant"},
+
+${emailData.message}
+
+Position:
+${jobTitle}
+
+Best regards,
+LSA Human Resources Team
+  `.trim();
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0"
+        />
+        <title>${emailData.heading}</title>
+      </head>
+
+      <body style="margin:0;padding:0;background-color:#f4f7fb;font-family:Arial,Helvetica,sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:40px 16px;background-color:#f4f7fb;">
+          <tr>
+            <td align="center">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 35px rgba(15,23,42,0.08);">
+                <tr>
+                  <td style="background-color:#072b61;padding:32px;text-align:center;">
+                    <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;">
+                      LSA
+                    </h1>
+
+                    <p style="margin:10px 0 0;color:rgba(255,255,255,0.75);font-size:14px;">
+                      Careers Application
+                    </p>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:40px 32px;">
+                    <h2 style="margin:0 0 20px;color:#0f172a;font-size:24px;font-weight:700;">
+                      ${emailData.heading}
+                    </h2>
+
+                    <p style="margin:0 0 16px;color:#475569;font-size:16px;line-height:1.7;">
+                      Hello ${fullName || "Applicant"},
+                    </p>
+
+                    <p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.7;">
+                      ${emailData.message}
+                    </p>
+
+                    <div style="padding:22px;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+                      <p style="margin:0 0 10px;color:#64748b;font-size:13px;font-weight:700;text-transform:uppercase;">
+                        Position
+                      </p>
+
+                      <p style="margin:0;color:#0f172a;font-size:16px;font-weight:700;">
+                        ${jobTitle}
+                      </p>
+                    </div>
+
+                    <p style="margin:24px 0 0;color:#475569;font-size:15px;line-height:1.7;">
+                      Best regards,<br />
+                      <strong>LSA Human Resources Team</strong>
+                    </p>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:24px 32px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
+                    <p style="margin:0;color:#94a3b8;font-size:12px;">
+                      This is an automated message. Please do not reply.
+                    </p>
+
+                    <p style="margin:8px 0 0;color:#64748b;font-size:12px;">
+                      © ${new Date().getFullYear()} LSA. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+
+  await sendEmail({
+    to,
+    subject: emailData.subject,
+    text,
+    html,
+  });
+};
+
+// ==================================================
+// Send Job Request Received Email
+// ==================================================
+
+const sendJobRequestReceivedEmail = async ({
+  to,
+  fullName,
+  jobTitle,
+  requestId,
+}) => {
+  const subject =
+    `Application Received - ${jobTitle}`;
+
+  const text = `
+Hello ${fullName || "Applicant"},
+
+Thank you for applying for the position of ${jobTitle}.
+
+We have successfully received your job application and CV.
+
+Application ID:
+${requestId}
+
+Our Human Resources team will review your application. We will contact you if your qualifications match the position requirements.
+
+Best regards,
+LSA Human Resources Team
+  `.trim();
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0"
+        />
+        <title>Application Received</title>
+      </head>
+
+      <body style="margin:0;padding:0;background-color:#f4f7fb;font-family:Arial,Helvetica,sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:40px 16px;background-color:#f4f7fb;">
+          <tr>
+            <td align="center">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 35px rgba(15,23,42,0.08);">
+                <tr>
+                  <td style="background-color:#072b61;padding:32px;text-align:center;">
+                    <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;">
+                      LSA
+                    </h1>
+
+                    <p style="margin:10px 0 0;color:rgba(255,255,255,0.75);font-size:14px;">
+                      Careers Application
+                    </p>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:40px 32px;">
+                    <h2 style="margin:0 0 20px;color:#0f172a;font-size:24px;font-weight:700;">
+                      Application Successfully Received
+                    </h2>
+
+                    <p style="margin:0 0 16px;color:#475569;font-size:16px;line-height:1.7;">
+                      Hello ${fullName || "Applicant"},
+                    </p>
+
+                    <p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.7;">
+                      Thank you for applying to LSA. We have successfully received your application and CV.
+                    </p>
+
+                    <div style="padding:22px;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+                      <p style="margin:0 0 12px;color:#64748b;font-size:13px;font-weight:700;text-transform:uppercase;">
+                        Position
+                      </p>
+
+                      <p style="margin:0 0 20px;color:#0f172a;font-size:16px;font-weight:700;">
+                        ${jobTitle}
+                      </p>
+
+                      <p style="margin:0 0 12px;color:#64748b;font-size:13px;font-weight:700;text-transform:uppercase;">
+                        Application ID
+                      </p>
+
+                      <p style="margin:0;color:#0f172a;font-size:14px;font-weight:700;word-break:break-all;">
+                        ${requestId}
+                      </p>
+                    </div>
+
+                    <p style="margin:24px 0 0;color:#475569;font-size:15px;line-height:1.7;">
+                      Our Human Resources team will review your application and contact you if your qualifications match the position requirements.
+                    </p>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:24px 32px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
+                    <p style="margin:0;color:#94a3b8;font-size:12px;">
+                      This is an automated message. Please do not reply.
+                    </p>
+
+                    <p style="margin:8px 0 0;color:#64748b;font-size:12px;">
+                      © ${new Date().getFullYear()} LSA. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+
+  await sendEmail({
+    to,
+    subject,
+    text,
+    html,
+  });
+};
 /*
 |--------------------------------------------------------------------------
 | Exports
@@ -1497,5 +1751,9 @@ module.exports = {
   sendEquipmentRequestReceivedEmail,
 
     sendEquipmentRequestStatusEmail,
+
+    sendJobRequestReceivedEmail,
+
+    sendJobRequestStatusEmail
 
 };

@@ -1,4 +1,6 @@
-const Notification = require("../models/notification.model");
+const {
+  Notification,
+} = require("../models/notification.model");
 
 /*
 |--------------------------------------------------------------------------
@@ -10,42 +12,69 @@ const Notification = require("../models/notification.model");
 // Create Equipment Request Notification
 // ==================================================
 
-const createEquipmentRequestNotification =
-  async ({
-    equipmentRequest,
-    equipment,
-  }) => {
-    return Notification.create({
-      type: "equipmentRequest",
+const createEquipmentRequestNotification = async ({
+  equipmentRequest,
+  equipment,
+}) => {
+  return Notification.create({
+    type: "equipmentRequest",
 
-      title: "New Equipment Request",
+    title: "New Equipment Request",
 
-      message: `${equipmentRequest.fullName} submitted a request for "${equipment.title}".`,
+    message: `${equipmentRequest.fullName} submitted a request for "${equipment.title}".`,
 
-      reference: {
-        model: "EquipmentRequest",
+    reference: {
+      model: "EquipmentRequest",
+      id: equipmentRequest._id,
+    },
 
-        id: equipmentRequest._id,
-      },
+    metadata: {
+      equipmentId: equipment._id,
+      equipmentTitle: equipment.title,
+      requesterName: equipmentRequest.fullName,
+      requesterEmail: equipmentRequest.email,
+      company: equipmentRequest.company,
+    },
 
-      metadata: {
-        equipmentId: equipment._id,
+    isRead: false,
+  });
+};
 
-        equipmentTitle: equipment.title,
+// ==================================================
+// Create Job Request Notification
+// ==================================================
 
-        requesterName:
-          equipmentRequest.fullName,
+const createJobRequestNotification = async ({
+  jobRequest,
+  job,
+}) => {
+  const applicantName =
+    `${jobRequest.firstName} ${jobRequest.lastName}`.trim();
 
-        requesterEmail:
-          equipmentRequest.email,
+  return Notification.create({
+    type: "jobRequest",
 
-        company:
-          equipmentRequest.company,
-      },
+    title: "New Job Application",
 
-      isRead: false,
-    });
-  };
+    message: `${applicantName} applied for "${job.title}".`,
+
+    reference: {
+      model: "JobRequest",
+      id: jobRequest._id,
+    },
+
+    metadata: {
+      applicantName,
+      applicantEmail: jobRequest.email,
+      phone: jobRequest.phone,
+      jobId: job._id,
+      jobTitle: job.title,
+      status: jobRequest.status,
+    },
+
+    isRead: false,
+  });
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -55,4 +84,5 @@ const createEquipmentRequestNotification =
 
 module.exports = {
   createEquipmentRequestNotification,
+  createJobRequestNotification,
 };

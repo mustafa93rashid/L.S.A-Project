@@ -6,103 +6,136 @@ const mongoose = require("mongoose");
 |--------------------------------------------------------------------------
 */
 
-const NOTIFICATION_TYPES = [
-  "equipmentRequest",
-"jobRequest",  
-  "contactMessage",
-  "system",
-];
-
-const NOTIFICATION_REFERENCE_MODELS = [
-  "EquipmentRequest",
-"JobRequest",
-  "Contact",
+const JOB_REQUEST_STATUSES = [
+  "new",
+  "reviewed",
+  "shortlisted",
+  "accepted",
+  "rejected",
+  "ignored",
 ];
 
 /*
 |--------------------------------------------------------------------------
-| Notification Schema
+| Job Request Schema
 |--------------------------------------------------------------------------
 */
 
-const notificationSchema = new mongoose.Schema(
+const jobRequestSchema = new mongoose.Schema(
   {
     /*
     |--------------------------------------------------------------------------
-    | Notification Type
+    | Job
     |--------------------------------------------------------------------------
     */
 
-    type: {
-      type: String,
-      enum: NOTIFICATION_TYPES,
+    job: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Job",
       required: true,
       index: true,
     },
 
     /*
     |--------------------------------------------------------------------------
-    | Content
+    | Applicant Information
     |--------------------------------------------------------------------------
     */
 
-    title: {
+    firstName: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 150,
+      minlength: 2,
+      maxlength: 100,
     },
 
-    message: {
+    lastName: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 1000,
+      minlength: 2,
+      maxlength: 100,
+    },
+
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+      maxlength: 254,
+    },
+
+    phone: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 30,
     },
 
     /*
     |--------------------------------------------------------------------------
-    | Reference
+    | CV
     |--------------------------------------------------------------------------
     */
 
-    reference: {
-      model: {
+    cv: {
+      url: {
         type: String,
-        enum: NOTIFICATION_REFERENCE_MODELS,
         required: true,
       },
 
-      id: {
-        type: mongoose.Schema.Types.ObjectId,
+      publicId: {
+        type: String,
+        required: true,
+      },
+
+      originalName: {
+        type: String,
         required: true,
       },
     },
 
     /*
     |--------------------------------------------------------------------------
-    | Extra Data
+    | Request Status
     |--------------------------------------------------------------------------
     */
 
-    metadata: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
-
-    /*
-    |--------------------------------------------------------------------------
-    | Read Status
-    |--------------------------------------------------------------------------
-    */
-
-    isRead: {
-      type: Boolean,
-      default: false,
+    status: {
+      type: String,
+      enum: JOB_REQUEST_STATUSES,
+      default: "new",
       index: true,
     },
 
-    readAt: {
+    /*
+    |--------------------------------------------------------------------------
+    | Timeline
+    |--------------------------------------------------------------------------
+    */
+
+    reviewedAt: {
+      type: Date,
+      default: null,
+    },
+
+    shortlistedAt: {
+      type: Date,
+      default: null,
+    },
+
+    acceptedAt: {
+      type: Date,
+      default: null,
+    },
+
+    rejectedAt: {
+      type: Date,
+      default: null,
+    },
+
+    ignoredAt: {
       type: Date,
       default: null,
     },
@@ -113,7 +146,7 @@ const notificationSchema = new mongoose.Schema(
     |--------------------------------------------------------------------------
     */
 
-    createdBy: {
+    updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
@@ -131,19 +164,19 @@ const notificationSchema = new mongoose.Schema(
 |--------------------------------------------------------------------------
 */
 
-notificationSchema.index({
-  isRead: 1,
+jobRequestSchema.index({
+  status: 1,
   createdAt: -1,
 });
 
-notificationSchema.index({
-  type: 1,
+jobRequestSchema.index({
+  job: 1,
   createdAt: -1,
 });
 
-notificationSchema.index({
-  "reference.model": 1,
-  "reference.id": 1,
+jobRequestSchema.index({
+  email: 1,
+  createdAt: -1,
 });
 
 /*
@@ -152,11 +185,11 @@ notificationSchema.index({
 |--------------------------------------------------------------------------
 */
 
-const Notification =
-  mongoose.models.Notification ||
+const JobRequest =
+  mongoose.models.JobRequest ||
   mongoose.model(
-    "Notification",
-    notificationSchema,
+    "JobRequest",
+    jobRequestSchema,
   );
 
 /*
@@ -166,6 +199,6 @@ const Notification =
 */
 
 module.exports = {
-  Notification,
-  NOTIFICATION_TYPES,
+  JobRequest,
+  JOB_REQUEST_STATUSES,
 };

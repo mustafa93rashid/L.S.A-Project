@@ -2,7 +2,6 @@ const multer = require("multer");
 
 const {
   IMAGE_MIME_TYPES,
-  ALLOWED_MIME_TYPES,
 } = require("../services/cloudinary.service");
 
 /*
@@ -11,9 +10,19 @@ const {
 |--------------------------------------------------------------------------
 */
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_IMAGE_SIZE =
+  5 * 1024 * 1024;
 
-const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
+const MAX_DOCUMENT_SIZE =
+  10 * 1024 * 1024;
+
+const DOCUMENT_MIME_TYPES = [
+  "application/pdf",
+
+  "application/msword",
+
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
 
 /*
 |--------------------------------------------------------------------------
@@ -29,7 +38,9 @@ const createUploadError = (
   message,
   code = "INVALID_FILE_TYPE",
 ) => {
-  const error = new Error(message);
+  const error = new Error(
+    message,
+  );
 
   error.statusCode = 400;
   error.code = code;
@@ -57,7 +68,10 @@ const imageFileFilter = (
       file.mimetype,
     )
   ) {
-    return cb(null, true);
+    return cb(
+      null,
+      true,
+    );
   }
 
   return cb(
@@ -75,11 +89,9 @@ const imageFileFilter = (
 /*
 | Accepts:
 |
-| - JPEG
-| - PNG
-| - GIF
-| - WebP
 | - PDF
+| - DOC
+| - DOCX
 |
 */
 
@@ -89,16 +101,19 @@ const documentFileFilter = (
   cb,
 ) => {
   if (
-    ALLOWED_MIME_TYPES.includes(
+    DOCUMENT_MIME_TYPES.includes(
       file.mimetype,
     )
   ) {
-    return cb(null, true);
+    return cb(
+      null,
+      true,
+    );
   }
 
   return cb(
     createUploadError(
-      "Only JPEG, PNG, GIF, WebP, and PDF files are allowed.",
+      "Only PDF, DOC, and DOCX files are allowed.",
       "INVALID_DOCUMENT_TYPE",
     ),
     false,
@@ -116,12 +131,16 @@ const documentFileFilter = (
 // ==================================================
 
 const imageUpload = multer({
-  storage: multer.memoryStorage(),
+  storage:
+    multer.memoryStorage(),
 
-  fileFilter: imageFileFilter,
+  fileFilter:
+    imageFileFilter,
 
   limits: {
-    fileSize: MAX_IMAGE_SIZE,
+    fileSize:
+      MAX_IMAGE_SIZE,
+
     files: 20,
   },
 });
@@ -131,12 +150,16 @@ const imageUpload = multer({
 // ==================================================
 
 const documentUpload = multer({
-  storage: multer.memoryStorage(),
+  storage:
+    multer.memoryStorage(),
 
-  fileFilter: documentFileFilter,
+  fileFilter:
+    documentFileFilter,
 
   limits: {
-    fileSize: MAX_DOCUMENT_SIZE,
+    fileSize:
+      MAX_DOCUMENT_SIZE,
+
     files: 20,
   },
 });
@@ -305,7 +328,8 @@ const uploadProjectImages = () => {
     },
 
     {
-      name: "certificateImages",
+      name:
+        "certificateImages",
       maxCount: 10,
     },
   ]);
@@ -315,9 +339,9 @@ const uploadProjectImages = () => {
 // Equipment Image
 // ==================================================
 /*
-| Safety certificate is no longer uploaded.
+| Safety certificate is stored as text.
 |
-| The middleware now accepts only:
+| The middleware accepts only:
 |
 | image
 |
@@ -338,10 +362,34 @@ const uploadEquipmentImage = () => {
 // ==================================================
 // Resume
 // ==================================================
+/*
+| Legacy field:
+|
+| resume
+|
+| Keep this middleware if older controllers use it.
+|
+*/
 
 const uploadResume = () => {
   return documentUpload.single(
     "resume",
+  );
+};
+
+// ==================================================
+// Job Request CV
+// ==================================================
+/*
+| Job application popup field:
+|
+| cv
+|
+*/
+
+const uploadJobRequestCv = () => {
+  return documentUpload.single(
+    "cv",
   );
 };
 
@@ -365,6 +413,8 @@ module.exports = {
   MAX_IMAGE_SIZE,
   MAX_DOCUMENT_SIZE,
 
+  DOCUMENT_MIME_TYPES,
+
   createUploadError,
 
   imageFileFilter,
@@ -386,5 +436,6 @@ module.exports = {
   uploadEquipmentImage,
 
   uploadResume,
+  uploadJobRequestCv,
   uploadCertificate,
 };
