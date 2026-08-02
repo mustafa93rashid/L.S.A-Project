@@ -620,6 +620,7 @@ deadline : string,
       "shortlisted",
       "rejected",
       "accepted"
+      "agnored"
     ],
     default: "new"
   },
@@ -633,14 +634,11 @@ deadline : string,
 
 ## contact-information
 
-> Singleton Collection (Contains only one document)
-
 ```ts
 {
   _id: ObjectId,
 
-  officeName: String,
-
+ 
   address: String,
 
   phones: [
