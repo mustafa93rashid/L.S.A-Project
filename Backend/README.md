@@ -1,41 +1,17 @@
-# L.S.A Backend API
+# 🏗️ L.S.A Backend API
 
-```{=html}
-<p align="center">
-```
-`<img src="./assets/banner.png" alt="LSA Banner" width="100%">`{=html}
-```{=html}
-</p>
-```
-```{=html}
-<h1 align="center">
-```
-🏗️ L.S.A Backend API
-```{=html}
-</h1>
-```
-```{=html}
-<p align="center">
-```
-`<b>`{=html}Enterprise Management Platform for Industrial Engineering
-Services`</b>`{=html}`<br>`{=html} Scalable • Secure • Modular •
-Production Ready
-```{=html}
-</p>
-```
-```{=html}
-<p align="center">
-```
-`<img src="https://img.shields.io/badge/Node.js-24.x-339933?style=for-the-badge&logo=node.js">`{=html}
-`<img src="https://img.shields.io/badge/Express.js-5-black?style=for-the-badge&logo=express">`{=html}
-`<img src="https://img.shields.io/badge/MongoDB-8-47A248?style=for-the-badge&logo=mongodb">`{=html}
-`<img src="https://img.shields.io/badge/Socket.IO-Realtime-white?style=for-the-badge&logo=socket.io">`{=html}
-`<img src="https://img.shields.io/badge/Cloudinary-Media-blue?style=for-the-badge&logo=cloudinary">`{=html}
-`<img src="https://img.shields.io/badge/JWT-Authentication-orange?style=for-the-badge">`{=html}
-`<img src="https://img.shields.io/badge/Status-Production_Ready-success?style=for-the-badge">`{=html}
-```{=html}
-</p>
-```
+> Enterprise-grade RESTful API for **L.S.A Engineering Services**, delivering a secure and scalable backend for content management, equipment operations, careers, contact management, and real-time dashboard notifications with role-based access control.
+
+![Node.js](https://img.shields.io/badge/Node.js-24.x-339933?style=flat-square&logo=node.js&logoColor=white)
+![Express.js](https://img.shields.io/badge/Express.js-Framework-000000?style=flat-square&logo=express)
+![MongoDB](https://img.shields.io/badge/MongoDB-Database-47A248?style=flat-square&logo=mongodb&logoColor=white)
+![Socket.IO](https://img.shields.io/badge/Socket.IO-Realtime-010101?style=flat-square&logo=socket.io)
+![JWT](https://img.shields.io/badge/JWT-Authentication-0052CC?style=flat-square)
+![Cloudinary](https://img.shields.io/badge/Cloudinary-Asset%20Management-3448C5?style=flat-square&logo=cloudinary&logoColor=white)
+![REST API](https://img.shields.io/badge/API-REST-00C853?style=flat-square)
+![License](https://img.shields.io/badge/License-Private-red?style=flat-square)
+![Maintained](https://img.shields.io/badge/Maintained-Yes-success?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.0.0-blueviolet?style=flat-square)
 
 ------------------------------------------------------------------------
 
@@ -330,11 +306,10 @@ Copyright © L.S.A Engineering Services.
 
 ------------------------------------------------------------------------
 
-```{=html}
-<p align="center">
-```
-Made with ❤️ by `<b>`{=html}Mustafa Rashid`</b>`{=html}`<br>`{=html}
+## 👨‍💻 Author
+
+**Mustafa Rashid**
+
 Computer Engineer • MERN Stack Developer • UI/UX Designer
-```{=html}
-</p>
-```
+
+
