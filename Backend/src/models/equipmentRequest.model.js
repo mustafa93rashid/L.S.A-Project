@@ -1,10 +1,6 @@
 const mongoose = require("mongoose");
 
-/*
-|--------------------------------------------------------------------------
-| Constants
-|--------------------------------------------------------------------------
-*/
+// ==================== Equipment Request Statuses ====================
 
 const EQUIPMENT_REQUEST_STATUSES = [
   "new",
@@ -15,32 +11,19 @@ const EQUIPMENT_REQUEST_STATUSES = [
   "completed",
 ];
 
-/*
-|--------------------------------------------------------------------------
-| Equipment Request Schema
-|--------------------------------------------------------------------------
-*/
+// ==================== Equipment Request Schema ====================
 
 const equipmentRequestSchema = new mongoose.Schema(
   {
-    /*
-    |--------------------------------------------------------------------------
-    | Requested Equipment
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Requested Equipment ====================
 
     equipment: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Equipment",
       required: true,
-      index: true,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Customer Information
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Customer Information ====================
 
     fullName: {
       type: String,
@@ -72,16 +55,13 @@ const equipmentRequestSchema = new mongoose.Schema(
       maxlength: 200,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Work Information
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Work Information ====================
 
     workLocation: {
       type: String,
       required: true,
       trim: true,
+      minlength: 2,
       maxlength: 250,
     },
 
@@ -89,6 +69,12 @@ const equipmentRequestSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 1,
+      max: 3650,
+
+      validate: {
+        validator: Number.isInteger,
+        message: "Estimated required days must be an integer",
+      },
     },
 
     workDescription: {
@@ -99,24 +85,16 @@ const equipmentRequestSchema = new mongoose.Schema(
       maxlength: 5000,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Request Status
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Request Status ====================
 
     status: {
       type: String,
       enum: EQUIPMENT_REQUEST_STATUSES,
+      required: true,
       default: "new",
-      index: true,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Timeline
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Timeline ====================
 
     contactedAt: {
       type: Date,
@@ -128,11 +106,7 @@ const equipmentRequestSchema = new mongoose.Schema(
       default: null,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Email Tracking
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Email Tracking ====================
 
     customerEmailSent: {
       type: Boolean,
@@ -144,11 +118,7 @@ const equipmentRequestSchema = new mongoose.Schema(
       default: null,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Notification Tracking
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Notification Tracking ====================
 
     dashboardNotificationCreated: {
       type: Boolean,
@@ -160,11 +130,7 @@ const equipmentRequestSchema = new mongoose.Schema(
       default: null,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Audit
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Audit Information ====================
 
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -178,11 +144,7 @@ const equipmentRequestSchema = new mongoose.Schema(
   },
 );
 
-/*
-|--------------------------------------------------------------------------
-| Indexes
-|--------------------------------------------------------------------------
-*/
+// ==================== Indexes ====================
 
 equipmentRequestSchema.index({
   status: 1,
@@ -199,24 +161,13 @@ equipmentRequestSchema.index({
   createdAt: -1,
 });
 
-/*
-|--------------------------------------------------------------------------
-| Model
-|--------------------------------------------------------------------------
-*/
+// ==================== Equipment Request Model ====================
 
 const EquipmentRequest =
   mongoose.models.EquipmentRequest ||
-  mongoose.model(
-    "EquipmentRequest",
-    equipmentRequestSchema,
-  );
+  mongoose.model("EquipmentRequest", equipmentRequestSchema);
 
-/*
-|--------------------------------------------------------------------------
-| Exports
-|--------------------------------------------------------------------------
-*/
+// ==================== Exports ====================
 
 module.exports = {
   EquipmentRequest,
