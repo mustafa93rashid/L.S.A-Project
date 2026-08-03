@@ -1,17 +1,10 @@
-const TeamMember = require(
-  "../models/teamMember.model",
-);
+const TeamMember = require("../models/teamMember.model");
 
-const {
-  uploadMulterImage,
-  replaceImage,
-  deleteImage,
-} = require(
-  "../services/cloudinary.service",
-);
+const { uploadMulterImage, replaceImage, deleteImage } = require("../services/cloudinary.service");
 
 class TeamMemberController {
   // ==================== Get Public Team Members ====================
+
   getPublicTeamMembers = async (req, res) => {
     const teamMembers = await TeamMember.find(
       {
@@ -33,6 +26,7 @@ class TeamMemberController {
   };
 
   // ==================== Get All Team Members ====================
+
   getAllTeamMembers = async (req, res) => {
     const teamMembers = await TeamMember.find()
       .sort({
@@ -49,71 +43,48 @@ class TeamMemberController {
   };
 
   // ==================== Create Team Member ====================
+
   createTeamMember = async (req, res) => {
-    const {
-      fullName,
-      position,
-      experience,
-      displayOrder,
-      isActive,
-    } = req.body;
+    const { fullName, position, experience, displayOrder, isActive } = req.body;
 
     let uploadedImage = null;
 
     try {
-      uploadedImage =
-        await uploadMulterImage({
-          file: req.file,
-          folder: "team-members",
-          prefix: "team-member",
-        });
+      uploadedImage = await uploadMulterImage({
+        file: req.file,
+        folder: "team-members",
+        prefix: "team-member",
+      });
 
-      const teamMember =
-        await TeamMember.create({
-          fullName,
-          position,
-          experience,
+      const teamMember = await TeamMember.create({
+        fullName,
+        position,
+        experience,
 
-          image: {
-            url: uploadedImage.url,
-            publicId:
-              uploadedImage.publicId,
-          },
+        image: {
+          url: uploadedImage.url,
+          publicId: uploadedImage.publicId,
+        },
 
-          displayOrder:
-            displayOrder !== undefined
-              ? Number(displayOrder)
-              : 0,
+        displayOrder: displayOrder !== undefined ? displayOrder : 0,
 
-          isActive:
-            isActive !== undefined
-              ? isActive === true ||
-                isActive === "true"
-              : true,
-        });
+        isActive: isActive !== undefined ? isActive : true,
+      });
 
       return res.status(201).json({
         success: true,
-        message:
-          "Team member created successfully",
+        message: "Team member created successfully",
         data: teamMember,
       });
     } catch (error) {
       if (uploadedImage?.publicId) {
         try {
-          await deleteImage(
-            uploadedImage.publicId,
-          );
+          await deleteImage(uploadedImage.publicId);
         } catch (deleteError) {
-          console.error(
-            "Failed to delete uploaded team member image:",
-            {
-              publicId:
-                uploadedImage.publicId,
-              message:
-                deleteError.message,
-            },
-          );
+          console.error("Failed to delete uploaded team member image:", {
+            publicId: uploadedImage.publicId,
+            message: deleteError.message,
+          });
         }
       }
 
@@ -121,12 +92,10 @@ class TeamMemberController {
     }
   };
 
-    // ==================== Update Team Member ====================
+  // ==================== Update Team Member ====================
+
   updateTeamMember = async (req, res) => {
-    const teamMember =
-      await TeamMember.findById(
-        req.params.id,
-      );
+    const teamMember = await TeamMember.findById(req.params.id);
 
     if (!teamMember) {
       return res.status(404).json({
@@ -135,28 +104,19 @@ class TeamMemberController {
       });
     }
 
-    const {
-      fullName,
-      position,
-      experience,
-      displayOrder,
-      isActive,
-    } = req.body;
+    const { fullName, position, experience, displayOrder, isActive } = req.body;
 
     if (req.file) {
-      const updatedImage =
-        await replaceImage({
-          oldPublicId:
-            teamMember.image?.publicId,
-          file: req.file,
-          folder: "team-members",
-          prefix: "team-member",
-        });
+      const updatedImage = await replaceImage({
+        oldPublicId: teamMember.image?.publicId,
+        file: req.file,
+        folder: "team-members",
+        prefix: "team-member",
+      });
 
       teamMember.image = {
         url: updatedImage.url,
-        publicId:
-          updatedImage.publicId,
+        publicId: updatedImage.publicId,
       };
     }
 
@@ -169,37 +129,30 @@ class TeamMemberController {
     }
 
     if (experience !== undefined) {
-      teamMember.experience =
-        experience;
+      teamMember.experience = experience;
     }
 
     if (displayOrder !== undefined) {
-      teamMember.displayOrder =
-        Number(displayOrder);
+      teamMember.displayOrder = displayOrder;
     }
 
     if (isActive !== undefined) {
-      teamMember.isActive =
-        isActive === true ||
-        isActive === "true";
+      teamMember.isActive = isActive;
     }
 
     await teamMember.save();
 
     return res.status(200).json({
       success: true,
-      message:
-        "Team member updated successfully",
+      message: "Team member updated successfully",
       data: teamMember,
     });
   };
 
   // ==================== Delete Team Member ====================
+
   deleteTeamMember = async (req, res) => {
-    const teamMember =
-      await TeamMember.findById(
-        req.params.id,
-      );
+    const teamMember = await TeamMember.findById(req.params.id);
 
     if (!teamMember) {
       return res.status(404).json({
@@ -209,20 +162,16 @@ class TeamMemberController {
     }
 
     if (teamMember.image?.publicId) {
-      await deleteImage(
-        teamMember.image.publicId,
-      );
+      await deleteImage(teamMember.image.publicId);
     }
 
     await teamMember.deleteOne();
 
     return res.status(200).json({
       success: true,
-      message:
-        "Team member deleted successfully",
+      message: "Team member deleted successfully",
     });
   };
 }
 
-module.exports =
-  new TeamMemberController();
+module.exports = new TeamMemberController();
