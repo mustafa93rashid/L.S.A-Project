@@ -1,27 +1,26 @@
 const mongoose = require("mongoose");
 
-/*
-|--------------------------------------------------------------------------
-| Shared Schemas
-|--------------------------------------------------------------------------
-*/
+// ==================== Shared Schemas ====================
 
 const imageSchema = new mongoose.Schema(
   {
     url: {
       type: String,
       required: true,
+      trim: true,
     },
 
     publicId: {
       type: String,
       required: true,
+      trim: true,
     },
 
     alt: {
       type: String,
       trim: true,
       default: "",
+      maxlength: 150,
     },
   },
   {
@@ -35,18 +34,23 @@ const deliveryStepSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      minlength: 2,
+      maxlength: 100,
     },
 
     description: {
       type: String,
       required: true,
       trim: true,
+      minlength: 5,
+      maxlength: 500,
     },
 
     icon: {
       type: String,
       required: true,
       trim: true,
+      maxlength: 100,
     },
   },
   {
@@ -57,7 +61,13 @@ const deliveryStepSchema = new mongoose.Schema(
 const capabilityTableRowSchema = new mongoose.Schema(
   {
     cells: {
-      type: [String],
+      type: [
+        {
+          type: String,
+          trim: true,
+          maxlength: 200,
+        },
+      ],
       default: [],
     },
   },
@@ -66,11 +76,7 @@ const capabilityTableRowSchema = new mongoose.Schema(
   },
 );
 
-/*
-|--------------------------------------------------------------------------
-| Service Schema
-|--------------------------------------------------------------------------
-*/
+// ==================== Service Schema ====================
 
 const serviceSchema = new mongoose.Schema(
   {
@@ -86,24 +92,21 @@ const serviceSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      index: true,
       lowercase: true,
       trim: true,
+      minlength: 2,
+      maxlength: 160,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Services Page Card
-    |--------------------------------------------------------------------------
-    |
-    | تظهر هذه البيانات في الكارد الموجود في صفحة الخدمات الرئيسية.
-    |
-    */
+    // ==================== Service Card ====================
 
     serviceCard: {
       label: {
         type: String,
         required: true,
         trim: true,
+        minlength: 2,
         maxlength: 100,
       },
 
@@ -111,11 +114,18 @@ const serviceSchema = new mongoose.Schema(
         type: String,
         required: true,
         trim: true,
+        minlength: 10,
         maxlength: 1000,
       },
 
       highlights: {
-        type: [String],
+        type: [
+          {
+            type: String,
+            trim: true,
+            maxlength: 150,
+          },
+        ],
         default: [],
       },
 
@@ -125,20 +135,14 @@ const serviceSchema = new mongoose.Schema(
       },
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Service Details Hero
-    |--------------------------------------------------------------------------
-    |
-    | تظهر هذه البيانات في هيرو صفحة تفاصيل الخدمة.
-    |
-    */
+    // ==================== Hero Section ====================
 
     heroSection: {
       title: {
         type: String,
         required: true,
         trim: true,
+        minlength: 2,
         maxlength: 150,
       },
 
@@ -146,6 +150,7 @@ const serviceSchema = new mongoose.Schema(
         type: String,
         required: true,
         trim: true,
+        minlength: 10,
         maxlength: 1500,
       },
 
@@ -155,20 +160,14 @@ const serviceSchema = new mongoose.Schema(
       },
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Delivery Process Section
-    |--------------------------------------------------------------------------
-    |
-    | تظهر هذه البيانات في قسم خطوات تنفيذ الخدمة.
-    |
-    */
+    // ==================== Delivery Process Section ====================
 
     deliveryProcessSection: {
       title: {
         type: String,
         required: true,
         trim: true,
+        minlength: 2,
         maxlength: 150,
       },
 
@@ -176,6 +175,7 @@ const serviceSchema = new mongoose.Schema(
         type: String,
         required: true,
         trim: true,
+        minlength: 10,
         maxlength: 1500,
       },
 
@@ -185,20 +185,14 @@ const serviceSchema = new mongoose.Schema(
       },
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Capabilities Section
-    |--------------------------------------------------------------------------
-    |
-    | تظهر هذه البيانات في قسم إمكانيات الخدمة والجدول.
-    |
-    */
+    // ==================== Capabilities Section ====================
 
     capabilitiesSection: {
       title: {
         type: String,
         required: true,
         trim: true,
+        minlength: 2,
         maxlength: 150,
       },
 
@@ -206,17 +200,30 @@ const serviceSchema = new mongoose.Schema(
         type: String,
         required: true,
         trim: true,
+        minlength: 10,
         maxlength: 1500,
       },
 
       items: {
-        type: [String],
+        type: [
+          {
+            type: String,
+            trim: true,
+            maxlength: 200,
+          },
+        ],
         default: [],
       },
 
       table: {
         headers: {
-          type: [String],
+          type: [
+            {
+              type: String,
+              trim: true,
+              maxlength: 100,
+            },
+          ],
           default: [],
         },
 
@@ -227,15 +234,7 @@ const serviceSchema = new mongoose.Schema(
       },
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Home Capability Card
-    |--------------------------------------------------------------------------
-    |
-    | تظهر هذه البيانات في قسم Our Core Capabilities في الصفحة الرئيسية.
-    | عند الضغط على الكارد يتم الانتقال إلى صفحة تفاصيل نفس الخدمة.
-    |
-    */
+    // ==================== Home Capability ====================
 
     homeCapability: {
       isVisible: {
@@ -264,11 +263,7 @@ const serviceSchema = new mongoose.Schema(
       },
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | General Settings
-    |--------------------------------------------------------------------------
-    */
+    // ==================== General Settings ====================
 
     displayOrder: {
       type: Number,
@@ -287,11 +282,7 @@ const serviceSchema = new mongoose.Schema(
   },
 );
 
-/*
-|--------------------------------------------------------------------------
-| Indexes
-|--------------------------------------------------------------------------
-*/
+// ==================== Indexes ====================
 
 serviceSchema.index({
   isActive: 1,
@@ -304,14 +295,9 @@ serviceSchema.index({
   isActive: 1,
 });
 
-/*
-|--------------------------------------------------------------------------
-| Model
-|--------------------------------------------------------------------------
-*/
+// ==================== Service Model ====================
 
 const Service =
-  mongoose.models.Service ||
-  mongoose.model("Service", serviceSchema);
+  mongoose.models.Service || mongoose.model("Service", serviceSchema);
 
 module.exports = Service;
