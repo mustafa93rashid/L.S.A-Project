@@ -1,5 +1,135 @@
 const mongoose = require("mongoose");
 
+// ==================== Shared Image Schema ====================
+
+const imageSchema = new mongoose.Schema(
+  {
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    publicId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    alt: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 150,
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
+// ==================== Scope Item Schema ====================
+
+const scopeItemSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 2,
+      maxlength: 120,
+    },
+
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 10,
+      maxlength: 600,
+    },
+
+    icon: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
+// ==================== Gallery Image Schema ====================
+
+const galleryImageSchema = new mongoose.Schema(
+  {
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    publicId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    alt: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 150,
+    },
+
+    displayOrder: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
+// ==================== Certificate Image Schema ====================
+
+const certificateImageSchema = new mongoose.Schema(
+  {
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    publicId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    alt: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 150,
+    },
+
+    displayOrder: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
+// ==================== Project Schema ====================
+
 const projectSchema = new mongoose.Schema(
   {
     title: {
@@ -14,14 +144,18 @@ const projectSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      index: true,
       lowercase: true,
       trim: true,
+      minlength: 2,
+      maxlength: 180,
     },
 
     categoryLabel: {
       type: String,
       required: true,
       trim: true,
+      minlength: 2,
       maxlength: 100,
     },
 
@@ -29,6 +163,7 @@ const projectSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      minlength: 10,
       maxlength: 500,
     },
 
@@ -36,160 +171,136 @@ const projectSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      minlength: 20,
+      maxlength: 5000,
     },
 
-    services: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Service",
-      },
-    ],
+    // ==================== Related Services ====================
+
+    services: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Service",
+        },
+      ],
+      default: [],
+    },
+
+    // ==================== Hero Section ====================
 
     hero: {
       title: {
         type: String,
         required: true,
         trim: true,
+        minlength: 2,
+        maxlength: 150,
       },
 
       description: {
         type: String,
         required: true,
         trim: true,
+        minlength: 10,
+        maxlength: 1500,
       },
 
       image: {
-        url: {
-          type: String,
-          required: true,
-        },
-
-        publicId: {
-          type: String,
-          required: true,
-        },
+        type: imageSchema,
+        required: true,
       },
     },
+
+    // ==================== Card Image ====================
 
     cardImage: {
-      url: {
-        type: String,
-        required: true,
-      },
-
-      publicId: {
-        type: String,
-        required: true,
-      },
+      type: imageSchema,
+      required: true,
     },
+
+    // ==================== Project Details ====================
 
     projectDetails: {
       client: {
         type: String,
         trim: true,
+        default: null,
+        maxlength: 150,
       },
 
       location: {
         type: String,
         trim: true,
+        default: null,
+        maxlength: 150,
       },
 
-      completionDate: Date,
+      completionDate: {
+        type: Date,
+        default: null,
+      },
 
       duration: {
         type: String,
         trim: true,
+        default: null,
+        maxlength: 100,
       },
 
       status: {
         type: String,
         trim: true,
+        default: null,
+        maxlength: 100,
       },
     },
+
+    // ==================== Detailed Scope ====================
 
     detailedScope: {
       title: {
         type: String,
         required: true,
         trim: true,
+        minlength: 2,
+        maxlength: 150,
       },
 
       description: {
         type: String,
         required: true,
         trim: true,
+        minlength: 10,
+        maxlength: 1500,
       },
 
-      items: [
-        {
-          title: {
-            type: String,
-            required: true,
-            trim: true,
-          },
-
-          description: {
-            type: String,
-            required: true,
-            trim: true,
-          },
-
-          icon: {
-            type: String,
-            required: true,
-            trim: true,
-          },
-        },
-      ],
+      items: {
+        type: [scopeItemSchema],
+        default: [],
+      },
     },
 
-    gallery: [
-      {
-        url: {
-          type: String,
-          required: true,
-        },
+    // ==================== Gallery ====================
 
-        publicId: {
-          type: String,
-          required: true,
-        },
+    gallery: {
+      type: [galleryImageSchema],
+      default: [],
+    },
 
-        alt: {
-          type: String,
-          trim: true,
-          default: "",
-        },
+    // ==================== Certificates ====================
 
-        displayOrder: {
-          type: Number,
-          default: 0,
-        },
-      },
-    ],
+    certificates: {
+      type: [certificateImageSchema],
+      default: [],
+    },
 
-    certificates: [
-      {
-        title: {
-          type: String,
-          trim: true,
-        },
-
-        description: {
-          type: String,
-          trim: true,
-        },
-
-        image: {
-          url: String,
-          publicId: String,
-        },
-      },
-    ],
+    // ==================== General Settings ====================
 
     displayOrder: {
       type: Number,
       default: 0,
+      min: 0,
     },
 
     isFeatured: {
@@ -202,6 +313,8 @@ const projectSchema = new mongoose.Schema(
       default: true,
     },
 
+    // ==================== Audit Information ====================
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -211,12 +324,28 @@ const projectSchema = new mongoose.Schema(
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      default: null,
     },
   },
   {
     timestamps: true,
+    versionKey: false,
   },
 );
+
+// ==================== Remove Duplicate Services ====================
+
+projectSchema.pre("validate", function () {
+  if (Array.isArray(this.services)) {
+    const uniqueServiceIds = [
+      ...new Set(this.services.map((serviceId) => serviceId.toString())),
+    ];
+
+    this.services = uniqueServiceIds;
+  }
+});
+
+// ==================== Indexes ====================
 
 projectSchema.index({
   isActive: 1,
@@ -226,7 +355,17 @@ projectSchema.index({
 projectSchema.index({
   isFeatured: 1,
   isActive: 1,
+  displayOrder: 1,
 });
 
+projectSchema.index({
+  services: 1,
+  isActive: 1,
+});
 
-module.exports = mongoose.model("Project", projectSchema,);
+// ==================== Project Model ====================
+
+const Project =
+  mongoose.models.Project || mongoose.model("Project", projectSchema);
+
+module.exports = Project;

@@ -1,191 +1,33 @@
 const Project = require("../models/project.model");
-const Service = require("../models/service.model");
 
-const { uploadMulterImage, replaceImage, deleteImage } = require("../services/cloudinary.service");
+const { deleteImages } = require("../services/cloudinary.service");
 
-/*
-|--------------------------------------------------------------------------
-| Helpers
-|--------------------------------------------------------------------------
-*/
+const {
+  normalizeSlug,
+  selectedServicesExist,
+  uploadProjectMainImages,
+  uploadProjectGallery,
+  uploadProjectCertificates,
+  replaceProjectMainImages,
+  removeImagesByPublicIds,
+  deleteProjectImages,
+  updateProjectHero,
+  updateProjectDetails,
+  updateDetailedScope,
+} = require("../helpers/project.helper");
 
-const parseJsonField = (value, fallback) => {
-  if (value === undefined || value === null || value === "") {
-    return fallback;
-  }
-
-  if (typeof value !== "string") {
-    return value;
-  }
-
-  return JSON.parse(value);
-};
-
-const uploadProjectMainImages = async (cardImageFile, heroImageFile) => {
-  const uploadedImages = {
-    cardImage: null,
-    heroImage: null,
-  };
-
-  try {
-    if (cardImageFile) {
-      uploadedImages.cardImage = await uploadMulterImage({
-        file: cardImageFile,
-        folder: "projects/cards",
-        prefix: "project-card",
-      });
-    }
-
-    if (heroImageFile) {
-      uploadedImages.heroImage = await uploadMulterImage({
-        file: heroImageFile,
-        folder: "projects/hero",
-        prefix: "project-hero",
-      });
-    }
-
-    return uploadedImages;
-  } catch (error) {
-    if (uploadedImages.cardImage?.publicId) {
-      await deleteImage(uploadedImages.cardImage.publicId);
-    }
-
-    if (uploadedImages.heroImage?.publicId) {
-      await deleteImage(uploadedImages.heroImage.publicId);
-    }
-
-    throw error;
-  }
-};
-
-const uploadProjectGallery = async (files = [], altValues = []) => {
-  const uploadedGallery = [];
-
-  try {
-    for (let index = 0; index < files.length; index += 1) {
-      const uploadedImage = await uploadMulterImage({
-        file: files[index],
-        folder: "projects/gallery",
-        prefix: "project-gallery",
-      });
-
-      uploadedGallery.push({
-        url: uploadedImage.url,
-        publicId: uploadedImage.publicId,
-        alt: altValues[index] || "",
-        displayOrder: index,
-      });
-    }
-
-    return uploadedGallery;
-  } catch (error) {
-    await Promise.all(
-      uploadedGallery.map((image) => deleteImage(image.publicId)),
-    );
-
-    throw error;
-  }
-};
-
-const uploadProjectCertificates = async (files = [], certificateData = []) => {
-  const uploadedCertificates = [];
-
-  try {
-    for (let index = 0; index < files.length; index += 1) {
-      const uploadedImage = await uploadMulterImage({
-        file: files[index],
-        folder: "projects/certificates",
-        prefix: "project-certificate",
-      });
-
-      uploadedCertificates.push({
-        title: certificateData[index]?.title || "",
-        description: certificateData[index]?.description || "",
-        image: {
-          url: uploadedImage.url,
-          publicId: uploadedImage.publicId,
-        },
-      });
-    }
-
-    return uploadedCertificates;
-  } catch (error) {
-    await Promise.all(
-      uploadedCertificates.map((certificate) =>
-        deleteImage(certificate.image.publicId),
-      ),
-    );
-
-    throw error;
-  }
-};
-
-const replaceProjectMainImages = async (project, cardImageFile, heroImageFile) => {
-  if (cardImageFile) {
-    project.cardImage = await replaceImage({
-      oldPublicId: project.cardImage?.publicId,
-      file: cardImageFile,
-      folder: "projects/cards",
-      prefix: "project-card",
-    });
-  }
-
-  if (heroImageFile) {
-    project.hero.image = await replaceImage({
-      oldPublicId: project.hero?.image?.publicId,
-      file: heroImageFile,
-      folder: "projects/hero",
-      prefix: "project-hero",
-    });
-  }
-};
-
-const deleteProjectImages = async (project) => {
-  const publicIds = [];
-
-  if (project.cardImage?.publicId) {
-    publicIds.push(project.cardImage.publicId);
-  }
-
-  if (project.hero?.image?.publicId) {
-    publicIds.push(project.hero.image.publicId);
-  }
-
-  project.gallery.forEach((image) => {
-    if (image.publicId) {
-      publicIds.push(image.publicId);
-    }
-  });
-
-  project.certificates.forEach((certificate) => {
-    if (certificate.image?.publicId) {
-      publicIds.push(certificate.image.publicId);
-    }
-  });
-
-  await Promise.all(publicIds.map((publicId) => deleteImage(publicId)));
-};
-
-/*
-|--------------------------------------------------------------------------
-| Project Controller
-|--------------------------------------------------------------------------
-*/
+// ==================== Project Controller ====================
 
 class ProjectController {
-  /*
-  |--------------------------------------------------------------------------
-  | Get Public Projects
-  |--------------------------------------------------------------------------
-  */
+  // ==================== Get Public Projects ====================
 
   getPublicProjects = async (req, res) => {
     const filter = {
       isActive: true,
     };
 
-    if (req.query.featured === "true") {
-      filter.isFeatured = true;
+    if (req.query.featured !== undefined) {
+      filter.isFeatured = req.query.featured;
     }
 
     if (req.query.service) {
@@ -193,216 +35,226 @@ class ProjectController {
     }
 
     const projects = await Project.find(filter)
-      .populate("services", "title slug categoryLabel")
+      .select(
+        "title slug categoryLabel shortDescription services cardImage displayOrder isFeatured",
+      )
+      .populate("services", "title slug")
       .sort({
         displayOrder: 1,
         createdAt: -1,
-      });
+      })
+      .lean();
 
     return res.status(200).json({
       success: true,
       count: projects.length,
-      projects,
+      data: projects,
     });
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Get Public Project By Slug
-  |--------------------------------------------------------------------------
-  */
+  // ==================== Get Public Project By Slug ====================
 
   getPublicProjectBySlug = async (req, res) => {
     const project = await Project.findOne({
       slug: req.params.slug,
       isActive: true,
-    }).populate("services", "title slug categoryLabel shortDescription cardImage");
+    })
+      .select(
+        "-cardImage.publicId -hero.image.publicId -gallery.publicId -certificates.publicId",
+      )
+      .populate("services", "title slug serviceCard")
+      .lean();
 
     if (!project) {
       return res.status(404).json({
         success: false,
-        message: "Project not found.",
+        message: "Project not found",
       });
     }
 
     return res.status(200).json({
       success: true,
-      project,
+      data: project,
     });
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Get All Projects
-  |--------------------------------------------------------------------------
-  */
+  // ==================== Get All Projects ====================
 
   getAllProjects = async (req, res) => {
     const projects = await Project.find()
-      .populate("services", "title slug categoryLabel")
-      .populate("createdBy", "fullName email")
-      .populate("updatedBy", "fullName email")
+      .populate("services", "title slug")
+      .populate("createdBy", "fullName email role")
+      .populate("updatedBy", "fullName email role")
       .sort({
         displayOrder: 1,
         createdAt: -1,
-      });
+      })
+      .lean();
 
     return res.status(200).json({
       success: true,
       count: projects.length,
-      projects,
+      data: projects,
     });
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Get Project By ID
-  |--------------------------------------------------------------------------
-  */
+  // ==================== Get Project By ID ====================
 
   getProjectById = async (req, res) => {
     const project = await Project.findById(req.params.id)
-      .populate("services", "title slug categoryLabel")
-      .populate("createdBy", "fullName email")
-      .populate("updatedBy", "fullName email");
+      .populate("services", "title slug")
+      .populate("createdBy", "fullName email role")
+      .populate("updatedBy", "fullName email role")
+      .lean();
 
     if (!project) {
       return res.status(404).json({
         success: false,
-        message: "Project not found.",
+        message: "Project not found",
       });
     }
 
     return res.status(200).json({
       success: true,
-      project,
+      data: project,
     });
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Create Project
-  |--------------------------------------------------------------------------
-  */
+  // ==================== Create Project ====================
 
   createProject = async (req, res) => {
+    const {
+      title,
+      slug,
+      categoryLabel,
+      shortDescription,
+      description,
+      services,
+      heroTitle,
+      heroDescription,
+      heroImageAlt,
+      cardImageAlt,
+      projectDetails,
+      detailedScope,
+      galleryAlt,
+      certificateAlt,
+      displayOrder,
+      isFeatured,
+      isActive,
+    } = req.body;
+
+    const normalizedSlug = normalizeSlug(slug);
+
     const existingProject = await Project.findOne({
-      slug: req.body.slug,
-    });
+      slug: normalizedSlug,
+    }).lean();
 
     if (existingProject) {
       return res.status(409).json({
         success: false,
-        message: "A project with this slug already exists.",
+        message: "A project with this slug already exists",
       });
     }
 
-    const services = parseJsonField(req.body.services, []);
-    const galleryAlt = parseJsonField(req.body.galleryAlt, []);
-    const certificates = parseJsonField(req.body.certificates, []);
-    const projectDetails = parseJsonField(req.body.projectDetails, {});
-    const detailedScope = parseJsonField(req.body.detailedScope, {});
+    const servicesExist = await selectedServicesExist(services);
 
-    const existingServicesCount = await Service.countDocuments({
-      _id: {
-        $in: services,
-      },
-    });
-
-    if (existingServicesCount !== services.length) {
+    if (!servicesExist) {
       return res.status(400).json({
         success: false,
-        message: "One or more selected services do not exist.",
+        message: "One or more selected services do not exist",
       });
     }
 
     const cardImageFile = req.files?.cardImage?.[0];
+
     const heroImageFile = req.files?.heroImage?.[0];
+
     const galleryFiles = req.files?.gallery || [];
+
     const certificateFiles = req.files?.certificateImages || [];
 
-    if (!cardImageFile || !heroImageFile) {
-      return res.status(400).json({
-        success: false,
-        message: "Card image and hero image are required.",
-      });
-    }
-
-    const uploadedMainImages = await uploadProjectMainImages(
+    const uploadedMainImages = await uploadProjectMainImages({
       cardImageFile,
       heroImageFile,
-    );
+
+      cardImageAlt: cardImageAlt || title,
+
+      heroImageAlt: heroImageAlt || title,
+    });
 
     let uploadedGallery = [];
     let uploadedCertificates = [];
 
     try {
-      uploadedGallery = await uploadProjectGallery(galleryFiles, galleryAlt);
+      uploadedGallery = await uploadProjectGallery({
+        files: galleryFiles,
+        altValues: galleryAlt,
+      });
 
-      uploadedCertificates = await uploadProjectCertificates(
-        certificateFiles,
-        certificates,
-      );
+      uploadedCertificates = await uploadProjectCertificates({
+        files: certificateFiles,
+
+        altValues: certificateAlt,
+      });
 
       const project = await Project.create({
-        title: req.body.title,
-        slug: req.body.slug,
-        categoryLabel: req.body.categoryLabel,
-        shortDescription: req.body.shortDescription,
-        description: req.body.description,
+        title,
+        slug: normalizedSlug,
+        categoryLabel,
+        shortDescription,
+        description,
         services,
+
         hero: {
-          title: req.body.heroTitle,
-          description: req.body.heroDescription,
+          title: heroTitle,
+          description: heroDescription,
+
           image: uploadedMainImages.heroImage,
         },
+
         cardImage: uploadedMainImages.cardImage,
+
         projectDetails,
         detailedScope,
+
         gallery: uploadedGallery,
+
         certificates: uploadedCertificates,
-        displayOrder: req.body.displayOrder,
-        isFeatured: req.body.isFeatured,
-        isActive: req.body.isActive,
+
+        displayOrder,
+        isFeatured,
+        isActive,
+
         createdBy: req.user._id,
+
         updatedBy: req.user._id,
       });
 
-      await project.populate("services", "title slug categoryLabel");
+      await project.populate("services", "title slug");
 
       return res.status(201).json({
         success: true,
-        message: "Project created successfully.",
-        project,
+        message: "Project created successfully",
+        data: project,
       });
     } catch (error) {
-      if (uploadedMainImages.cardImage?.publicId) {
-        await deleteImage(uploadedMainImages.cardImage.publicId);
-      }
+      await deleteImages(
+        [
+          uploadedMainImages.cardImage?.publicId,
 
-      if (uploadedMainImages.heroImage?.publicId) {
-        await deleteImage(uploadedMainImages.heroImage.publicId);
-      }
+          uploadedMainImages.heroImage?.publicId,
 
-      await Promise.all(
-        uploadedGallery.map((image) => deleteImage(image.publicId)),
-      );
+          ...uploadedGallery.map((image) => image.publicId),
 
-      await Promise.all(
-        uploadedCertificates.map((certificate) =>
-          deleteImage(certificate.image.publicId),
-        ),
+          ...uploadedCertificates.map((image) => image.publicId),
+        ].filter(Boolean),
       );
 
       throw error;
     }
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Update Project
-  |--------------------------------------------------------------------------
-  */
+  // ==================== Update Project ====================
 
   updateProject = async (req, res) => {
     const project = await Project.findById(req.params.id);
@@ -410,179 +262,161 @@ class ProjectController {
     if (!project) {
       return res.status(404).json({
         success: false,
-        message: "Project not found.",
+        message: "Project not found",
       });
     }
 
-    if (req.body.slug && req.body.slug !== project.slug) {
-      const existingProject = await Project.findOne({
-        slug: req.body.slug,
-        _id: {
-          $ne: project._id,
-        },
-      });
+    const {
+      title,
+      slug,
+      categoryLabel,
+      shortDescription,
+      description,
+      services,
+      heroTitle,
+      heroDescription,
+      heroImageAlt,
+      cardImageAlt,
+      projectDetails,
+      detailedScope,
+      galleryAlt,
+      certificateAlt,
+      removeGalleryPublicIds,
+      removeCertificatePublicIds,
+      displayOrder,
+      isFeatured,
+      isActive,
+    } = req.body;
 
-      if (existingProject) {
-        return res.status(409).json({
-          success: false,
-          message: "A project with this slug already exists.",
-        });
+    if (slug !== undefined) {
+      const normalizedSlug = normalizeSlug(slug);
+
+      if (normalizedSlug !== project.slug) {
+        const existingProject = await Project.findOne({
+          slug: normalizedSlug,
+
+          _id: {
+            $ne: project._id,
+          },
+        }).lean();
+
+        if (existingProject) {
+          return res.status(409).json({
+            success: false,
+            message: "A project with this slug already exists",
+          });
+        }
       }
+
+      project.slug = normalizedSlug;
     }
 
-    const simpleFields = [
-      "title",
-      "slug",
-      "categoryLabel",
-      "shortDescription",
-      "description",
-      "displayOrder",
-      "isFeatured",
-      "isActive",
-    ];
+    if (services !== undefined) {
+      const servicesExist = await selectedServicesExist(services);
 
-    simpleFields.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        project[field] = req.body[field];
-      }
-    });
-
-    if (req.body.services !== undefined) {
-      const services = parseJsonField(req.body.services, []);
-
-      const existingServicesCount = await Service.countDocuments({
-        _id: {
-          $in: services,
-        },
-      });
-
-      if (existingServicesCount !== services.length) {
+      if (!servicesExist) {
         return res.status(400).json({
           success: false,
-          message: "One or more selected services do not exist.",
+          message: "One or more selected services do not exist",
         });
       }
 
       project.services = services;
     }
 
-    if (req.body.heroTitle !== undefined) {
-      project.hero.title = req.body.heroTitle;
-    }
+    const simpleFields = {
+      title,
+      categoryLabel,
+      shortDescription,
+      description,
+      displayOrder,
+      isFeatured,
+      isActive,
+    };
 
-    if (req.body.heroDescription !== undefined) {
-      project.hero.description = req.body.heroDescription;
-    }
+    Object.entries(simpleFields).forEach(([field, value]) => {
+      if (value !== undefined) {
+        project[field] = value;
+      }
+    });
 
-    if (req.body.projectDetails !== undefined) {
-      project.projectDetails = parseJsonField(req.body.projectDetails, {});
-    }
+    updateProjectHero(project, {
+      heroTitle,
+      heroDescription,
+    });
 
-    if (req.body.detailedScope !== undefined) {
-      project.detailedScope = parseJsonField(req.body.detailedScope, {});
-    }
+    updateProjectDetails(project, projectDetails);
 
-    const cardImageFile = req.files?.cardImage?.[0];
-    const heroImageFile = req.files?.heroImage?.[0];
+    updateDetailedScope(project, detailedScope);
 
-    await replaceProjectMainImages(
+    await replaceProjectMainImages({
       project,
-      cardImageFile,
-      heroImageFile,
-    );
 
-    if (req.body.removeGalleryPublicIds !== undefined) {
-      const publicIds = parseJsonField(
-        req.body.removeGalleryPublicIds,
-        [],
-      );
+      cardImageFile: req.files?.cardImage?.[0],
 
-      const imagesToDelete = project.gallery.filter((image) =>
-        publicIds.includes(image.publicId),
-      );
+      heroImageFile: req.files?.heroImage?.[0],
 
-      await Promise.all(
-        imagesToDelete.map((image) => deleteImage(image.publicId)),
-      );
+      cardImageAlt,
+      heroImageAlt,
+    });
 
-      project.gallery = project.gallery.filter(
-        (image) => !publicIds.includes(image.publicId),
-      );
+    if (removeGalleryPublicIds !== undefined) {
+      project.gallery = await removeImagesByPublicIds({
+        currentImages: project.gallery,
+
+        publicIds: removeGalleryPublicIds,
+      });
     }
 
     const newGalleryFiles = req.files?.gallery || [];
 
     if (newGalleryFiles.length > 0) {
-      const galleryAlt = parseJsonField(req.body.galleryAlt, []);
+      const newGalleryImages = await uploadProjectGallery({
+        files: newGalleryFiles,
+        altValues: galleryAlt,
 
-      const newGalleryImages = await uploadProjectGallery(
-        newGalleryFiles,
-        galleryAlt,
-      );
-
-      const startingOrder = project.gallery.length;
-
-      newGalleryImages.forEach((image, index) => {
-        image.displayOrder = startingOrder + index;
+        startingOrder: project.gallery.length,
       });
 
       project.gallery.push(...newGalleryImages);
     }
 
-    if (req.body.removeCertificatePublicIds !== undefined) {
-      const publicIds = parseJsonField(
-        req.body.removeCertificatePublicIds,
-        [],
-      );
+    if (removeCertificatePublicIds !== undefined) {
+      project.certificates = await removeImagesByPublicIds({
+        currentImages: project.certificates,
 
-      const certificatesToDelete = project.certificates.filter(
-        (certificate) =>
-          publicIds.includes(certificate.image?.publicId),
-      );
-
-      await Promise.all(
-        certificatesToDelete.map((certificate) =>
-          deleteImage(certificate.image.publicId),
-        ),
-      );
-
-      project.certificates = project.certificates.filter(
-        (certificate) =>
-          !publicIds.includes(certificate.image?.publicId),
-      );
+        publicIds: removeCertificatePublicIds,
+      });
     }
 
     const newCertificateFiles = req.files?.certificateImages || [];
 
     if (newCertificateFiles.length > 0) {
-      const certificates = parseJsonField(req.body.certificates, []);
+      const newCertificates = await uploadProjectCertificates({
+        files: newCertificateFiles,
 
-      const newCertificates = await uploadProjectCertificates(
-        newCertificateFiles,
-        certificates,
-      );
+        altValues: certificateAlt,
+
+        startingOrder: project.certificates.length,
+      });
 
       project.certificates.push(...newCertificates);
     }
 
-    project.updatedBy = req.user.id;
+    project.updatedBy = req.user._id;
 
     await project.save();
 
-    await project.populate("services", "title slug categoryLabel");
+    await project.populate("services", "title slug");
 
     return res.status(200).json({
       success: true,
-      message: "Project updated successfully.",
-      project,
+      message: "Project updated successfully",
+      data: project,
     });
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Delete Project
-  |--------------------------------------------------------------------------
-  */
+  // ==================== Delete Project ====================
 
   deleteProject = async (req, res) => {
     const project = await Project.findById(req.params.id);
@@ -590,7 +424,7 @@ class ProjectController {
     if (!project) {
       return res.status(404).json({
         success: false,
-        message: "Project not found.",
+        message: "Project not found",
       });
     }
 
@@ -600,7 +434,7 @@ class ProjectController {
 
     return res.status(200).json({
       success: true,
-      message: "Project deleted successfully.",
+      message: "Project deleted successfully",
     });
   };
 }

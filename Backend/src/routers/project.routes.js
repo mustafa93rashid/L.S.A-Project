@@ -3,25 +3,32 @@ const express = require("express");
 const router = express.Router();
 
 const asyncHandler = require("../utils/asyncHandler");
+
 const auth = require("../middlewares/auth");
 const role = require("../middlewares/role");
+
 const projectController = require("../controllers/project.controller");
+
 const { uploadProjectImages } = require("../middlewares/upload.middleware");
-const { createProjectValidation, updateProjectValidation, idValidation, slugValidation } = require("../validation/project.validate");
 
-// 
-router.get("/public", asyncHandler(projectController.getPublicProjects));
+const { createProjectValidation, updateProjectValidation, projectIdValidation, projectSlugValidation,publicProjectQueryValidation} = require("../validation/project.validate");
 
-router.get("/public/:slug", ...slugValidation, asyncHandler(projectController.getPublicProjectBySlug));
+// ==================== Public Routes ====================
 
-router.get("/", auth, role(["superadmin", "contentManager"]), asyncHandler(projectController.getAllProjects));
+router.get("/public", [...publicProjectQueryValidation], asyncHandler(projectController.getPublicProjects));
 
-router.post("/", auth, role(["superadmin", "contentManager"]), uploadProjectImages(), ...createProjectValidation, asyncHandler(projectController.createProject));
+router.get("/public/:slug", [...projectSlugValidation], asyncHandler(projectController.getPublicProjectBySlug));
 
-router.get("/:id", auth, role(["superadmin", "contentManager"]), ...idValidation, asyncHandler(projectController.getProjectById));
+// ==================== Dashboard Routes ====================
 
-router.patch("/:id", auth, role(["superadmin", "contentManager"]), uploadProjectImages(), ...updateProjectValidation, asyncHandler(projectController.updateProject));
+router.get("/", [auth, role(["superadmin", "manager", "contentManager"])], asyncHandler(projectController.getAllProjects));
 
-router.delete("/:id", auth, role(["superadmin", "contentManager"]), ...idValidation, asyncHandler(projectController.deleteProject));
+router.post("/", [auth, role(["superadmin", "manager", "contentManager"]), uploadProjectImages(), ...createProjectValidation], asyncHandler(projectController.createProject));
+
+router.get("/:id", [auth, role(["superadmin", "manager", "contentManager"]), ...projectIdValidation], asyncHandler(projectController.getProjectById));
+
+router.patch("/:id", [auth, role(["superadmin", "manager", "contentManager"]), uploadProjectImages(), ...projectIdValidation, ...updateProjectValidation], asyncHandler(projectController.updateProject));
+
+router.delete("/:id", [auth, role(["superadmin", "manager", "contentManager"]), ...projectIdValidation], asyncHandler(projectController.deleteProject));
 
 module.exports = router;
