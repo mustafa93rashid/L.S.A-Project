@@ -1,10 +1,6 @@
 const mongoose = require("mongoose");
 
-/*
-|--------------------------------------------------------------------------
-| Constants
-|--------------------------------------------------------------------------
-*/
+// ==================== Contact Message Constants ====================
 
 const CONTACT_MESSAGE_SERVICES = [
   "General Inquiry",
@@ -21,26 +17,13 @@ const CONTACT_MESSAGE_SERVICES = [
   "Auger Boring & HDD",
 ];
 
-const CONTACT_MESSAGE_STATUSES = [
-  "new",
-  "read",
-  "replied",
-  "archived",
-];
+const CONTACT_MESSAGE_STATUSES = ["new", "read", "replied", "archived"];
 
-/*
-|--------------------------------------------------------------------------
-| Contact Message Schema
-|--------------------------------------------------------------------------
-*/
+// ==================== Contact Message Schema ====================
 
 const contactMessageSchema = new mongoose.Schema(
   {
-    /*
-    |--------------------------------------------------------------------------
-    | Customer Information
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Customer Information ====================
 
     fullName: {
       type: String,
@@ -56,7 +39,6 @@ const contactMessageSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       maxlength: 254,
-      index: true,
     },
 
     phone: {
@@ -66,17 +48,13 @@ const contactMessageSchema = new mongoose.Schema(
       maxlength: 30,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Inquiry
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Inquiry Information ====================
 
     service: {
       type: String,
       enum: CONTACT_MESSAGE_SERVICES,
+      required: true,
       default: "General Inquiry",
-      index: true,
     },
 
     projectDescription: {
@@ -87,18 +65,16 @@ const contactMessageSchema = new mongoose.Schema(
       maxlength: 5000,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Dashboard
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Request Status ====================
 
     status: {
       type: String,
       enum: CONTACT_MESSAGE_STATUSES,
+      required: true,
       default: "new",
-      index: true,
     },
+
+    // ==================== Status Timeline ====================
 
     readAt: {
       type: Date,
@@ -115,6 +91,32 @@ const contactMessageSchema = new mongoose.Schema(
       default: null,
     },
 
+    // ==================== Customer Email Tracking ====================
+
+    customerEmailSent: {
+      type: Boolean,
+      default: false,
+    },
+
+    customerEmailSentAt: {
+      type: Date,
+      default: null,
+    },
+
+    // ==================== Dashboard Notification Tracking ====================
+
+    dashboardNotificationCreated: {
+      type: Boolean,
+      default: false,
+    },
+
+    dashboardNotificationCreatedAt: {
+      type: Date,
+      default: null,
+    },
+
+    // ==================== Audit Information ====================
+
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -127,11 +129,7 @@ const contactMessageSchema = new mongoose.Schema(
   },
 );
 
-/*
-|--------------------------------------------------------------------------
-| Indexes
-|--------------------------------------------------------------------------
-*/
+// ==================== Indexes ====================
 
 contactMessageSchema.index({
   status: 1,
@@ -148,24 +146,20 @@ contactMessageSchema.index({
   createdAt: -1,
 });
 
-/*
-|--------------------------------------------------------------------------
-| Model
-|--------------------------------------------------------------------------
-*/
+contactMessageSchema.index({
+  fullName: "text",
+  email: "text",
+  phone: "text",
+  projectDescription: "text",
+});
+
+// ==================== Contact Message Model ====================
 
 const ContactMessage =
   mongoose.models.ContactMessage ||
-  mongoose.model(
-    "ContactMessage",
-    contactMessageSchema,
-  );
+  mongoose.model("ContactMessage", contactMessageSchema);
 
-/*
-|--------------------------------------------------------------------------
-| Exports
-|--------------------------------------------------------------------------
-*/
+// ==================== Exports ====================
 
 module.exports = {
   ContactMessage,

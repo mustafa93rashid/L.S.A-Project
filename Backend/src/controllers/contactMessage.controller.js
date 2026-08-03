@@ -1,260 +1,39 @@
-const {
-  ContactMessage,
-} = require("../models/contactMessage.model");
+const { ContactMessage } = require("../models/contactMessage.model");
 
 const {
-  sendContactMessageReceivedEmail,
-} = require("../services/email.service");
+  CONTACT_MESSAGE_POPULATE_FIELDS,
+  getCurrentUserId,
+  buildDashboardFilter,
+  buildPagination,
+  buildPaginationResponse,
+  processContactMessageSideEffects,
+  applyContactMessageStatus,
+  buildContactMessageStatistics,
+} = require("../helpers/contactMessage.helper");
 
-const {
-  createContactMessageNotification,
-} = require("../services/notification.service");
-
-/*
-|--------------------------------------------------------------------------
-| Constants
-|--------------------------------------------------------------------------
-*/
-
-const CONTACT_MESSAGE_POPULATE_FIELDS = [
-  {
-    path: "updatedBy",
-    select: "fullName email role",
-  },
-];
-
-const STATUS_DATE_FIELDS = {
-  read: "readAt",
-  replied: "repliedAt",
-  archived: "archivedAt",
-};
-
-/*
-|--------------------------------------------------------------------------
-| Helpers
-|--------------------------------------------------------------------------
-*/
-
-// ==================================================
-// Get Current User ID
-// ==================================================
-
-const getCurrentUserId = (req) => {
-  return req.user?._id || req.user?.id || null;
-};
-
-// ==================================================
-// Escape Regular Expression
-// ==================================================
-
-const escapeRegex = (value) => {
-  return String(value).replace(
-    /[.*+?^${}()|[\]\\]/g,
-    "\\$&",
-  );
-};
-
-// ==================================================
-// Build Dashboard Filter
-// ==================================================
-
-const buildDashboardFilter = (query) => {
-  const filter = {};
-
-  if (query.status) {
-    filter.status = query.status;
-  }
-
-  if (query.service) {
-    filter.service = query.service;
-  }
-
-  if (query.search) {
-    const searchTerm = escapeRegex(
-      query.search.trim(),
-    );
-
-    filter.$or = [
-      {
-        fullName: {
-          $regex: searchTerm,
-          $options: "i",
-        },
-      },
-      {
-        email: {
-          $regex: searchTerm,
-          $options: "i",
-        },
-      },
-      {
-        phone: {
-          $regex: searchTerm,
-          $options: "i",
-        },
-      },
-      {
-        projectDescription: {
-          $regex: searchTerm,
-          $options: "i",
-        },
-      },
-    ];
-  }
-
-  return filter;
-};
-
-// ==================================================
-// Build Pagination
-// ==================================================
-
-const buildPagination = (query) => {
-  const page = Math.max(
-    Number(query.page) || 1,
-    1,
-  );
-
-  const limit = Math.min(
-    Math.max(
-      Number(query.limit) || 20,
-      1,
-    ),
-    100,
-  );
-
-  return {
-    page,
-    limit,
-    skip: (page - 1) * limit,
-  };
-};
-
-// ==================================================
-// Send Received Email Safely
-// ==================================================
-
-const sendReceivedEmailSafely = async ({
-  contactMessage,
-}) => {
-  try {
-    await sendContactMessageReceivedEmail({
-      to: contactMessage.email,
-
-      fullName:
-        contactMessage.fullName,
-
-      service:
-        contactMessage.service,
-
-      messageId:
-        contactMessage._id,
-    });
-  } catch (error) {
-    console.error(
-      "Contact message received email failed:",
-      {
-        contactMessageId:
-          contactMessage._id,
-
-        email:
-          contactMessage.email,
-
-        message:
-          error.message,
-      },
-    );
-  }
-};
-
-// ==================================================
-// Create Dashboard Notification Safely
-// ==================================================
-
-const createNotificationSafely = async ({
-  contactMessage,
-}) => {
-  try {
-    await createContactMessageNotification({
-      contactMessage,
-    });
-  } catch (error) {
-    console.error(
-      "Contact message notification failed:",
-      {
-        contactMessageId:
-          contactMessage._id,
-
-        message:
-          error.message,
-      },
-    );
-  }
-};
-
-/*
-|--------------------------------------------------------------------------
-| Contact Message Controller
-|--------------------------------------------------------------------------
-*/
+// ==================== Contact Message Controller ====================
 
 class ContactMessageController {
-  /*
-  |--------------------------------------------------------------------------
-  | Public
-  |--------------------------------------------------------------------------
-  */
+  // ==================== Create Contact Message ====================
 
-  // ==================================================
-  // Create Contact Message
-  // ==================================================
+  createContactMessage = async (req, res) => {
+    const { fullName, email, phone, service, projectDescription } = req.body;
 
-  createContactMessage = async (
-    req,
-    res,
-  ) => {
-    const {
+    const contactMessage = await ContactMessage.create({
       fullName,
       email,
       phone,
-      service,
+
+      service: service || "General Inquiry",
+
       projectDescription,
-    } = req.body;
 
-    const contactMessage =
-      await ContactMessage.create({
-        fullName,
-        email,
-        phone,
+      status: "new",
+    });
 
-        service:
-          service ||
-          "General Inquiry",
-
-        projectDescription,
-
-        status: "new",
-      });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Side Effects
-    |--------------------------------------------------------------------------
-    |
-    | فشل البريد أو الإشعار لا يؤدي إلى حذف الرسالة
-    | بعد نجاح حفظها في قاعدة البيانات.
-    |
-    */
-
-    await Promise.allSettled([
-      sendReceivedEmailSafely({
-        contactMessage,
-      }),
-
-      createNotificationSafely({
-        contactMessage,
-      }),
-    ]);
+    await processContactMessageSideEffects({
+      contactMessage,
+    });
 
     return res.status(201).json({
       success: true,
@@ -263,64 +42,40 @@ class ContactMessageController {
         "Your message has been received successfully. Our team will contact you soon.",
 
       data: {
-        message: {
-          _id:
-            contactMessage._id,
+        _id: contactMessage._id,
 
-          fullName:
-            contactMessage.fullName,
+        fullName: contactMessage.fullName,
 
-          email:
-            contactMessage.email,
+        email: contactMessage.email,
 
-          service:
-            contactMessage.service,
+        phone: contactMessage.phone,
 
-          status:
-            contactMessage.status,
+        service: contactMessage.service,
 
-          createdAt:
-            contactMessage.createdAt,
-        },
+        projectDescription: contactMessage.projectDescription,
+
+        status: contactMessage.status,
+
+        customerEmailSent: contactMessage.customerEmailSent,
+
+        dashboardNotificationCreated:
+          contactMessage.dashboardNotificationCreated,
+
+        createdAt: contactMessage.createdAt,
       },
     });
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Dashboard
-  |--------------------------------------------------------------------------
-  */
+  // ==================== Get All Contact Messages ====================
 
-  // ==================================================
-  // Get All Contact Messages
-  // ==================================================
+  getAllContactMessages = async (req, res) => {
+    const filter = buildDashboardFilter(req.query);
 
-  getAllContactMessages = async (
-    req,
-    res,
-  ) => {
-    const filter =
-      buildDashboardFilter(
-        req.query,
-      );
+    const { page, limit, skip } = buildPagination(req.query);
 
-    const {
-      page,
-      limit,
-      skip,
-    } = buildPagination(
-      req.query,
-    );
-
-    const [
-      contactMessages,
-      total,
-    ] = await Promise.all([
+    const [contactMessages, total] = await Promise.all([
       ContactMessage.find(filter)
-        .populate(
-          CONTACT_MESSAGE_POPULATE_FIELDS,
-        )
+        .populate(CONTACT_MESSAGE_POPULATE_FIELDS)
         .sort({
           createdAt: -1,
         })
@@ -328,170 +83,92 @@ class ContactMessageController {
         .limit(limit)
         .lean(),
 
-      ContactMessage.countDocuments(
-        filter,
-      ),
+      ContactMessage.countDocuments(filter),
     ]);
-
-    const totalPages = Math.ceil(
-      total / limit,
-    );
 
     return res.status(200).json({
       success: true,
 
-      count:
-        contactMessages.length,
+      count: contactMessages.length,
 
-      pagination: {
+      pagination: buildPaginationResponse({
         page,
         limit,
         total,
-        totalPages,
-
-        hasNextPage:
-          page < totalPages,
-
-        hasPreviousPage:
-          page > 1,
-      },
+      }),
 
       data: contactMessages,
     });
   };
 
-  // ==================================================
-  // Get Contact Message By ID
-  // ==================================================
+  // ==================== Get Contact Message By ID ====================
 
-  getContactMessageById = async (
-    req,
-    res,
-  ) => {
-    const contactMessage =
-      await ContactMessage.findById(
-        req.params.id,
-      )
-        .populate(
-          CONTACT_MESSAGE_POPULATE_FIELDS,
-        )
-        .lean();
+  getContactMessageById = async (req, res) => {
+    const contactMessage = await ContactMessage.findById(req.params.id)
+      .populate(CONTACT_MESSAGE_POPULATE_FIELDS)
+      .lean();
 
     if (!contactMessage) {
       return res.status(404).json({
         success: false,
-
-        message:
-          "Contact message not found.",
+        message: "Contact message not found",
       });
     }
 
     return res.status(200).json({
       success: true,
-
       data: contactMessage,
     });
   };
 
-  // ==================================================
-  // Update Contact Message Status
-  // ==================================================
+  // ==================== Update Contact Message Status ====================
 
-  updateContactMessageStatus = async (
-    req,
-    res,
-  ) => {
-    const contactMessage =
-      await ContactMessage.findById(
-        req.params.id,
-      );
+  updateContactMessageStatus = async (req, res) => {
+    const contactMessage = await ContactMessage.findById(req.params.id);
 
     if (!contactMessage) {
       return res.status(404).json({
         success: false,
-
-        message:
-          "Contact message not found.",
+        message: "Contact message not found",
       });
     }
 
     const { status } = req.body;
 
-    const previousStatus =
-      contactMessage.status;
+    const statusChanged = applyContactMessageStatus(contactMessage, status);
 
-    contactMessage.status =
-      status;
+    if (!statusChanged) {
+      await contactMessage.populate(CONTACT_MESSAGE_POPULATE_FIELDS);
 
-    contactMessage.updatedBy =
-      getCurrentUserId(req);
-
-    /*
-    |--------------------------------------------------------------------------
-    | Timeline
-    |--------------------------------------------------------------------------
-    */
-
-    const newDateField =
-      STATUS_DATE_FIELDS[status];
-
-    if (
-      newDateField &&
-      !contactMessage[newDateField]
-    ) {
-      contactMessage[newDateField] =
-        new Date();
+      return res.status(200).json({
+        success: true,
+        message: "Contact message already has this status",
+        data: contactMessage,
+      });
     }
 
-    const previousDateField =
-      STATUS_DATE_FIELDS[
-        previousStatus
-      ];
-
-    if (
-      previousDateField &&
-      previousStatus !== status
-    ) {
-      contactMessage[
-        previousDateField
-      ] = null;
-    }
+    contactMessage.updatedBy = getCurrentUserId(req);
 
     await contactMessage.save();
 
-    await contactMessage.populate(
-      CONTACT_MESSAGE_POPULATE_FIELDS,
-    );
+    await contactMessage.populate(CONTACT_MESSAGE_POPULATE_FIELDS);
 
     return res.status(200).json({
       success: true,
-
-      message:
-        "Contact message status updated successfully.",
-
+      message: "Contact message status updated successfully",
       data: contactMessage,
     });
   };
 
-  // ==================================================
-  // Delete Contact Message
-  // ==================================================
+  // ==================== Delete Contact Message ====================
 
-  deleteContactMessage = async (
-    req,
-    res,
-  ) => {
-    const contactMessage =
-      await ContactMessage.findById(
-        req.params.id,
-      );
+  deleteContactMessage = async (req, res) => {
+    const contactMessage = await ContactMessage.findById(req.params.id);
 
     if (!contactMessage) {
       return res.status(404).json({
         success: false,
-
-        message:
-          "Contact message not found.",
+        message: "Contact message not found",
       });
     }
 
@@ -499,72 +176,20 @@ class ContactMessageController {
 
     return res.status(200).json({
       success: true,
-
-      message:
-        "Contact message deleted successfully.",
+      message: "Contact message deleted successfully",
     });
   };
 
-  // ==================================================
-  // Get Contact Message Statistics
-  // ==================================================
+  // ==================== Get Contact Message Statistics ====================
 
-  getContactMessageStatistics = async (
-    req,
-    res,
-  ) => {
-    const statistics =
-      await ContactMessage.aggregate([
-        {
-          $group: {
-            _id: "$status",
-
-            count: {
-              $sum: 1,
-            },
-          },
-        },
-      ]);
-
-    const statusCounts = {
-      new: 0,
-      read: 0,
-      replied: 0,
-      archived: 0,
-    };
-
-    for (const item of statistics) {
-      if (
-        Object.prototype.hasOwnProperty.call(
-          statusCounts,
-          item._id,
-        )
-      ) {
-        statusCounts[item._id] =
-          item.count;
-      }
-    }
-
-    const total =
-      Object.values(
-        statusCounts,
-      ).reduce(
-        (sum, count) =>
-          sum + count,
-        0,
-      );
+  getContactMessageStatistics = async (req, res) => {
+    const statistics = await buildContactMessageStatistics();
 
     return res.status(200).json({
       success: true,
-
-      data: {
-        total,
-
-        ...statusCounts,
-      },
+      data: statistics,
     });
   };
 }
 
-module.exports =
-  new ContactMessageController();
+module.exports = new ContactMessageController();
