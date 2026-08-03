@@ -53,7 +53,4 @@ const journeySchema = new mongoose.Schema(
   },
 );
 
-module.exports = mongoose.model(
-  "Journey",
-  journeySchema,
-);
+module.exports = mongoose.model("Journey", journeySchema);

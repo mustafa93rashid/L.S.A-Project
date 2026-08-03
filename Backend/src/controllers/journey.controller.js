@@ -11,7 +11,7 @@ class JourneyController {
   getPublicJourneys = async (req, res) => {
     const journeys = await Journey.find(
       {},
-      "period title description badge icon side image",
+      "period title description icon side image",
     )
       .sort({ createdAt: 1 })
       .lean();
@@ -25,9 +25,7 @@ class JourneyController {
 
   // ==================== Get All Journeys ====================
   getAllJourneys = async (req, res) => {
-    const journeys = await Journey.find()
-      .sort({ createdAt: 1 })
-      .lean();
+    const journeys = await Journey.find().sort({ createdAt: 1 }).lean();
 
     return res.status(200).json({
       success: true,
@@ -38,13 +36,7 @@ class JourneyController {
 
   // ==================== Create Journey ====================
   createJourney = async (req, res) => {
-    const {
-      period,
-      title,
-      description,
-      icon,
-      side,
-    } = req.body;
+    const { period, title, description, icon, side } = req.body;
 
     let uploadedImage = null;
 
@@ -77,13 +69,10 @@ class JourneyController {
         try {
           await deleteImage(uploadedImage.publicId);
         } catch (deleteError) {
-          console.error(
-            "Failed to delete uploaded journey image:",
-            {
-              publicId: uploadedImage.publicId,
-              message: deleteError.message,
-            },
-          );
+          console.error("Failed to delete uploaded journey image:", {
+            publicId: uploadedImage.publicId,
+            message: deleteError.message,
+          });
         }
       }
 
@@ -102,13 +91,7 @@ class JourneyController {
       });
     }
 
-    const {
-      period,
-      title,
-      description,
-      icon,
-      side,
-    } = req.body;
+    const { period, title, description, icon, side } = req.body;
 
     if (req.file) {
       const updatedImage = await replaceImage({
