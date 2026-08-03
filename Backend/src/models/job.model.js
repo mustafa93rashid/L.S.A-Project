@@ -1,16 +1,8 @@
 const mongoose = require("mongoose");
 
-/*
-|--------------------------------------------------------------------------
-| Constants
-|--------------------------------------------------------------------------
-*/
+// ==================== Job Constants ====================
 
-const JOB_STATUSES = [
-  "draft",
-  "published",
-  "closed",
-];
+const JOB_STATUSES = ["draft", "published", "closed"];
 
 const EMPLOYMENT_TYPES = [
   "Full-Time",
@@ -37,19 +29,11 @@ const JOB_DEPARTMENTS = [
   "Other",
 ];
 
-/*
-|--------------------------------------------------------------------------
-| Job Schema
-|--------------------------------------------------------------------------
-*/
+// ==================== Job Schema ====================
 
 const jobSchema = new mongoose.Schema(
   {
-    /*
-    |--------------------------------------------------------------------------
-    | Basic Information
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Basic Information ====================
 
     title: {
       type: String,
@@ -75,16 +59,13 @@ const jobSchema = new mongoose.Schema(
       maxlength: 5000,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Job Details
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Job Details ====================
 
     location: {
       type: String,
       required: true,
       trim: true,
+      minlength: 2,
       maxlength: 150,
     },
 
@@ -100,65 +81,83 @@ const jobSchema = new mongoose.Schema(
       enum: JOB_DEPARTMENTS,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Responsibilities
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Responsibilities ====================
 
     responsibilities: {
       type: [
         {
           type: String,
           trim: true,
+          minlength: 2,
           maxlength: 300,
         },
       ],
 
-      validate: {
-        validator: (value) =>
-          value.length > 0,
+      required: true,
 
-        message:
-          "At least one responsibility is required.",
-      },
+      default: [],
+
+      validate: [
+        {
+          validator: (value) => {
+            return Array.isArray(value) && value.length > 0;
+          },
+
+          message: "At least one responsibility is required",
+        },
+
+        {
+          validator: (value) => {
+            return Array.isArray(value) && value.length <= 30;
+          },
+
+          message: "Responsibilities cannot exceed 30 items",
+        },
+      ],
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Requirements
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Requirements ====================
 
     requirements: {
       type: [
         {
           type: String,
           trim: true,
+          minlength: 2,
           maxlength: 300,
         },
       ],
 
-      validate: {
-        validator: (value) =>
-          value.length > 0,
+      required: true,
 
-        message:
-          "At least one requirement is required.",
-      },
+      default: [],
+
+      validate: [
+        {
+          validator: (value) => {
+            return Array.isArray(value) && value.length > 0;
+          },
+
+          message: "At least one requirement is required",
+        },
+
+        {
+          validator: (value) => {
+            return Array.isArray(value) && value.length <= 30;
+          },
+
+          message: "Requirements cannot exceed 30 items",
+        },
+      ],
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Publishing
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Publishing ====================
 
     status: {
       type: String,
+      required: true,
       enum: JOB_STATUSES,
       default: "draft",
-      index: true,
     },
 
     deadline: {
@@ -171,11 +170,7 @@ const jobSchema = new mongoose.Schema(
       default: null,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Audit
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Audit Information ====================
 
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -195,11 +190,7 @@ const jobSchema = new mongoose.Schema(
   },
 );
 
-/*
-|--------------------------------------------------------------------------
-| Indexes
-|--------------------------------------------------------------------------
-*/
+// ==================== Indexes ====================
 
 jobSchema.index({
   status: 1,
@@ -224,24 +215,11 @@ jobSchema.index({
   department: "text",
 });
 
-/*
-|--------------------------------------------------------------------------
-| Model
-|--------------------------------------------------------------------------
-*/
+// ==================== Job Model ====================
 
-const Job =
-  mongoose.models.Job ||
-  mongoose.model(
-    "Job",
-    jobSchema,
-  );
+const Job = mongoose.models.Job || mongoose.model("Job", jobSchema);
 
-/*
-|--------------------------------------------------------------------------
-| Exports
-|--------------------------------------------------------------------------
-*/
+// ==================== Exports ====================
 
 module.exports = {
   Job,
