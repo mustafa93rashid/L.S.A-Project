@@ -1,19 +1,24 @@
 const mongoose = require("mongoose");
 
+// ==================== User Schema ====================
+
 const userSchema = new mongoose.Schema(
   {
+    // ==================== Basic Information ====================
+
     fullName: {
       type: String,
       required: true,
       trim: true,
       minlength: 3,
-      maxlength: 20,
+      maxlength: 100,
     },
 
     email: {
       type: String,
       required: true,
       unique: true,
+      index: true,
       lowercase: true,
       trim: true,
     },
@@ -23,6 +28,8 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+
+    // ==================== Authentication ====================
 
     password: {
       type: String,
@@ -34,12 +41,15 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: [
         "superadmin",
+        "Manager",
         "equipmentManager",
         "hrManager",
         "contentManager",
       ],
       required: true,
     },
+
+    // ==================== Profile ====================
 
     department: {
       type: String,
@@ -59,6 +69,30 @@ const userSchema = new mongoose.Schema(
       },
     },
 
+    // ==================== Refresh Token ====================
+
+    refreshToken: {
+      type: String,
+      select: false,
+      default: undefined,
+    },
+
+    // ==================== Password Reset ====================
+
+    passwordResetToken: {
+      type: String,
+      select: false,
+      default: undefined,
+    },
+
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+      default: undefined,
+    },
+
+    // ==================== Password Change ====================
+
     passwordChangeCode: {
       type: String,
       select: false,
@@ -77,6 +111,8 @@ const userSchema = new mongoose.Schema(
       default: undefined,
     },
 
+    // ==================== Account Activation ====================
+
     activationToken: {
       type: String,
       select: false,
@@ -94,6 +130,8 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
+    // ==================== Account Status ====================
+
     isActive: {
       type: Boolean,
       default: true,
@@ -104,6 +142,8 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
+    // ==================== Audit Information ====================
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -113,8 +153,10 @@ const userSchema = new mongoose.Schema(
   {
     timestamps: true,
     versionKey: false,
-  }
+  },
 );
+
+// ==================== User Model ====================
 
 const User = mongoose.model("User", userSchema);
 

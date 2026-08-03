@@ -1,105 +1,151 @@
-const { body, param } = require("express-validator");
+const {
+  body,
+  param,
+} = require("express-validator");
 
 const validate = require("../middlewares/validate");
 
+// ==================== Allowed User Roles ====================
+
 const allowedRoles = [
   "superadmin",
+  "manager",
   "equipmentManager",
   "hrManager",
-  "contentManager"
+  "contentManager",
 ];
 
-// Update current profile validation
+// ==================== Update Profile Validation ====================
+
 const updateProfileValidation = [
   body("fullName")
     .optional()
     .trim()
     .notEmpty()
-    .withMessage("Full name cannot be empty")
+    .withMessage(
+      "Full name cannot be empty",
+    )
     .bail()
-    .isLength({ min: 2, max: 100 })
-    .withMessage("Full name must be between 2 and 100 characters"),
+    .isLength({
+      min: 3,
+      max: 100,
+    })
+    .withMessage(
+      "Full name must be between 3 and 100 characters",
+    ),
 
   body("email")
     .optional()
     .trim()
     .notEmpty()
-    .withMessage("Email cannot be empty")
+    .withMessage(
+      "Email cannot be empty",
+    )
     .bail()
     .isEmail()
-    .withMessage("Please enter a valid email address")
+    .withMessage(
+      "Please enter a valid email address",
+    )
     .normalizeEmail(),
 
-  body("employeeCode")
+  body("phone")
     .optional()
     .trim()
     .notEmpty()
-    .withMessage("Employee code cannot be empty")
-    .bail()
-    .isLength({ min: 2, max: 50 })
-    .withMessage("Employee code must be between 2 and 50 characters"),
-
-  body("mobile")
-    .optional()
-    .trim()
-    .notEmpty()
-    .withMessage("Mobile number cannot be empty")
+    .withMessage(
+      "Phone number cannot be empty",
+    )
     .bail()
     .matches(/^\+?[0-9]{7,15}$/)
-    .withMessage("Please enter a valid mobile number"),
+    .withMessage(
+      "Please enter a valid phone number",
+    ),
 
   body("department")
     .optional()
     .trim()
     .notEmpty()
-    .withMessage("Department cannot be empty")
+    .withMessage(
+      "Department cannot be empty",
+    )
     .bail()
-    .isLength({ min: 2, max: 100 })
-    .withMessage("Department must be between 2 and 100 characters"),
+    .isLength({
+      min: 2,
+      max: 100,
+    })
+    .withMessage(
+      "Department must be between 2 and 100 characters",
+    ),
 
-  body()
-    .custom((value, { req }) => {
-      const hasTextField = [
+  body().custom(
+    (value, { req }) => {
+      const editableFields = [
         "fullName",
         "email",
-        "employeeCode",
-        "mobile",
+        "phone",
         "department",
-      ].some((field) => req.body[field] !== undefined);
+      ];
 
-      if (!hasTextField && !req.file) {
-        throw new Error("At least one profile field or image is required");
+      const hasTextField =
+        editableFields.some(
+          (field) =>
+            req.body[field] !==
+            undefined,
+        );
+
+      if (
+        !hasTextField &&
+        !req.file
+      ) {
+        throw new Error(
+          "At least one profile field or image is required",
+        );
       }
 
       return true;
-    }),
+    },
+  ),
 
   validate,
 ];
 
-// Create user validation
+// ==================== Create User Validation ====================
+
 const createUserValidation = [
   body("fullName")
     .trim()
     .notEmpty()
-    .withMessage("Full name is required")
+    .withMessage(
+      "Full name is required",
+    )
     .bail()
-    .isLength({ min: 2, max: 100 })
-    .withMessage("Full name must be between 2 and 100 characters"),
+    .isLength({
+      min: 3,
+      max: 100,
+    })
+    .withMessage(
+      "Full name must be between 3 and 100 characters",
+    ),
 
   body("email")
     .trim()
     .notEmpty()
-    .withMessage("Email is required")
+    .withMessage(
+      "Email is required",
+    )
     .bail()
     .isEmail()
-    .withMessage("Please enter a valid email address")
+    .withMessage(
+      "Please enter a valid email address",
+    )
     .normalizeEmail(),
 
   body("role")
     .trim()
     .notEmpty()
-    .withMessage("Role is required")
+    .withMessage(
+      "Role is required",
+    )
     .bail()
     .isIn(allowedRoles)
     .withMessage(
@@ -109,61 +155,116 @@ const createUserValidation = [
   validate,
 ];
 
-// MongoDB user ID validation
-const userIdValidation = [
-  param("id")
+// ==================== Activate Account Validation ====================
+
+const activateAccountValidation = [
+  body("token")
+    .trim()
     .notEmpty()
-    .withMessage("User ID is required")
+    .withMessage("Activation token is required"),
+
+  body("password")
+    .notEmpty()
+    .withMessage("Password is required")
     .bail()
-    .isMongoId()
-    .withMessage("Invalid user ID"),
+    .isString()
+    .withMessage("Password must be a string")
+    .bail()
+    .isLength({ min: 8, max: 128 })
+    .withMessage("Password must be between 8 and 128 characters")
+    .bail()
+    .matches(/[a-z]/)
+    .withMessage("Password must contain at least one lowercase letter")
+    .bail()
+    .matches(/[A-Z]/)
+    .withMessage("Password must contain at least one uppercase letter")
+    .bail()
+    .matches(/\d/)
+    .withMessage("Password must contain at least one number")
+    .bail()
+    .matches(/[@$!%*?&#^()_\-+=]/)
+    .withMessage("Password must contain at least one special character"),
+
+  body("confirmPassword")
+    .notEmpty()
+    .withMessage("Password confirmation is required")
+    .bail()
+    .custom((value, { req }) => {
+      if (value !== req.body.password) {
+        throw new Error("Password confirmation does not match");
+      }
+
+      return true;
+    }),
 
   validate,
 ];
 
-// Update user status validation
-const updateUserStatusValidation = [
+// ==================== User ID Validation ====================
+
+const userIdValidation = [
   param("id")
     .notEmpty()
-    .withMessage("User ID is required")
+    .withMessage(
+      "User ID is required",
+    )
     .bail()
     .isMongoId()
-    .withMessage("Invalid user ID"),
+    .withMessage(
+      "Invalid user ID",
+    ),
 
+  validate,
+];
+
+// ==================== Update User Status Validation ====================
+
+const updateUserStatusValidation = [
   body("isActive")
-    .notEmpty()
-    .withMessage("Account status is required")
+    .exists({
+      checkNull: true,
+    })
+    .withMessage(
+      "Account status is required",
+    )
     .bail()
-    .isBoolean()
-    .withMessage("Account status must be true or false")
+    .isBoolean({
+      strict: true,
+    })
+    .withMessage(
+      "Account status must be true or false",
+    )
     .toBoolean(),
 
   validate,
 ];
 
-const updateUserRoleValidation = [
-  param("id")
-    .isMongoId()
-    .withMessage("Invalid user ID"),
+// ==================== Update User Role Validation ====================
 
+const updateUserRoleValidation = [
   body("role")
     .trim()
     .notEmpty()
-    .withMessage("Role is required")
+    .withMessage(
+      "Role is required",
+    )
     .bail()
-    .isIn([
-      "equipmentManager",
-      "hrManager",
-      "contentManager",
-    ])
-    .withMessage("Invalid role"),
+    .isIn(allowedRoles)
+    .withMessage(
+      `Role must be one of: ${allowedRoles.join(", ")}`,
+    ),
 
   validate,
 ];
 
+// ==================== Exports ====================
+
 module.exports = {
+  allowedRoles,
+
   updateProfileValidation,
   createUserValidation,
+  activateAccountValidation,
   userIdValidation,
   updateUserStatusValidation,
   updateUserRoleValidation,

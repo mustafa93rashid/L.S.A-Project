@@ -6,31 +6,39 @@ const authController = require("../controllers/auth.controller");
 const auth = require("../middlewares/auth");
 const asyncHandler = require("../utils/asyncHandler");
 
-const {loginValidation, requestPasswordChangeValidation, verifyPasswordChangeValidation, resetPasswordValidation, forgotPasswordValidation} = require("../validation/auth.validate");
-const {signinLimiter, passwordChangeRequestLimiter, passwordChangeVerifyLimiter, refreshTokenLimiter} = require("../middlewares/limiter");
+const {loginValidation, requestPasswordChangeValidation, verifyPasswordChangeValidation, forgotPasswordValidation, resetPasswordValidation} = require("../validation/auth.validate");
+const {signinLimiter, passwordChangeRequestLimiter, passwordChangeVerifyLimiter,forgotPasswordLimiter, resetPasswordLimiter,refreshTokenLimiter} = require("../middlewares/limiter");
 
-// Login
+// ==================== Login ====================
+
 router.post("/login", [signinLimiter, ...loginValidation], asyncHandler(authController.login));
 
-// Logout
+// ==================== Logout ====================
+
 router.post("/logout", [auth], asyncHandler(authController.logout));
 
-// Get current user
+// ==================== Get Current User ====================
+
 router.get("/me", [auth], asyncHandler(authController.getCurrentUser));
 
-// Request password change verification code
+// ==================== Request Password Change ====================
+
 router.post("/change-password/request", [auth, passwordChangeRequestLimiter, ...requestPasswordChangeValidation], asyncHandler(authController.requestPasswordChange));
 
-// Verify code and change password
+// ==================== Verify Password Change ====================
+
 router.post("/change-password/verify", [auth, passwordChangeVerifyLimiter, ...verifyPasswordChangeValidation], asyncHandler(authController.verifyPasswordChange));
 
-// Forgot password
-router.post("/forgot-password", [...forgotPasswordValidation], asyncHandler(authController.forgotPassword));
+// ==================== Forgot Password ====================
 
-// Reset password
-router.post("/reset-password/:token", [...resetPasswordValidation], asyncHandler(authController.resetPassword));
+router.post("/forgot-password", [forgotPasswordLimiter, ...forgotPasswordValidation], asyncHandler(authController.forgotPassword));
 
-// Refresh access token
+// ==================== Reset Password ====================
+
+router.post("/reset-password/:token", [resetPasswordLimiter, ...resetPasswordValidation], asyncHandler(authController.resetPassword));
+
+// ==================== Refresh Access Token ====================
+
 router.post("/refresh-token", [refreshTokenLimiter], asyncHandler(authController.refreshToken));
 
 module.exports = router;

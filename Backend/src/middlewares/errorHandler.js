@@ -1,59 +1,88 @@
-const multer = require('multer');
+const multer = require("multer");
+
+// ==================== Global Error Handler ====================
 
 const errorHandler = (err, req, res, next) => {
-
   if (res.headersSent) {
     return next(err);
   }
 
-  if (err instanceof multer.MulterError) {
-    let message = 'Upload error';
+  // ==================== Multer Errors ====================
 
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      message = 'File size must not exceed 5MB';
-    } else if (err.code === 'LIMIT_FILE_COUNT') {
-      message = 'Too many files uploaded';
-    } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-      message = 'Unexpected file field';
+  if (err instanceof multer.MulterError) {
+    let message = "Upload error";
+
+    switch (err.code) {
+      case "LIMIT_FILE_SIZE":
+        message = "File size must not exceed 5 MB";
+        break;
+
+      case "LIMIT_FILE_COUNT":
+        message = "Too many files uploaded";
+        break;
+
+      case "LIMIT_UNEXPECTED_FILE":
+        message = "Unexpected file field";
+        break;
+
+      default:
+        message = err.message;
     }
 
     return res.status(400).json({
       success: false,
       message,
-      error: err.code,
     });
   }
 
-  if (err?.message && /Only JPEG, PNG, GIF, and WebP images are allowed/i.test(err.message)) {
+  // ==================== Custom Application Errors ====================
+
+  if (err.statusCode) {
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.message,
+    });
+  }
+
+  // ==================== Mongoose Validation Error ====================
+
+  if (err.name === "ValidationError") {
     return res.status(400).json({
       success: false,
       message: err.message,
     });
   }
 
-  if (err?.name === 'ValidationError') {
+  // ==================== Invalid ObjectId ====================
+
+  if (err.name === "CastError") {
     return res.status(400).json({
       success: false,
-      message: err.message,
+      message: "Invalid resource ID",
     });
   }
 
-  if (err?.code === 11000) {
+  // ==================== Duplicate Key ====================
+
+  if (err.code === 11000) {
+    const field = Object.keys(err.keyPattern)[0];
+
     return res.status(409).json({
       success: false,
-      message: 'Duplicate key error',
+      message: `${field} already exists`,
     });
   }
 
-  
-  console.error(err.stack);
+  // ==================== Internal Server Error ====================
 
-  res.status(err.statusCode || 500).json({
+  console.error(err);
+
+  return res.status(500).json({
     success: false,
-    message: err.message || "Internal Server Error",
+    message: "Internal Server Error",
     ...(process.env.NODE_ENV === "development" && {
       stack: err.stack,
-    })
+    }),
   });
 };
 

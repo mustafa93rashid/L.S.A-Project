@@ -1,46 +1,35 @@
 const multer = require("multer");
 
-const {
-  IMAGE_MIME_TYPES,
-} = require("../services/cloudinary.service");
+const { IMAGE_MIME_TYPES } = require("../services/cloudinary.service");
 
-/*
-|--------------------------------------------------------------------------
-| Constants
-|--------------------------------------------------------------------------
-*/
+// ==================== Upload Constants ====================
 
-const MAX_IMAGE_SIZE =
-  5 * 1024 * 1024;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
-const MAX_DOCUMENT_SIZE =
-  10 * 1024 * 1024;
+const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
+
+const DEFAULT_IMAGE_FILE_LIMIT = 10;
+
+const DEFAULT_DOCUMENT_FILE_LIMIT = 5;
+
+const PROJECT_IMAGE_FILE_LIMIT = 32;
+
+// ==================== Document MIME Types ====================
 
 const DOCUMENT_MIME_TYPES = [
   "application/pdf",
-
   "application/msword",
-
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
-/*
-|--------------------------------------------------------------------------
-| Error Helpers
-|--------------------------------------------------------------------------
-*/
+// ==================== Multer Memory Storage ====================
 
-// ==================================================
-// Create Multer Error
-// ==================================================
+const memoryStorage = multer.memoryStorage();
 
-const createUploadError = (
-  message,
-  code = "INVALID_FILE_TYPE",
-) => {
-  const error = new Error(
-    message,
-  );
+// ==================== Create Upload Error ====================
+
+const createUploadError = (message, code = "INVALID_FILE_TYPE") => {
+  const error = new Error(message);
 
   error.statusCode = 400;
   error.code = code;
@@ -48,33 +37,14 @@ const createUploadError = (
   return error;
 };
 
-/*
-|--------------------------------------------------------------------------
-| File Filters
-|--------------------------------------------------------------------------
-*/
+// ==================== Image File Filter ====================
 
-// ==================================================
-// Image File Filter
-// ==================================================
-
-const imageFileFilter = (
-  req,
-  file,
-  cb,
-) => {
-  if (
-    IMAGE_MIME_TYPES.includes(
-      file.mimetype,
-    )
-  ) {
-    return cb(
-      null,
-      true,
-    );
+const imageFileFilter = (req, file, callback) => {
+  if (IMAGE_MIME_TYPES.includes(file.mimetype)) {
+    return callback(null, true);
   }
 
-  return cb(
+  return callback(
     createUploadError(
       "Only JPEG, PNG, GIF, and WebP images are allowed.",
       "INVALID_IMAGE_TYPE",
@@ -83,35 +53,14 @@ const imageFileFilter = (
   );
 };
 
-// ==================================================
-// Document File Filter
-// ==================================================
-/*
-| Accepts:
-|
-| - PDF
-| - DOC
-| - DOCX
-|
-*/
+// ==================== Document File Filter ====================
 
-const documentFileFilter = (
-  req,
-  file,
-  cb,
-) => {
-  if (
-    DOCUMENT_MIME_TYPES.includes(
-      file.mimetype,
-    )
-  ) {
-    return cb(
-      null,
-      true,
-    );
+const documentFileFilter = (req, file, callback) => {
+  if (DOCUMENT_MIME_TYPES.includes(file.mimetype)) {
+    return callback(null, true);
   }
 
-  return cb(
+  return callback(
     createUploadError(
       "Only PDF, DOC, and DOCX files are allowed.",
       "INVALID_DOCUMENT_TYPE",
@@ -120,185 +69,116 @@ const documentFileFilter = (
   );
 };
 
-/*
-|--------------------------------------------------------------------------
-| Multer Configurations
-|--------------------------------------------------------------------------
-*/
+// ==================== Create Image Upload ====================
 
-// ==================================================
-// Image Upload Configuration
-// ==================================================
-
-const imageUpload = multer({
-  storage:
-    multer.memoryStorage(),
-
-  fileFilter:
-    imageFileFilter,
-
-  limits: {
-    fileSize:
-      MAX_IMAGE_SIZE,
-
-    files: 20,
-  },
-});
-
-// ==================================================
-// Document Upload Configuration
-// ==================================================
-
-const documentUpload = multer({
-  storage:
-    multer.memoryStorage(),
-
-  fileFilter:
-    documentFileFilter,
-
-  limits: {
-    fileSize:
-      MAX_DOCUMENT_SIZE,
-
-    files: 20,
-  },
-});
-
-/*
-|--------------------------------------------------------------------------
-| Generic Image Upload Middlewares
-|--------------------------------------------------------------------------
-*/
-
-// ==================================================
-// Upload Single Image
-// ==================================================
-
-const uploadSingle = (
-  fieldName,
-) => {
-  return imageUpload.single(
-    fieldName,
-  );
+const createImageUpload = (filesLimit = DEFAULT_IMAGE_FILE_LIMIT) => {
+  return multer({
+    storage: memoryStorage,
+    fileFilter: imageFileFilter,
+    limits: {
+      fileSize: MAX_IMAGE_SIZE,
+      files: filesLimit,
+    },
+  });
 };
 
-// ==================================================
-// Upload Image Array
-// ==================================================
+// ==================== Create Document Upload ====================
 
-const uploadArray = (
-  fieldName,
-  maxCount = 10,
-) => {
-  return imageUpload.array(
-    fieldName,
-    maxCount,
-  );
+const createDocumentUpload = (filesLimit = DEFAULT_DOCUMENT_FILE_LIMIT) => {
+  return multer({
+    storage: memoryStorage,
+    fileFilter: documentFileFilter,
+    limits: {
+      fileSize: MAX_DOCUMENT_SIZE,
+      files: filesLimit,
+    },
+  });
 };
 
-// ==================================================
-// Upload Image Fields
-// ==================================================
+// ==================== Image Upload Configurations ====================
 
-const uploadFields = (
-  fields,
-) => {
-  return imageUpload.fields(
-    fields,
-  );
+const imageUpload = createImageUpload(DEFAULT_IMAGE_FILE_LIMIT);
+
+const projectImageUpload = createImageUpload(PROJECT_IMAGE_FILE_LIMIT);
+
+// ==================== Document Upload Configurations ====================
+
+const documentUpload = createDocumentUpload(DEFAULT_DOCUMENT_FILE_LIMIT);
+
+const singleDocumentUpload = createDocumentUpload(1);
+
+// ==================== Upload Single Image ====================
+
+const uploadSingle = (fieldName) => {
+  return imageUpload.single(fieldName);
 };
 
-/*
-|--------------------------------------------------------------------------
-| Generic Document Upload Middlewares
-|--------------------------------------------------------------------------
-*/
+// ==================== Upload Image Array ====================
 
-// ==================================================
-// Upload Single Document
-// ==================================================
-
-const uploadSingleDocument = (
-  fieldName,
-) => {
-  return documentUpload.single(
-    fieldName,
-  );
+const uploadArray = (fieldName, maxCount = 10) => {
+  return createImageUpload(maxCount).array(fieldName, maxCount);
 };
 
-// ==================================================
-// Upload Document Array
-// ==================================================
+// ==================== Upload Image Fields ====================
 
-const uploadDocumentArray = (
-  fieldName,
-  maxCount = 10,
-) => {
-  return documentUpload.array(
-    fieldName,
-    maxCount,
+const uploadFields = (fields) => {
+  const totalFiles = fields.reduce(
+    (total, field) => total + (field.maxCount || 1),
+    0,
   );
+
+  return createImageUpload(totalFiles).fields(fields);
 };
 
-// ==================================================
-// Upload Document Fields
-// ==================================================
+// ==================== Upload Single Document ====================
 
-const uploadDocumentFields = (
-  fields,
-) => {
-  return documentUpload.fields(
-    fields,
-  );
+const uploadSingleDocument = (fieldName) => {
+  return singleDocumentUpload.single(fieldName);
 };
 
-/*
-|--------------------------------------------------------------------------
-| Ready Image Upload Middlewares
-|--------------------------------------------------------------------------
-*/
+// ==================== Upload Document Array ====================
 
-// ==================================================
-// Partner Logo
-// ==================================================
+const uploadDocumentArray = (fieldName, maxCount = 5) => {
+  return createDocumentUpload(maxCount).array(fieldName, maxCount);
+};
+
+// ==================== Upload Document Fields ====================
+
+const uploadDocumentFields = (fields) => {
+  const totalFiles = fields.reduce(
+    (total, field) => total + (field.maxCount || 1),
+    0,
+  );
+
+  return createDocumentUpload(totalFiles).fields(fields);
+};
+
+// ==================== Partner Logo Upload ====================
 
 const uploadPartnerLogo = () => {
-  return imageUpload.single(
-    "logo",
-  );
+  return createImageUpload(1).single("logo");
 };
 
-// ==================================================
-// Journey Image
-// ==================================================
+// ==================== Journey Image Upload ====================
 
 const uploadJourneyImage = () => {
-  return imageUpload.single(
-    "image",
-  );
+  return createImageUpload(1).single("image");
 };
 
-// ==================================================
-// Team Member Image
-// ==================================================
+// ==================== Team Member Image Upload ====================
 
 const uploadTeamMemberImage = () => {
-  return imageUpload.single(
-    "image",
-  );
+  return createImageUpload(1).single("image");
 };
 
-// ==================================================
-// Service Images
-// ==================================================
+// ==================== Service Images Upload ====================
 
 const uploadServiceImages = () => {
-  return imageUpload.fields([
+  return createImageUpload(2).fields([
     {
       name: "cardImage",
       maxCount: 1,
     },
-
     {
       name: "heroImage",
       maxCount: 1,
@@ -306,112 +186,68 @@ const uploadServiceImages = () => {
   ]);
 };
 
-// ==================================================
-// Project Images
-// ==================================================
+// ==================== Project Images Upload ====================
 
 const uploadProjectImages = () => {
-  return imageUpload.fields([
+  return projectImageUpload.fields([
     {
       name: "cardImage",
       maxCount: 1,
     },
-
     {
       name: "heroImage",
       maxCount: 1,
     },
-
     {
       name: "gallery",
       maxCount: 20,
     },
-
     {
-      name:
-        "certificateImages",
+      name: "certificateImages",
       maxCount: 10,
     },
   ]);
 };
 
-// ==================================================
-// Equipment Image
-// ==================================================
-/*
-| Safety certificate is stored as text.
-|
-| The middleware accepts only:
-|
-| image
-|
-*/
+// ==================== Equipment Image Upload ====================
 
 const uploadEquipmentImage = () => {
-  return imageUpload.single(
-    "image",
-  );
+  return createImageUpload(1).single("image");
 };
 
-/*
-|--------------------------------------------------------------------------
-| Ready Document Upload Middlewares
-|--------------------------------------------------------------------------
-*/
+// ==================== User Avatar Upload ====================
 
-// ==================================================
-// Resume
-// ==================================================
-/*
-| Legacy field:
-|
-| resume
-|
-| Keep this middleware if older controllers use it.
-|
-*/
+const uploadUserAvatar = () => {
+  return createImageUpload(1).single("avatar");
+};
+
+// ==================== Resume Upload ====================
 
 const uploadResume = () => {
-  return documentUpload.single(
-    "resume",
-  );
+  return singleDocumentUpload.single("resume");
 };
 
-// ==================================================
-// Job Request CV
-// ==================================================
-/*
-| Job application popup field:
-|
-| cv
-|
-*/
+// ==================== Job Request CV Upload ====================
 
 const uploadJobRequestCv = () => {
-  return documentUpload.single(
-    "cv",
-  );
+  return singleDocumentUpload.single("cv");
 };
 
-// ==================================================
-// Certificate
-// ==================================================
+// ==================== Certificate Upload ====================
 
 const uploadCertificate = () => {
-  return documentUpload.single(
-    "certificate",
-  );
+  return singleDocumentUpload.single("certificate");
 };
 
-/*
-|--------------------------------------------------------------------------
-| Exports
-|--------------------------------------------------------------------------
-*/
+// ==================== Exports ====================
 
 module.exports = {
   MAX_IMAGE_SIZE,
   MAX_DOCUMENT_SIZE,
+
+  DEFAULT_IMAGE_FILE_LIMIT,
+  DEFAULT_DOCUMENT_FILE_LIMIT,
+  PROJECT_IMAGE_FILE_LIMIT,
 
   DOCUMENT_MIME_TYPES,
 
@@ -419,6 +255,9 @@ module.exports = {
 
   imageFileFilter,
   documentFileFilter,
+
+  createImageUpload,
+  createDocumentUpload,
 
   uploadSingle,
   uploadArray,
@@ -434,6 +273,7 @@ module.exports = {
   uploadServiceImages,
   uploadProjectImages,
   uploadEquipmentImage,
+  uploadUserAvatar,
 
   uploadResume,
   uploadJobRequestCv,

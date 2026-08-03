@@ -1,52 +1,145 @@
-const cookieConfig = {
+// ==================== Cookie Configuration ====================
+
+const isProduction =
+  process.env.NODE_ENV === "production";
+
+const ACCESS_TOKEN_MAX_AGE =
+  60 * 60 * 1000; // 1 hour
+
+const REFRESH_TOKEN_MAX_AGE =
+  7 * 24 * 60 * 60 * 1000; // 7 days
+
+const DEFAULT_COOKIE_MAX_AGE =
+  15 * 60 * 1000; // 15 minutes
+
+// ==================== Base Cookie Options ====================
+
+const baseCookieOptions = {
   httpOnly: true,
-  secure: false,
-  sameSite: "strict",
-  maxAge: 15 * 60 * 1000, // 15 minutes
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  path: "/",
 };
 
+// ==================== Cookies Service ====================
+
 class CookiesService {
-  getData = (req, key) => {
-    return req.cookies[key];
-  };
+  // ==================== Set Cookie ====================
 
-  setData = (res, key, value) => {
-    res.cookie(key, value, cookieConfig);
-  };
-
-  clearData = (res, key) => {
-    res.clearCookie(key);
-  };
-
-  setAccessToken = (res, value) => {
-    res.cookie("accessToken", value, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "strict",
-      maxAge: 60 * 60 * 1000, // 1 hour
+  setData = (
+    res,
+    key,
+    value,
+    maxAge = DEFAULT_COOKIE_MAX_AGE,
+  ) => {
+    res.cookie(key, value, {
+      ...baseCookieOptions,
+      maxAge,
     });
   };
 
-  setRefreshToken = (res, value) => {
-    res.cookie("refreshToken", value, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  // ==================== Get Cookie ====================
+
+  getData = (
+    req,
+    key,
+  ) => {
+    return req.cookies?.[key] || null;
+  };
+
+  // ==================== Clear Cookie ====================
+
+  clearData = (
+    res,
+    key,
+  ) => {
+    res.clearCookie(key, {
+      ...baseCookieOptions,
     });
   };
 
-  getAccessToken = (req) => {
-    return req.cookies["accessToken"];
+  // ==================== Set Access Token ====================
+
+  setAccessToken = (
+    res,
+    accessToken,
+  ) => {
+    this.setData(
+      res,
+      "accessToken",
+      accessToken,
+      ACCESS_TOKEN_MAX_AGE,
+    );
   };
 
-  getRefreshToken = (req) => {
-    return req.cookies["refreshToken"];
+  // ==================== Set Refresh Token ====================
+
+  setRefreshToken = (
+    res,
+    refreshToken,
+  ) => {
+    this.setData(
+      res,
+      "refreshToken",
+      refreshToken,
+      REFRESH_TOKEN_MAX_AGE,
+    );
   };
 
-  clearTokens = (res) => {
-    this.clearData(res, "accessToken");
-    this.clearData(res, "refreshToken");
+  // ==================== Set Authentication Tokens ====================
+
+  setTokens = (
+    res,
+    accessToken,
+    refreshToken,
+  ) => {
+    this.setAccessToken(
+      res,
+      accessToken,
+    );
+
+    this.setRefreshToken(
+      res,
+      refreshToken,
+    );
+  };
+
+  // ==================== Get Access Token ====================
+
+  getAccessToken = (
+    req,
+  ) => {
+    return this.getData(
+      req,
+      "accessToken",
+    );
+  };
+
+  // ==================== Get Refresh Token ====================
+
+  getRefreshToken = (
+    req,
+  ) => {
+    return this.getData(
+      req,
+      "refreshToken",
+    );
+  };
+
+  // ==================== Clear Authentication Tokens ====================
+
+  clearTokens = (
+    res,
+  ) => {
+    this.clearData(
+      res,
+      "accessToken",
+    );
+
+    this.clearData(
+      res,
+      "refreshToken",
+    );
   };
 }
 

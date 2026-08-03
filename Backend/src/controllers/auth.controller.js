@@ -5,18 +5,48 @@ const User = require("../models/user.model");
 const jwtService = require("../utils/jwtService");
 const passwordService = require("../utils/passwordService");
 const cookiesService = require("../utils/cookiesService");
-
 const verificationCodeService = require("../utils/verificationCodeService");
+
 const emailService = require("../services/email.service");
 
+// ==================== Hash Refresh Token ====================
+
+const hashRefreshToken = (refreshToken) => {
+  return crypto
+    .createHash("sha256")
+    .update(refreshToken)
+    .digest("hex");
+};
+
+// ==================== Compare Refresh Tokens ====================
+
+const compareRefreshTokens = (providedTokenHash, storedTokenHash) => {
+  if (!providedTokenHash || !storedTokenHash) {
+    return false;
+  }
+
+  const providedBuffer = Buffer.from(providedTokenHash, "hex");
+
+  const storedBuffer = Buffer.from(storedTokenHash, "hex");
+
+  if (providedBuffer.length !== storedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(providedBuffer, storedBuffer);
+};
+
+// ==================== Auth Controller ====================
+
 class AuthController {
-  // Login
+  // ==================== Login ====================
+
   login = async (req, res) => {
     const { email, password } = req.body;
 
     let user = await User.findOne({
       email: email.toLowerCase().trim(),
-    }).select("+password");
+    }).select("+password +refreshToken");
 
     if (!user) {
       return res.status(400).json({
@@ -37,6 +67,13 @@ class AuthController {
       });
     }
 
+    if (!user.isAccountActivated) {
+      return res.status(403).json({
+        success: false,
+        message: "Account has not been activated",
+      });
+    }
+
     if (!user.isActive) {
       return res.status(403).json({
         success: false,
@@ -45,7 +82,7 @@ class AuthController {
     }
 
     const payload = {
-      id: user._id,
+      id: user._id.toString(),
       role: user.role,
     };
 
@@ -53,27 +90,48 @@ class AuthController {
 
     const refreshToken = jwtService.generateRefreshToken(payload);
 
+    user.refreshToken = hashRefreshToken(refreshToken);
+
     user.lastLoginAt = new Date();
 
     await user.save({
       validateBeforeSave: false,
     });
 
-    user = user.toObject();
-    delete user.password;
+    const userResponse = user.toObject();
 
-    cookiesService.setAccessToken(res, accessToken);
-    cookiesService.setRefreshToken(res, refreshToken);
+    delete userResponse.password;
+    delete userResponse.refreshToken;
+    delete userResponse.passwordResetToken;
+    delete userResponse.passwordResetExpires;
+    delete userResponse.passwordChangeCode;
+    delete userResponse.passwordChangeCodeExpires;
+    delete userResponse.pendingPassword;
+    delete userResponse.activationToken;
+    delete userResponse.activationTokenExpires;
+
+    cookiesService.setTokens(
+      res,
+      accessToken,
+      refreshToken,
+    );
 
     return res.status(200).json({
       success: true,
       message: "User logged in successfully",
-      data: user,
+      data: userResponse,
     });
   };
 
-  // Logout
+  // ==================== Logout ====================
+
   logout = async (req, res) => {
+    await User.findByIdAndUpdate(req.user._id, {
+      $unset: {
+        refreshToken: 1,
+      },
+    });
+
     cookiesService.clearTokens(res);
 
     return res.status(200).json({
@@ -82,33 +140,22 @@ class AuthController {
     });
   };
 
-  // Get current user
+  // ==================== Get Current User ====================
+
   getCurrentUser = async (req, res) => {
-    const userId = req.user?._id || req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    const user = await User.findById(userId).populate(
-      "createdBy",
-      "fullName email role",
-    );
+    const user = await User.findById(req.user._id)
+      .select(
+        "_id fullName email phone role department avatar isAccountActivated isActive lastLoginAt createdBy createdAt updatedAt",
+      )
+      .populate(
+        "createdBy",
+        "fullName email role",
+      );
 
     if (!user) {
       return res.status(404).json({
         success: false,
         message: "User not found",
-      });
-    }
-
-    if (!user.isActive) {
-      return res.status(403).json({
-        success: false,
-        message: "Account is inactive",
       });
     }
 
@@ -119,20 +166,12 @@ class AuthController {
     });
   };
 
-  // Request password change
+  // ==================== Request Password Change ====================
+
   requestPasswordChange = async (req, res) => {
     const { currentPassword } = req.body;
 
-    const userId = req.user?._id || req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    const user = await User.findById(userId).select(
+    const user = await User.findById(req.user._id).select(
       "+password +passwordChangeCode +passwordChangeCodeExpires",
     );
 
@@ -140,13 +179,6 @@ class AuthController {
       return res.status(404).json({
         success: false,
         message: "User not found",
-      });
-    }
-
-    if (!user.isActive) {
-      return res.status(403).json({
-        success: false,
-        message: "Account is inactive",
       });
     }
 
@@ -162,22 +194,38 @@ class AuthController {
       });
     }
 
-    const verificationCode = verificationCodeService.generateVerificationCode();
+    const verificationCode =
+      verificationCodeService.generateVerificationCode();
 
     user.passwordChangeCode =
-      verificationCodeService.hashVerificationCode(verificationCode);
+      verificationCodeService.hashVerificationCode(
+        verificationCode,
+      );
 
-    user.passwordChangeCodeExpires = new Date(Date.now() + 10 * 60 * 1000);
+    user.passwordChangeCodeExpires = new Date(
+      Date.now() + 10 * 60 * 1000,
+    );
 
     await user.save({
       validateBeforeSave: false,
     });
 
-    await emailService.sendPasswordChangeVerificationEmail({
-      to: user.email,
-      fullName: user.fullName,
-      verificationCode,
-    });
+    try {
+      await emailService.sendPasswordChangeVerificationEmail({
+        to: user.email,
+        fullName: user.fullName,
+        verificationCode,
+      });
+    } catch (error) {
+      user.passwordChangeCode = undefined;
+      user.passwordChangeCodeExpires = undefined;
+
+      await user.save({
+        validateBeforeSave: false,
+      });
+
+      throw error;
+    }
 
     return res.status(200).json({
       success: true,
@@ -185,21 +233,16 @@ class AuthController {
     });
   };
 
-  // Verify password change
+  // ==================== Verify Password Change ====================
+
   verifyPasswordChange = async (req, res) => {
-    const { verificationCode, newPassword } = req.body;
+    const {
+      verificationCode,
+      newPassword,
+    } = req.body;
 
-    const userId = req.user?._id || req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    const user = await User.findById(userId).select(
-      "+password +passwordChangeCode +passwordChangeCodeExpires",
+    const user = await User.findById(req.user._id).select(
+      "+password +passwordChangeCode +passwordChangeCodeExpires +refreshToken",
     );
 
     if (!user) {
@@ -216,19 +259,30 @@ class AuthController {
       });
     }
 
-    if (user.passwordChangeCodeExpires < Date.now()) {
+    if (
+      !user.passwordChangeCodeExpires ||
+      user.passwordChangeCodeExpires < Date.now()
+    ) {
+      user.passwordChangeCode = undefined;
+      user.passwordChangeCodeExpires = undefined;
+
+      await user.save({
+        validateBeforeSave: false,
+      });
+
       return res.status(400).json({
         success: false,
         message: "Verification code has expired",
       });
     }
 
-    const isValid = verificationCodeService.verifyVerificationCode(
-      verificationCode,
-      user.passwordChangeCode,
-    );
+    const isVerificationCodeValid =
+      verificationCodeService.verifyVerificationCode(
+        verificationCode,
+        user.passwordChangeCode,
+      );
 
-    if (!isValid) {
+    if (!isVerificationCodeValid) {
       return res.status(400).json({
         success: false,
         message: "Invalid verification code",
@@ -251,6 +305,7 @@ class AuthController {
 
     user.passwordChangeCode = undefined;
     user.passwordChangeCodeExpires = undefined;
+    user.refreshToken = undefined;
 
     await user.save();
 
@@ -263,6 +318,7 @@ class AuthController {
   };
 
   // ==================== Forgot Password ====================
+
   forgotPassword = async (req, res) => {
     const { email } = req.body;
 
@@ -273,27 +329,39 @@ class AuthController {
       email: email.toLowerCase().trim(),
     });
 
-    if (!user) {
+    if (
+      !user ||
+      !user.isAccountActivated ||
+      !user.isActive
+    ) {
       return res.status(200).json({
         success: true,
         message: responseMessage,
       });
     }
 
-    const resetToken = verificationCodeService.generateResetToken();
+    const resetToken =
+      verificationCodeService.generateResetToken();
 
     user.passwordResetToken =
-      verificationCodeService.hashResetToken(resetToken);
+      verificationCodeService.hashResetToken(
+        resetToken,
+      );
 
-    user.passwordResetExpires = Date.now() + 15 * 60 * 1000;
+    user.passwordResetExpires = new Date(
+      Date.now() + 15 * 60 * 1000,
+    );
 
     await user.save({
       validateBeforeSave: false,
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const frontendUrl =
+      process.env.FRONTEND_URL ||
+      "http://localhost:5173";
 
-    const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
+    const resetUrl =
+      `${frontendUrl}/reset-password/${resetToken}`;
 
     try {
       await emailService.sendPasswordResetEmail({
@@ -319,19 +387,30 @@ class AuthController {
   };
 
   // ==================== Reset Password ====================
+
   resetPassword = async (req, res) => {
     const { token } = req.params;
+
     const { newPassword } = req.body;
 
-    const hashedToken = verificationCodeService.hashResetToken(token);
+    const hashedToken =
+      verificationCodeService.hashResetToken(
+        token,
+      );
 
     const user = await User.findOne({
       passwordResetToken: hashedToken,
+
       passwordResetExpires: {
-        $gt: Date.now(),
+        $gt: new Date(),
       },
+
+      isAccountActivated: true,
+
       isActive: true,
-    }).select("+password");
+    }).select(
+      "+password +passwordResetToken +passwordResetExpires +refreshToken",
+    );
 
     if (!user) {
       return res.status(400).json({
@@ -348,7 +427,8 @@ class AuthController {
     if (isSamePassword) {
       return res.status(400).json({
         success: false,
-        message: "New password must be different from your current password",
+        message:
+          "New password must be different from your current password",
       });
     }
 
@@ -356,6 +436,11 @@ class AuthController {
 
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
+
+    user.passwordChangeCode = undefined;
+    user.passwordChangeCodeExpires = undefined;
+
+    user.refreshToken = undefined;
 
     await user.save();
 
@@ -367,31 +452,101 @@ class AuthController {
     });
   };
 
-  // Refresh token
-  refreshToken = async (req, res) => {
-    const refreshToken = cookiesService.getRefreshToken(req);
+  // ==================== Refresh Token ====================
 
-    if (!refreshToken) {
+  refreshToken = async (req, res) => {
+    const currentRefreshToken =
+      cookiesService.getRefreshToken(req);
+
+    if (!currentRefreshToken) {
+      cookiesService.clearTokens(res);
+
       return res.status(401).json({
         success: false,
         message: "No refresh token provided",
       });
     }
 
-    const decoded = jwtService.verifyRefreshToken(refreshToken);
+    let decodedToken;
 
-    const user = await User.findById(decoded.id);
-
-    if (!user) {
+    try {
+      decodedToken =
+        jwtService.verifyRefreshToken(
+          currentRefreshToken,
+        );
+    } catch (error) {
       cookiesService.clearTokens(res);
 
       return res.status(401).json({
         success: false,
-        message: "Invalid refresh token",
+        message:
+          error.name === "TokenExpiredError"
+            ? "Refresh token has expired"
+            : "Invalid refresh token",
+      });
+    }
+
+    const user = await User.findById(
+      decodedToken.id,
+    ).select("+refreshToken");
+
+    if (!user || !user.refreshToken) {
+      cookiesService.clearTokens(res);
+
+      return res.status(401).json({
+        success: false,
+        message: "Refresh session is no longer valid",
+      });
+    }
+
+    const providedRefreshTokenHash =
+      hashRefreshToken(
+        currentRefreshToken,
+      );
+
+    const isRefreshTokenValid =
+      compareRefreshTokens(
+        providedRefreshTokenHash,
+        user.refreshToken,
+      );
+
+    if (!isRefreshTokenValid) {
+      user.refreshToken = undefined;
+
+      await user.save({
+        validateBeforeSave: false,
+      });
+
+      cookiesService.clearTokens(res);
+
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token has been revoked",
+      });
+    }
+
+    if (!user.isAccountActivated) {
+      user.refreshToken = undefined;
+
+      await user.save({
+        validateBeforeSave: false,
+      });
+
+      cookiesService.clearTokens(res);
+
+      return res.status(403).json({
+        success: false,
+        message: "Account has not been activated",
       });
     }
 
     if (!user.isActive) {
+      user.refreshToken = undefined;
+
+      await user.save({
+        validateBeforeSave: false,
+      });
+
       cookiesService.clearTokens(res);
 
       return res.status(403).json({
@@ -401,16 +556,34 @@ class AuthController {
     }
 
     const payload = {
-      id: user._id,
+      id: user._id.toString(),
       role: user.role,
     };
 
-    const newAccessToken = jwtService.generateAccessToken(payload);
+    const newAccessToken =
+      jwtService.generateAccessToken(
+        payload,
+      );
 
-    const newRefreshToken = jwtService.generateRefreshToken(payload);
+    const newRefreshToken =
+      jwtService.generateRefreshToken(
+        payload,
+      );
 
-    cookiesService.setAccessToken(res, newAccessToken);
-    cookiesService.setRefreshToken(res, newRefreshToken);
+    user.refreshToken =
+      hashRefreshToken(
+        newRefreshToken,
+      );
+
+    await user.save({
+      validateBeforeSave: false,
+    });
+
+    cookiesService.setTokens(
+      res,
+      newAccessToken,
+      newRefreshToken,
+    );
 
     return res.status(200).json({
       success: true,

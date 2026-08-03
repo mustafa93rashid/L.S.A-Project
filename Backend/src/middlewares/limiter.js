@@ -1,59 +1,83 @@
 const rateLimit = require("express-rate-limit");
 
-// Login limiter
-const signinLimiter = rateLimit({
+// ==================== Rate Limiter Factory ====================
+
+const createLimiter = ({
+  windowMs,
+  limit,
+  message,
+  skipSuccessfulRequests = false,
+}) => {
+  return rateLimit({
+    windowMs,
+    limit,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    skipSuccessfulRequests,
+    message: {
+      success: false,
+      message,
+    },
+  });
+};
+
+// ==================== Login Limiter ====================
+
+const signinLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
   limit: 10,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
   skipSuccessfulRequests: true,
-  message: {
-    success: false,
-    message: "Too many login attempts. Please try again after 15 minutes.",
-  },
+  message: "Too many login attempts. Please try again after 15 minutes.",
 });
 
-// Password change request limiter
-const passwordChangeRequestLimiter = rateLimit({
+// ==================== Password Change Request Limiter ====================
+
+const passwordChangeRequestLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
   limit: 5,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message:
-      "Too many password change requests. Please try again after 15 minutes.",
-  },
+  message:
+    "Too many password change requests. Please try again after 15 minutes.",
 });
 
-// Password change verification limiter
-const passwordChangeVerifyLimiter = rateLimit({
+// ==================== Password Change Verification Limiter ====================
+
+const passwordChangeVerifyLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
   limit: 10,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message:
-      "Too many verification attempts. Please try again after 15 minutes.",
-  },
+  message: "Too many verification attempts. Please try again after 15 minutes.",
 });
 
-// Refresh token limiter
-const refreshTokenLimiter = rateLimit({
+// ==================== Forgot Password Limiter ====================
+
+const forgotPasswordLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
-  limit: 30,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: "Too many refresh token requests. Please try again later.",
-  },
+  limit: 5,
+  message:
+    "Too many password reset requests. Please try again after 15 minutes.",
+});
+
+// ==================== Reset Password Limiter ====================
+
+const resetPasswordLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  message:
+    "Too many password reset attempts. Please try again after 15 minutes.",
+});
+
+// ==================== Refresh Token Limiter ====================
+
+const refreshTokenLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  message: "Too many refresh token requests. Please try again later.",
 });
 
 module.exports = {
   signinLimiter,
   passwordChangeRequestLimiter,
   passwordChangeVerifyLimiter,
+  forgotPasswordLimiter,
+  resetPasswordLimiter,
   refreshTokenLimiter,
 };

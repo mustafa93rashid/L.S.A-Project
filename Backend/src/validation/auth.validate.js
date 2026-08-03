@@ -2,7 +2,51 @@ const { body } = require("express-validator");
 
 const validate = require("../middlewares/validate");
 
-// Login validation
+// ==================== Password Validation Rules ====================
+
+const passwordValidationRules = (fieldName = "newPassword") => {
+  return body(fieldName)
+    .notEmpty()
+    .withMessage("New password is required")
+    .bail()
+    .isString()
+    .withMessage("New password must be a string")
+    .bail()
+    .isLength({ min: 8, max: 128 })
+    .withMessage("New password must be between 8 and 128 characters")
+    .bail()
+    .matches(/[a-z]/)
+    .withMessage("New password must contain at least one lowercase letter")
+    .bail()
+    .matches(/[A-Z]/)
+    .withMessage("New password must contain at least one uppercase letter")
+    .bail()
+    .matches(/\d/)
+    .withMessage("New password must contain at least one number")
+    .bail()
+    .matches(/[@$!%*?&#^()_\-+=]/)
+    .withMessage("New password must contain at least one special character");
+};
+
+// ==================== Confirm Password Validation ====================
+
+const confirmPasswordValidation = body("confirmPassword")
+  .notEmpty()
+  .withMessage("Password confirmation is required")
+  .bail()
+  .isString()
+  .withMessage("Password confirmation must be a string")
+  .bail()
+  .custom((value, { req }) => {
+    if (value !== req.body.newPassword) {
+      throw new Error("Password confirmation does not match");
+    }
+
+    return true;
+  });
+
+// ==================== Login Validation ====================
+
 const loginValidation = [
   body("email")
     .trim()
@@ -23,7 +67,8 @@ const loginValidation = [
   validate,
 ];
 
-// Request password change validation
+// ==================== Request Password Change Validation ====================
+
 const requestPasswordChangeValidation = [
   body("currentPassword")
     .notEmpty()
@@ -35,7 +80,8 @@ const requestPasswordChangeValidation = [
   validate,
 ];
 
-// Verify password change validation
+// ==================== Verify Password Change Validation ====================
+
 const verifyPasswordChangeValidation = [
   body("verificationCode")
     .trim()
@@ -45,44 +91,15 @@ const verifyPasswordChangeValidation = [
     .matches(/^\d{6}$/)
     .withMessage("Verification code must contain exactly 6 digits"),
 
-  body("newPassword")
-    .notEmpty()
-    .withMessage("New password is required")
-    .bail()
-    .isString()
-    .withMessage("New password must be a string")
-    .bail()
-    .isLength({ min: 8, max: 128 })
-    .withMessage("New password must be between 8 and 128 characters")
-    .bail()
-    .matches(/[a-z]/)
-    .withMessage("New password must contain at least one lowercase letter")
-    .bail()
-    .matches(/[A-Z]/)
-    .withMessage("New password must contain at least one uppercase letter")
-    .bail()
-    .matches(/\d/)
-    .withMessage("New password must contain at least one number")
-    .bail()
-    .matches(/[@$!%*?&#^()_\-+=]/)
-    .withMessage("New password must contain at least one special character"),
+  passwordValidationRules(),
 
-  body("confirmPassword")
-    .notEmpty()
-    .withMessage("Password confirmation is required")
-    .bail()
-    .custom((value, { req }) => {
-      if (value !== req.body.newPassword) {
-        throw new Error("Password confirmation does not match");
-      }
-
-      return true;
-    }),
+  confirmPasswordValidation,
 
   validate,
 ];
 
-// Forgot password validation
+// ==================== Forgot Password Validation ====================
+
 const forgotPasswordValidation = [
   body("email")
     .trim()
@@ -96,41 +113,12 @@ const forgotPasswordValidation = [
   validate,
 ];
 
-// Reset password validation
+// ==================== Reset Password Validation ====================
+
 const resetPasswordValidation = [
-  body("newPassword")
-    .notEmpty()
-    .withMessage("New password is required")
-    .bail()
-    .isString()
-    .withMessage("New password must be a string")
-    .bail()
-    .isLength({ min: 8, max: 128 })
-    .withMessage("New password must be between 8 and 128 characters")
-    .bail()
-    .matches(/[a-z]/)
-    .withMessage("New password must contain at least one lowercase letter")
-    .bail()
-    .matches(/[A-Z]/)
-    .withMessage("New password must contain at least one uppercase letter")
-    .bail()
-    .matches(/\d/)
-    .withMessage("New password must contain at least one number")
-    .bail()
-    .matches(/[@$!%*?&#^()_\-+=]/)
-    .withMessage("New password must contain at least one special character"),
+  passwordValidationRules(),
 
-  body("confirmPassword")
-    .notEmpty()
-    .withMessage("Password confirmation is required")
-    .bail()
-    .custom((value, { req }) => {
-      if (value !== req.body.newPassword) {
-        throw new Error("Password confirmation does not match");
-      }
-
-      return true;
-    }),
+  confirmPasswordValidation,
 
   validate,
 ];

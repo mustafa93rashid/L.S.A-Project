@@ -14,7 +14,7 @@ const createSuperAdmin = async () => {
 
     if (!email || !password) {
       throw new Error(
-        "SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD are required"
+        "SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD are required",
       );
     }
 
@@ -29,13 +29,15 @@ const createSuperAdmin = async () => {
 
     const hashedPassword = await passwordService.hash(password);
 
-await User.create({
-  fullName: "Super Admin",
-  email: email.toLowerCase().trim(),
-  password: hashedPassword,
-  role: "superadmin",
-  isActive: true,
-});
+    await User.create({
+      fullName: "Super Admin",
+      email: email.toLowerCase().trim(),
+      password: hashedPassword,
+      role: "superadmin",
+      isActive: true,
+        isAccountActivated: true,
+
+    });
 
     console.log("Super Admin created successfully");
   } catch (error) {

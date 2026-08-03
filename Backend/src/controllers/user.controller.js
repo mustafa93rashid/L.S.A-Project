@@ -1,7 +1,5 @@
 const crypto = require("crypto");
-
 const User = require("../models/user.model");
-
 const cloudinary = require("../config/cloudinary");
 
 const passwordService = require("../utils/passwordService");
@@ -53,7 +51,6 @@ class UserController {
 
       const existingUser = await User.findOne({
         email: normalizedEmail,
-
         _id: {
           $ne: user._id,
         },
@@ -89,21 +86,20 @@ class UserController {
         url: uploadedImage.url,
         publicId: uploadedImage.publicId,
       };
-
-      await user.save();
-
-      const updatedUser = await User.findById(user._id).select(
-        "-password -passwordResetToken -passwordResetExpires -activationToken -activationTokenExpires",
-      );
-
-      return res.status(200).json({
-        success: true,
-        message: "Profile updated successfully",
-        data: updatedUser,
-      });
     }
-  };
 
+    await user.save();
+
+    const updatedUser = await User.findById(user._id).select(
+      "-password -passwordResetToken -passwordResetExpires -activationToken -activationTokenExpires",
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: updatedUser,
+    });
+  };
   // ==================== Delete Profile Image ====================
   deleteProfileImage = async (req, res) => {
     const user = await User.findById(req.user._id);
@@ -368,7 +364,7 @@ class UserController {
       message: "Account activated successfully. You can now sign in.",
     });
   };
-  
+
   // ==================== Update User Status ====================
   updateUserStatus = async (req, res) => {
     const { isActive } = req.body;
@@ -531,14 +527,16 @@ class UserController {
 
   // ==================== Delete User ====================
   deleteUser = async (req, res) => {
-    if (req.params.id === req.user.id) {
+    const userId = req.params.id;
+
+    if (userId === req.user._id.toString()) {
       return res.status(400).json({
         success: false,
         message: "You cannot delete your own account",
       });
     }
 
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -547,7 +545,7 @@ class UserController {
       });
     }
 
-    if (user.role === "superadmin" && user.isActive === true) {
+    if (user.role === "superadmin" && user.isActive) {
       const activeSuperAdminsCount = await User.countDocuments({
         role: "superadmin",
         isActive: true,
@@ -562,14 +560,19 @@ class UserController {
     }
 
     if (user.avatar?.publicId) {
-      await cloudinaryService.deleteImage(user.avatar.publicId);
+      await deleteImage(user.avatar.publicId);
     }
 
-    await User.findByIdAndDelete(user._id);
+    await user.deleteOne();
 
     return res.status(200).json({
       success: true,
       message: "User deleted successfully",
+      data: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+      },
     });
   };
 }

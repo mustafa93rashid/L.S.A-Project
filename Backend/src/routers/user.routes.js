@@ -1,37 +1,41 @@
 const express = require("express");
+
 const router = express.Router();
 
 const userController = require("../controllers/user.controller");
 
 const auth = require("../middlewares/auth");
 const role = require("../middlewares/role");
+const { uploadUserAvatar } = require("../middlewares/upload.middleware");
 
 const asyncHandler = require("../utils/asyncHandler");
-const { uploadSingle } = require("../middlewares/upload.middleware");
 
-const {updateProfileValidation, createUserValidation, userIdValidation, updateUserStatusValidation, updateUserRoleValidation} = require("../validation/user.validate");
+const {
+  updateProfileValidation, createUserValidation, activateAccountValidation, userIdValidation, updateUserStatusValidation, updateUserRoleValidation} = require("../validation/user.validate");
 
-// ==================== Current User ====================
+// ==================== Current User Routes ====================
 
 router.get("/profile", [auth], asyncHandler(userController.getProfile));
 
-router.patch("/profile", [auth, uploadSingle("avatar"), ...updateProfileValidation], asyncHandler(userController.updateProfile));
+router.patch("/profile", [auth, uploadUserAvatar(), ...updateProfileValidation], asyncHandler(userController.updateProfile));
 
 router.delete("/profile/image", [auth], asyncHandler(userController.deleteProfileImage));
 
-// ==================== Super Admin ====================
+// ==================== Account Activation Route ====================
+
+router.post("/activate-account", [...activateAccountValidation], asyncHandler(userController.activateAccount));
+
+// ==================== User Management Routes ====================
 
 router.get("/", [auth, role(["superadmin"])], asyncHandler(userController.getAllUsers));
 
 router.post("/", [auth, role(["superadmin"]), ...createUserValidation], asyncHandler(userController.createUser));
 
-router.post("/activate-account",asyncHandler(userController.activateAccount));
-
 router.get("/:id", [auth, role(["superadmin"]), ...userIdValidation], asyncHandler(userController.getUserById));
 
-router.patch("/:id/status", [auth, role(["superadmin"]), ...updateUserStatusValidation], asyncHandler(userController.updateUserStatus));
+router.patch("/:id/status", [auth, role(["superadmin"]), ...userIdValidation, ...updateUserStatusValidation], asyncHandler(userController.updateUserStatus));
 
-router.patch("/:id/role", [auth, role(["superadmin"]), ...updateUserRoleValidation], asyncHandler(userController.updateUserRole));
+router.patch("/:id/role", [auth, role(["superadmin"]), ...userIdValidation, ...updateUserRoleValidation], asyncHandler(userController.updateUserRole));
 
 router.delete("/:id", [auth, role(["superadmin"]), ...userIdValidation], asyncHandler(userController.deleteUser));
 

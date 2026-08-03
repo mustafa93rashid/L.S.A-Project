@@ -1,10 +1,10 @@
 const User = require("../models/user.model");
+
 const jwtService = require("../utils/jwtService");
 const cookiesService = require("../utils/cookiesService");
 
-// ==================================================
-// Extract Access Token
-// ==================================================
+// ==================== Extract Access Token ====================
+
 const extractAccessToken = (req) => {
   const cookieToken = cookiesService.getAccessToken(req);
 
@@ -18,48 +18,52 @@ const extractAccessToken = (req) => {
     return null;
   }
 
-  const bearerToken = authorizationHeader
-    .replace(/^Bearer\s+/i, "")
-    .trim();
+  const bearerMatch = authorizationHeader.match(/^Bearer\s+(.+)$/i);
 
-  return bearerToken || null;
+  if (!bearerMatch) {
+    return null;
+  }
+
+  return bearerMatch[1].trim() || null;
 };
 
-// ==================================================
-// Authentication Middleware
-// ==================================================
+// ==================== Authentication Middleware ====================
+
 const auth = async (req, res, next) => {
   try {
-    const token = extractAccessToken(req);
+    const accessToken = extractAccessToken(req);
 
-    if (!token) {
+    if (!accessToken) {
       return res.status(401).json({
         success: false,
         message: "Authentication is required",
       });
     }
 
-    let decoded;
+    let decodedToken;
 
     try {
-      decoded = jwtService.verifyAccessToken(token);
+      decodedToken = jwtService.verifyAccessToken(accessToken);
     } catch (error) {
       return res.status(401).json({
         success: false,
-        message: "Invalid or expired access token",
+        message:
+          error.name === "TokenExpiredError"
+            ? "Access token has expired"
+            : "Invalid access token",
       });
     }
 
-    if (!decoded?.id) {
+    if (!decodedToken?.id) {
       return res.status(401).json({
         success: false,
         message: "Invalid access token payload",
       });
     }
 
-    const user = await User.findById(decoded.id)
+    const user = await User.findById(decodedToken.id)
       .select(
-        "_id firstName lastName email role isActive",
+        "_id fullName email phone role department avatar isAccountActivated isActive",
       )
       .lean();
 
@@ -67,6 +71,13 @@ const auth = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: "Authenticated user was not found",
+      });
+    }
+
+    if (!user.isAccountActivated) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has not been activated",
       });
     }
 

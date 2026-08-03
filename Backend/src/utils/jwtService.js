@@ -1,32 +1,73 @@
 require("dotenv").config();
+
 const jwt = require("jsonwebtoken");
 
+// ==================== JWT Configuration ====================
+
+const ACCESS_TOKEN_SECRET =
+  process.env.JWT_SECRET_KEY;
+
+const REFRESH_TOKEN_SECRET =
+  process.env.REFRESH_JWT_SECRET_KEY;
+
+const ACCESS_TOKEN_EXPIRES_IN =
+  process.env.JWT_ACCESS_EXPIRES_IN || "1h";
+
+const REFRESH_TOKEN_EXPIRES_IN =
+  process.env.JWT_REFRESH_EXPIRES_IN || "7d";
+
+// ==================== JWT Service ====================
+
 class JwtService {
-  sign(payload, expiresIn) {
-    return jwt.sign(payload, process.env.JWT_SECRET_KEY, { expiresIn });
-  }
+  // ==================== Generate Access Token ====================
 
-  verify(token) {
-    return jwt.verify(token, process.env.JWT_SECRET_KEY);
-  }
+  generateAccessToken = (payload) => {
+    return jwt.sign(
+      payload,
+      ACCESS_TOKEN_SECRET,
+      {
+        expiresIn:
+          ACCESS_TOKEN_EXPIRES_IN,
+      },
+    );
+  };
 
-  generateAccessToken(payload) {
-    return jwt.sign(payload, process.env.JWT_SECRET_KEY, { expiresIn: "1h" });
-  }
+  // ==================== Generate Refresh Token ====================
 
-  generateRefreshToken(payload) {
-    return jwt.sign(payload, process.env.REFRESH_JWT_SECRET_KEY, {
-      expiresIn: "7d",
-    });
-  }
+  generateRefreshToken = (
+    payload,
+  ) => {
+    return jwt.sign(
+      payload,
+      REFRESH_TOKEN_SECRET,
+      {
+        expiresIn:
+          REFRESH_TOKEN_EXPIRES_IN,
+      },
+    );
+  };
 
-  verifyAccessToken(token) {
-    return jwt.verify(token, process.env.JWT_SECRET_KEY);
-  }
+  // ==================== Verify Access Token ====================
 
-  verifyRefreshToken(token) {
-    return jwt.verify(token, process.env.REFRESH_JWT_SECRET_KEY);
-  }
+  verifyAccessToken = (
+    token,
+  ) => {
+    return jwt.verify(
+      token,
+      ACCESS_TOKEN_SECRET,
+    );
+  };
+
+  // ==================== Verify Refresh Token ====================
+
+  verifyRefreshToken = (
+    token,
+  ) => {
+    return jwt.verify(
+      token,
+      REFRESH_TOKEN_SECRET,
+    );
+  };
 }
 
 module.exports = new JwtService();
