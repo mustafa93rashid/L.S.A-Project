@@ -1,18 +1,12 @@
 const Partner = require("../models/partner.model");
 
-const {
-  uploadMulterImage,
-  replaceImage,
-  deleteImage,
-} = require("../services/cloudinary.service");
+const {uploadMulterImage, replaceImage, deleteImage } = require("../services/cloudinary.service");
 
 class PartnerController {
   // ==================== Get Public Partners ====================
+
   getPublicPartners = async (req, res) => {
-    const partners = await Partner.find(
-      {},
-      "name logo website",
-    )
+    const partners = await Partner.find({}, "logo website")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -24,10 +18,9 @@ class PartnerController {
   };
 
   // ==================== Get All Partners ====================
+
   getAllPartners = async (req, res) => {
-    const partners = await Partner.find()
-      .sort({ createdAt: -1 })
-      .lean();
+    const partners = await Partner.find().sort({ createdAt: -1 }).lean();
 
     return res.status(200).json({
       success: true,
@@ -37,22 +30,9 @@ class PartnerController {
   };
 
   // ==================== Create Partner ====================
+
   createPartner = async (req, res) => {
-    const { name, website } = req.body;
-
-    const existingPartner = await Partner.findOne({
-      name: {
-        $regex: `^${this.escapeRegex(name.trim())}$`,
-        $options: "i",
-      },
-    });
-
-    if (existingPartner) {
-      return res.status(409).json({
-        success: false,
-        message: "Partner already exists",
-      });
-    }
+    const { website } = req.body;
 
     let uploadedLogo = null;
 
@@ -64,8 +44,6 @@ class PartnerController {
       });
 
       const partner = await Partner.create({
-        name: name.trim(),
-
         logo: {
           url: uploadedLogo.url,
           publicId: uploadedLogo.publicId,
@@ -84,13 +62,10 @@ class PartnerController {
         try {
           await deleteImage(uploadedLogo.publicId);
         } catch (deleteError) {
-          console.error(
-            "Failed to delete uploaded partner logo:",
-            {
-              publicId: uploadedLogo.publicId,
-              message: deleteError.message,
-            },
-          );
+          console.error("Failed to delete uploaded partner logo:", {
+            publicId: uploadedLogo.publicId,
+            message: deleteError.message,
+          });
         }
       }
 
@@ -99,10 +74,9 @@ class PartnerController {
   };
 
   // ==================== Update Partner ====================
+
   updatePartner = async (req, res) => {
-    const partner = await Partner.findById(
-      req.params.id,
-    );
+    const partner = await Partner.findById(req.params.id);
 
     if (!partner) {
       return res.status(404).json({
@@ -111,32 +85,7 @@ class PartnerController {
       });
     }
 
-    const { name, website } = req.body;
-
-    if (
-      name !== undefined &&
-      name.trim().toLowerCase() !==
-        partner.name.toLowerCase()
-    ) {
-      const existingPartner =
-        await Partner.findOne({
-          _id: {
-            $ne: partner._id,
-          },
-
-          name: {
-            $regex: `^${this.escapeRegex(name.trim())}$`,
-            $options: "i",
-          },
-        });
-
-      if (existingPartner) {
-        return res.status(409).json({
-          success: false,
-          message: "Partner already exists",
-        });
-      }
-    }
+    const { website } = req.body;
 
     if (req.file) {
       const updatedLogo = await replaceImage({
@@ -152,13 +101,8 @@ class PartnerController {
       };
     }
 
-    if (name !== undefined) {
-      partner.name = name.trim();
-    }
-
     if (website !== undefined) {
-      partner.website =
-        website.trim() || null;
+      partner.website = website.trim() || null;
     }
 
     await partner.save();
@@ -171,10 +115,9 @@ class PartnerController {
   };
 
   // ==================== Delete Partner ====================
+
   deletePartner = async (req, res) => {
-    const partner = await Partner.findById(
-      req.params.id,
-    );
+    const partner = await Partner.findById(req.params.id);
 
     if (!partner) {
       return res.status(404).json({
@@ -184,27 +127,15 @@ class PartnerController {
     }
 
     if (partner.logo?.publicId) {
-      await deleteImage(
-        partner.logo.publicId,
-      );
+      await deleteImage(partner.logo.publicId);
     }
 
-    await Partner.findByIdAndDelete(
-      partner._id,
-    );
+    await partner.deleteOne();
 
     return res.status(200).json({
       success: true,
       message: "Partner deleted successfully",
     });
-  };
-
-  // ==================== Escape Regex ====================
-  escapeRegex = (value) => {
-    return value.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      "\\$&",
-    );
   };
 }
 

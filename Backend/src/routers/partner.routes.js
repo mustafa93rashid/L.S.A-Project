@@ -5,15 +5,11 @@ const partnerController = require("../controllers/partner.controller");
 
 const auth = require("../middlewares/auth");
 const role = require("../middlewares/role");
+const { uploadPartnerLogo } = require("../middlewares/upload.middleware");
 
 const asyncHandler = require("../utils/asyncHandler");
-const { uploadSingle } = require("../middlewares/upload.middleware");
 
-const {
-  createPartnerValidation,
-  updatePartnerValidation,
-  partnerIdValidation,
-} = require("../validation/partner.validate");
+const { createPartnerValidation, updatePartnerValidation, partnerIdValidation } = require("../validation/partner.validate");
 
 // ==================== Public ====================
 
@@ -21,12 +17,12 @@ router.get("/public", asyncHandler(partnerController.getPublicPartners));
 
 // ==================== Dashboard ====================
 
-router.get("/", [auth, role(["superadmin", "contentManager"])], asyncHandler(partnerController.getAllPartners));
+router.get("/", [auth, role(["superadmin", "manager", "contentManager"])], asyncHandler(partnerController.getAllPartners));
 
-router.post("/", [auth, role(["superadmin", "contentManager"]), uploadSingle("logo"), ...createPartnerValidation], asyncHandler(partnerController.createPartner));
+router.post("/", [auth, role(["superadmin", "manager", "contentManager"]), uploadPartnerLogo(), ...createPartnerValidation], asyncHandler(partnerController.createPartner));
 
-router.patch("/:id", [auth, role(["superadmin", "contentManager"]), uploadSingle("logo"), ...updatePartnerValidation], asyncHandler(partnerController.updatePartner));
+router.patch("/:id", [auth, role(["superadmin", "manager", "contentManager"]), uploadPartnerLogo(), ...partnerIdValidation, ...updatePartnerValidation], asyncHandler(partnerController.updatePartner));
 
-router.delete("/:id", [auth, role(["superadmin", "contentManager"]), ...partnerIdValidation], asyncHandler(partnerController.deletePartner));
+router.delete("/:id", [auth, role(["superadmin", "manager", "contentManager"]), ...partnerIdValidation], asyncHandler(partnerController.deletePartner));
 
 module.exports = router;

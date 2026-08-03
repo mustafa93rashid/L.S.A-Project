@@ -41,7 +41,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: [
         "superadmin",
-        "Manager",
+        "manager",
         "equipmentManager",
         "hrManager",
         "contentManager",
