@@ -1,22 +1,45 @@
-const {
-  Notification,
-} = require("../models/notification.model");
+const { Notification } = require("../models/notification.model");
 
-/*
-|--------------------------------------------------------------------------
-| Notification Service
-|--------------------------------------------------------------------------
-*/
+const { emitToRoles } = require("../config/socket");
 
-// ==================================================
-// Create Equipment Request Notification
-// ==================================================
+// ==================== Notification Roles ====================
+
+const EQUIPMENT_NOTIFICATION_ROLES = [
+  "superadmin",
+  "manager",
+  "equipmentManager",
+];
+
+const JOB_NOTIFICATION_ROLES = ["superadmin", "manager", "hrManager"];
+
+const CONTACT_NOTIFICATION_ROLES = ["superadmin", "manager", "contentManager"];
+
+// ==================== Emit Notification Safely ====================
+
+const emitNotificationSafely = ({ roles, notification }) => {
+  try {
+    emitToRoles(roles, "notification:new", {
+      success: true,
+      data: notification,
+    });
+  } catch (error) {
+    console.error("Failed to emit dashboard notification:", {
+      notificationId: notification?._id,
+
+      type: notification?.type,
+
+      message: error.message,
+    });
+  }
+};
+
+// ==================== Create Equipment Request Notification ====================
 
 const createEquipmentRequestNotification = async ({
   equipmentRequest,
   equipment,
 }) => {
-  return Notification.create({
+  const notification = await Notification.create({
     type: "equipmentRequest",
 
     title: "New Equipment Request",
@@ -25,33 +48,42 @@ const createEquipmentRequestNotification = async ({
 
     reference: {
       model: "EquipmentRequest",
+
       id: equipmentRequest._id,
     },
 
     metadata: {
       equipmentId: equipment._id,
+
       equipmentTitle: equipment.title,
+
       requesterName: equipmentRequest.fullName,
+
       requesterEmail: equipmentRequest.email,
+
       company: equipmentRequest.company,
+
+      status: equipmentRequest.status,
     },
 
     isRead: false,
   });
+
+  emitNotificationSafely({
+    roles: EQUIPMENT_NOTIFICATION_ROLES,
+
+    notification,
+  });
+
+  return notification;
 };
 
-// ==================================================
-// Create Job Request Notification
-// ==================================================
+// ==================== Create Job Request Notification ====================
 
-const createJobRequestNotification = async ({
-  jobRequest,
-  job,
-}) => {
-  const applicantName =
-    `${jobRequest.firstName} ${jobRequest.lastName}`.trim();
+const createJobRequestNotification = async ({ jobRequest, job }) => {
+  const applicantName = `${jobRequest.firstName} ${jobRequest.lastName}`.trim();
 
-  return Notification.create({
+  const notification = await Notification.create({
     type: "jobRequest",
 
     title: "New Job Application",
@@ -60,30 +92,40 @@ const createJobRequestNotification = async ({
 
     reference: {
       model: "JobRequest",
+
       id: jobRequest._id,
     },
 
     metadata: {
       applicantName,
+
       applicantEmail: jobRequest.email,
+
       phone: jobRequest.phone,
+
       jobId: job._id,
+
       jobTitle: job.title,
+
       status: jobRequest.status,
     },
 
     isRead: false,
   });
+
+  emitNotificationSafely({
+    roles: JOB_NOTIFICATION_ROLES,
+
+    notification,
+  });
+
+  return notification;
 };
 
-// ==================================================
-// Create Contact Message Notification
-// ==================================================
+// ==================== Create Contact Message Notification ====================
 
-const createContactMessageNotification = async ({
-  contactMessage,
-}) => {
-  return Notification.create({
+const createContactMessageNotification = async ({ contactMessage }) => {
+  const notification = await Notification.create({
     type: "contactMessage",
 
     title: "New Contact Message",
@@ -92,6 +134,7 @@ const createContactMessageNotification = async ({
 
     reference: {
       model: "ContactMessage",
+
       id: contactMessage._id,
     },
 
@@ -109,17 +152,20 @@ const createContactMessageNotification = async ({
 
     isRead: false,
   });
+
+  emitNotificationSafely({
+    roles: CONTACT_NOTIFICATION_ROLES,
+
+    notification,
+  });
+
+  return notification;
 };
 
-/*
-|--------------------------------------------------------------------------
-| Exports
-|--------------------------------------------------------------------------
-*/
+// ==================== Exports ====================
 
 module.exports = {
   createEquipmentRequestNotification,
   createJobRequestNotification,
-    createContactMessageNotification,
-
+  createContactMessageNotification,
 };

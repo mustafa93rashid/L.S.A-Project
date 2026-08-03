@@ -1,65 +1,95 @@
 const cloudinary = require("../config/cloudinary");
 
-/*
-|--------------------------------------------------------------------------
-| Cloudinary Service
-|--------------------------------------------------------------------------
-|
-| Handles:
-|
-| - Image uploads
-| - PDF uploads
-| - Multiple image uploads
-| - Resource deletion
-| - Resource replacement
-|
-|--------------------------------------------------------------------------
-*/
-
-/*
-|--------------------------------------------------------------------------
-| Constants
-|--------------------------------------------------------------------------
-*/
+// ==================== Cloudinary Constants ====================
 
 const CLOUDINARY_ROOT_FOLDER = "lsa";
 
-const ALLOWED_FOLDERS = [
-  "users",
-  "partners",
-  "journeys",
-  "team-members",
+const CLOUDINARY_FOLDERS = Object.freeze({
+  USERS: "users",
 
-  "services/cards",
-  "services/heroes",
+  PARTNERS: "partners",
 
-  "projects/cards",
-  "projects/hero",
-  "projects/gallery",
-  "projects/certificates",
+  JOURNEYS: "journeys",
 
-  "equipment/images",
+  TEAM_MEMBERS: "team-members",
 
-  "resumes",
-  "certificates",
-];
+  SERVICE_CARDS: "services/cards",
 
-const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  SERVICE_HEROES: "services/heroes",
 
-const PDF_MIME_TYPES = ["application/pdf"];
+  PROJECT_CARDS: "projects/cards",
 
-const ALLOWED_MIME_TYPES = [...IMAGE_MIME_TYPES, ...PDF_MIME_TYPES];
+  PROJECT_HERO: "projects/hero",
 
-const RESOURCE_TYPES = {
+  PROJECT_GALLERY: "projects/gallery",
+
+  PROJECT_CERTIFICATES: "projects/certificates",
+
+  EQUIPMENT_IMAGES: "equipment/images",
+
+  RESUMES: "resumes",
+
+  CERTIFICATES: "certificates",
+});
+
+const ALLOWED_FOLDERS = Object.freeze(Object.values(CLOUDINARY_FOLDERS));
+
+const RASTER_IMAGE_MIME_TYPES = Object.freeze([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
+
+const VECTOR_IMAGE_MIME_TYPES = Object.freeze(["image/svg+xml"]);
+
+const IMAGE_MIME_TYPES = Object.freeze([
+  ...RASTER_IMAGE_MIME_TYPES,
+  ...VECTOR_IMAGE_MIME_TYPES,
+]);
+
+const PDF_MIME_TYPES = Object.freeze(["application/pdf"]);
+
+const OFFICE_DOCUMENT_MIME_TYPES = Object.freeze([
+  "application/msword",
+
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
+const DOCUMENT_MIME_TYPES = Object.freeze([
+  ...PDF_MIME_TYPES,
+  ...OFFICE_DOCUMENT_MIME_TYPES,
+]);
+
+const ALLOWED_MIME_TYPES = Object.freeze([
+  ...IMAGE_MIME_TYPES,
+  ...DOCUMENT_MIME_TYPES,
+]);
+
+const RESOURCE_TYPES = Object.freeze({
   IMAGE: "image",
   RAW: "raw",
-};
+});
 
-/*
-|--------------------------------------------------------------------------
-| Error Helper
-|--------------------------------------------------------------------------
-*/
+const DEFAULT_IMAGE_TRANSFORMATION = Object.freeze([
+  {
+    width: 1600,
+    height: 1600,
+    crop: "limit",
+  },
+
+  {
+    quality: "auto",
+  },
+
+  {
+    fetch_format: "auto",
+  },
+]);
+
+const MAX_BATCH_DELETE_SIZE = 100;
+
+// ==================== Error Helper ====================
 
 const createServiceError = (
   message,
@@ -74,81 +104,89 @@ const createServiceError = (
   return error;
 };
 
-/*
-|--------------------------------------------------------------------------
-| Validation Helpers
-|--------------------------------------------------------------------------
-*/
-
-// ==================================================
-// Validate Upload Folder
-// ==================================================
+// ==================== Validate Upload Folder ====================
 
 const validateFolder = (folder) => {
-  if (!folder) {
+  if (typeof folder !== "string" || !folder.trim()) {
     throw createServiceError(
-      "Upload folder is required.",
+      "Upload folder is required",
       400,
       "UPLOAD_FOLDER_REQUIRED",
     );
   }
 
-  if (!ALLOWED_FOLDERS.includes(folder)) {
+  const normalizedFolder = folder.trim();
+
+  if (!ALLOWED_FOLDERS.includes(normalizedFolder)) {
     throw createServiceError(
-      `Invalid upload folder: ${folder}`,
+      `Invalid upload folder: ${normalizedFolder}`,
       400,
       "INVALID_UPLOAD_FOLDER",
     );
   }
 
-  return folder;
+  return normalizedFolder;
 };
 
-// ==================================================
-// Validate File Buffer
-// ==================================================
+// ==================== Validate File Buffer ====================
 
 const validateBuffer = (buffer) => {
   if (!buffer || !Buffer.isBuffer(buffer)) {
     throw createServiceError(
-      "A valid file buffer is required.",
+      "A valid file buffer is required",
       400,
       "FILE_BUFFER_REQUIRED",
     );
   }
+
+  if (buffer.length === 0) {
+    throw createServiceError(
+      "The uploaded file is empty",
+      400,
+      "EMPTY_FILE_BUFFER",
+    );
+  }
+
+  return buffer;
 };
 
-// ==================================================
-// Validate MIME Type
-// ==================================================
+// ==================== Validate MIME Type ====================
 
 const validateMimeType = (mimeType, allowedTypes) => {
-  if (!mimeType) {
+  if (typeof mimeType !== "string" || !mimeType.trim()) {
     throw createServiceError(
-      "File MIME type is required.",
+      "File MIME type is required",
       400,
       "FILE_MIME_TYPE_REQUIRED",
     );
   }
 
-  if (!allowedTypes.includes(mimeType)) {
+  if (!Array.isArray(allowedTypes) || !allowedTypes.includes(mimeType)) {
     throw createServiceError(
-      `File type ${mimeType} is not allowed.`,
+      `File type ${mimeType} is not allowed`,
       400,
       "INVALID_FILE_TYPE",
     );
   }
+
+  return mimeType;
 };
 
-/*
-|--------------------------------------------------------------------------
-| Naming Helpers
-|--------------------------------------------------------------------------
-*/
+// ==================== Validate Resource Type ====================
 
-// ==================================================
-// Sanitize Base Name
-// ==================================================
+const validateResourceType = (resourceType) => {
+  if (!Object.values(RESOURCE_TYPES).includes(resourceType)) {
+    throw createServiceError(
+      `Invalid Cloudinary resource type: ${resourceType}`,
+      400,
+      "INVALID_RESOURCE_TYPE",
+    );
+  }
+
+  return resourceType;
+};
+
+// ==================== Sanitize Base Name ====================
 
 const sanitizeBaseName = (value) => {
   return (
@@ -160,12 +198,12 @@ const sanitizeBaseName = (value) => {
   );
 };
 
-// ==================================================
-// Build Public ID
-// ==================================================
+// ==================== Build Public ID ====================
 
 const buildPublicId = ({ folder, originalName, prefix }) => {
-  const sanitizedFolder = sanitizeBaseName(folder);
+  const normalizedFolder = validateFolder(folder);
+
+  const sanitizedFolder = sanitizeBaseName(normalizedFolder);
 
   const sanitizedName = sanitizeBaseName(originalName);
 
@@ -183,21 +221,27 @@ const buildPublicId = ({ folder, originalName, prefix }) => {
   ].join("");
 };
 
-// ==================================================
-// Build Cloudinary Folder
-// ==================================================
+// ==================== Build Cloudinary Folder ====================
 
 const buildCloudinaryFolder = (folder) => {
-  validateFolder(folder);
+  const normalizedFolder = validateFolder(folder);
 
-  return `${CLOUDINARY_ROOT_FOLDER}/${folder}`;
+  return `${CLOUDINARY_ROOT_FOLDER}/${normalizedFolder}`;
 };
 
-/*
-|--------------------------------------------------------------------------
-| Upload Stream
-|--------------------------------------------------------------------------
-*/
+// ==================== Chunk Array ====================
+
+const chunkArray = (values, chunkSize) => {
+  const chunks = [];
+
+  for (let index = 0; index < values.length; index += chunkSize) {
+    chunks.push(values.slice(index, index + chunkSize));
+  }
+
+  return chunks;
+};
+
+// ==================== Upload Stream ====================
 
 const uploadStream = ({ buffer, options }) => {
   validateBuffer(buffer);
@@ -225,37 +269,49 @@ const uploadStream = ({ buffer, options }) => {
       reject(error);
     };
 
-    const cloudinaryStream = cloudinary.uploader.upload_stream(
-      options,
-      (error, result) => {
-        if (error) {
-          return rejectOnce(
-            createServiceError(
-              error.message || "Cloudinary upload failed.",
-              error.http_code || 500,
-              "CLOUDINARY_UPLOAD_FAILED",
-            ),
-          );
-        }
+    let cloudinaryStream;
 
-        if (!result) {
-          return rejectOnce(
-            createServiceError(
-              "Cloudinary returned an empty upload result.",
-              500,
-              "EMPTY_CLOUDINARY_RESULT",
-            ),
-          );
-        }
+    try {
+      cloudinaryStream = cloudinary.uploader.upload_stream(
+        options,
+        (error, result) => {
+          if (error) {
+            return rejectOnce(
+              createServiceError(
+                error.message || "Cloudinary upload failed",
+                error.http_code || 500,
+                "CLOUDINARY_UPLOAD_FAILED",
+              ),
+            );
+          }
 
-        return resolveOnce(result);
-      },
-    );
+          if (!result) {
+            return rejectOnce(
+              createServiceError(
+                "Cloudinary returned an empty upload result",
+                500,
+                "EMPTY_CLOUDINARY_RESULT",
+              ),
+            );
+          }
+
+          return resolveOnce(result);
+        },
+      );
+    } catch (error) {
+      return rejectOnce(
+        createServiceError(
+          error.message || "Cloudinary upload stream could not be created",
+          500,
+          "CLOUDINARY_STREAM_CREATION_FAILED",
+        ),
+      );
+    }
 
     cloudinaryStream.on("error", (error) => {
       rejectOnce(
         createServiceError(
-          error.message || "Cloudinary upload stream failed.",
+          error.message || "Cloudinary upload stream failed",
           500,
           "CLOUDINARY_STREAM_FAILED",
         ),
@@ -266,15 +322,7 @@ const uploadStream = ({ buffer, options }) => {
   });
 };
 
-/*
-|--------------------------------------------------------------------------
-| Result Formatters
-|--------------------------------------------------------------------------
-*/
-
-// ==================================================
-// Format Upload Result
-// ==================================================
+// ==================== Format Upload Result ====================
 
 const formatUploadResult = (result) => {
   return {
@@ -286,17 +334,17 @@ const formatUploadResult = (result) => {
 
     format: result.format || null,
 
-    bytes: result.bytes || null,
+    bytes: result.bytes ?? null,
 
-    width: result.width || null,
+    width: result.width ?? null,
 
-    height: result.height || null,
+    height: result.height ?? null,
+
+    createdAt: result.created_at || null,
   };
 };
 
-// ==================================================
-// Format Image Result
-// ==================================================
+// ==================== Format Image Result ====================
 
 const formatImageResult = ({ uploadedFile, alt = "" }) => {
   return {
@@ -308,15 +356,21 @@ const formatImageResult = ({ uploadedFile, alt = "" }) => {
   };
 };
 
-/*
-|--------------------------------------------------------------------------
-| Upload Buffers
-|--------------------------------------------------------------------------
-*/
+// ==================== Get Image Transformation ====================
 
-// ==================================================
-// Upload Image Buffer
-// ==================================================
+const getImageTransformation = ({ mimeType, transformation }) => {
+  if (VECTOR_IMAGE_MIME_TYPES.includes(mimeType)) {
+    return undefined;
+  }
+
+  if (transformation === null || transformation === false) {
+    return undefined;
+  }
+
+  return transformation || DEFAULT_IMAGE_TRANSFORMATION;
+};
+
+// ==================== Upload Image Buffer ====================
 
 const uploadImageBuffer = async ({
   buffer,
@@ -329,60 +383,54 @@ const uploadImageBuffer = async ({
 }) => {
   validateBuffer(buffer);
 
-  validateFolder(folder);
+  const normalizedFolder = validateFolder(folder);
 
   validateMimeType(mimeType, IMAGE_MIME_TYPES);
 
   const finalPublicId =
     publicId ||
     buildPublicId({
-      folder,
+      folder: normalizedFolder,
+
       originalName,
+
       prefix,
     });
 
+  const finalTransformation = getImageTransformation({
+    mimeType,
+    transformation,
+  });
+
+  const options = {
+    folder: buildCloudinaryFolder(normalizedFolder),
+
+    public_id: finalPublicId,
+
+    resource_type: RESOURCE_TYPES.IMAGE,
+
+    overwrite: false,
+
+    unique_filename: false,
+
+    use_filename: false,
+  };
+
+  if (finalTransformation) {
+    options.transformation = finalTransformation;
+  }
+
   const result = await uploadStream({
     buffer,
-
-    options: {
-      folder: buildCloudinaryFolder(folder),
-
-      public_id: finalPublicId,
-
-      resource_type: RESOURCE_TYPES.IMAGE,
-
-      transformation: transformation || [
-        {
-          width: 1600,
-          height: 1600,
-          crop: "limit",
-        },
-
-        {
-          quality: "auto",
-        },
-
-        {
-          fetch_format: "auto",
-        },
-      ],
-
-      overwrite: false,
-
-      unique_filename: false,
-
-      use_filename: false,
-    },
+    options,
   });
 
   return formatUploadResult(result);
 };
 
-// ==================================================
-// Upload PDF Buffer
-// ==================================================
+// ==================== Upload Document Buffer ====================
 
-const uploadPdfBuffer = async ({
+const uploadDocumentBuffer = async ({
   buffer,
   folder,
   originalName = "document",
@@ -392,15 +440,17 @@ const uploadPdfBuffer = async ({
 }) => {
   validateBuffer(buffer);
 
-  validateFolder(folder);
+  const normalizedFolder = validateFolder(folder);
 
-  validateMimeType(mimeType, PDF_MIME_TYPES);
+  validateMimeType(mimeType, DOCUMENT_MIME_TYPES);
 
   const finalPublicId =
     publicId ||
     buildPublicId({
-      folder,
+      folder: normalizedFolder,
+
       originalName,
+
       prefix,
     });
 
@@ -408,7 +458,7 @@ const uploadPdfBuffer = async ({
     buffer,
 
     options: {
-      folder: buildCloudinaryFolder(folder),
+      folder: buildCloudinaryFolder(normalizedFolder),
 
       public_id: finalPublicId,
 
@@ -427,15 +477,29 @@ const uploadPdfBuffer = async ({
   return formatUploadResult(result);
 };
 
-/*
-|--------------------------------------------------------------------------
-| Multer Uploads
-|--------------------------------------------------------------------------
-*/
+// ==================== Upload PDF Buffer ====================
 
-// ==================================================
-// Upload Multer Image
-// ==================================================
+const uploadPdfBuffer = async ({
+  buffer,
+  folder,
+  originalName = "document",
+  mimeType,
+  publicId,
+  prefix,
+}) => {
+  validateMimeType(mimeType, PDF_MIME_TYPES);
+
+  return uploadDocumentBuffer({
+    buffer,
+    folder,
+    originalName,
+    mimeType,
+    publicId,
+    prefix,
+  });
+};
+
+// ==================== Upload Multer Image ====================
 
 const uploadMulterImage = async ({
   file,
@@ -445,7 +509,7 @@ const uploadMulterImage = async ({
   transformation,
 }) => {
   if (!file) {
-    throw createServiceError("Image file is required.", 400, "IMAGE_REQUIRED");
+    throw createServiceError("Image file is required", 400, "IMAGE_REQUIRED");
   }
 
   return uploadImageBuffer({
@@ -465,14 +529,40 @@ const uploadMulterImage = async ({
   });
 };
 
-// ==================================================
-// Upload Multer PDF
-// ==================================================
+// ==================== Upload Multer Document ====================
+
+const uploadMulterDocument = async ({ file, folder, publicId, prefix }) => {
+  if (!file) {
+    throw createServiceError(
+      "Document file is required",
+      400,
+      "DOCUMENT_REQUIRED",
+    );
+  }
+
+  return uploadDocumentBuffer({
+    buffer: file.buffer,
+
+    folder,
+
+    originalName: file.originalname,
+
+    mimeType: file.mimetype,
+
+    publicId,
+
+    prefix,
+  });
+};
+
+// ==================== Upload Multer PDF ====================
 
 const uploadMulterPdf = async ({ file, folder, publicId, prefix }) => {
   if (!file) {
-    throw createServiceError("PDF file is required.", 400, "PDF_REQUIRED");
+    throw createServiceError("PDF file is required", 400, "PDF_REQUIRED");
   }
+
+  validateMimeType(file.mimetype, PDF_MIME_TYPES);
 
   return uploadPdfBuffer({
     buffer: file.buffer,
@@ -489,18 +579,9 @@ const uploadMulterPdf = async ({ file, folder, publicId, prefix }) => {
   });
 };
 
-// ==================================================
-// Upload Multer Document
-// ==================================================
-/*
-| Accepts:
-|
-| - Images
-| - PDF files
-|
-*/
+// ==================== Upload Multer File ====================
 
-const uploadMulterDocument = async ({
+const uploadMulterFile = async ({
   file,
   folder,
   publicId,
@@ -508,49 +589,36 @@ const uploadMulterDocument = async ({
   transformation,
 }) => {
   if (!file) {
-    throw createServiceError(
-      "Document file is required.",
-      400,
-      "DOCUMENT_REQUIRED",
-    );
+    throw createServiceError("File is required", 400, "FILE_REQUIRED");
   }
 
   if (IMAGE_MIME_TYPES.includes(file.mimetype)) {
     return uploadMulterImage({
       file,
-
       folder,
-
       publicId,
-
       prefix,
-
       transformation,
     });
   }
 
-  if (PDF_MIME_TYPES.includes(file.mimetype)) {
-    return uploadMulterPdf({
+  if (DOCUMENT_MIME_TYPES.includes(file.mimetype)) {
+    return uploadMulterDocument({
       file,
-
       folder,
-
       publicId,
-
       prefix,
     });
   }
 
   throw createServiceError(
-    `File type ${file.mimetype} is not allowed.`,
+    `File type ${file.mimetype} is not allowed`,
     400,
-    "INVALID_DOCUMENT_TYPE",
+    "INVALID_FILE_TYPE",
   );
 };
 
-// ==================================================
-// Upload Multiple Multer Images
-// ==================================================
+// ==================== Upload Multiple Multer Images ====================
 
 const uploadMulterImages = async ({
   files = [],
@@ -560,7 +628,7 @@ const uploadMulterImages = async ({
 }) => {
   if (!Array.isArray(files)) {
     throw createServiceError(
-      "Files must be provided as an array.",
+      "Files must be provided as an array",
       400,
       "INVALID_FILES_ARRAY",
     );
@@ -570,26 +638,51 @@ const uploadMulterImages = async ({
     return [];
   }
 
+  validateFolder(folder);
+
   return Promise.all(
     files.map((file) =>
       uploadMulterImage({
         file,
-
         folder,
-
         prefix,
-
         transformation,
       }),
     ),
   );
 };
 
-// ==================================================
-// Upload Multiple Multer Documents
-// ==================================================
+// ==================== Upload Multiple Multer Documents ====================
 
-const uploadMulterDocuments = async ({
+const uploadMulterDocuments = async ({ files = [], folder, prefix }) => {
+  if (!Array.isArray(files)) {
+    throw createServiceError(
+      "Files must be provided as an array",
+      400,
+      "INVALID_FILES_ARRAY",
+    );
+  }
+
+  if (files.length === 0) {
+    return [];
+  }
+
+  validateFolder(folder);
+
+  return Promise.all(
+    files.map((file) =>
+      uploadMulterDocument({
+        file,
+        folder,
+        prefix,
+      }),
+    ),
+  );
+};
+
+// ==================== Upload Multiple Multer Files ====================
+
+const uploadMulterFiles = async ({
   files = [],
   folder,
   prefix,
@@ -597,7 +690,7 @@ const uploadMulterDocuments = async ({
 }) => {
   if (!Array.isArray(files)) {
     throw createServiceError(
-      "Files must be provided as an array.",
+      "Files must be provided as an array",
       400,
       "INVALID_FILES_ARRAY",
     );
@@ -607,61 +700,46 @@ const uploadMulterDocuments = async ({
     return [];
   }
 
+  validateFolder(folder);
+
   return Promise.all(
     files.map((file) =>
-      uploadMulterDocument({
+      uploadMulterFile({
         file,
-
         folder,
-
         prefix,
-
         transformation,
       }),
     ),
   );
 };
 
-/*
-|--------------------------------------------------------------------------
-| Resource Deletion
-|--------------------------------------------------------------------------
-*/
-
-// ==================================================
-// Delete Cloudinary Resource
-// ==================================================
+// ==================== Delete Cloudinary Resource ====================
 
 const deleteResource = async ({
   publicId,
   resourceType = RESOURCE_TYPES.IMAGE,
 }) => {
-  if (!publicId) {
+  if (typeof publicId !== "string" || !publicId.trim()) {
     throw createServiceError(
-      "Cloudinary public ID is required.",
+      "Cloudinary public ID is required",
       400,
       "PUBLIC_ID_REQUIRED",
     );
   }
 
-  if (!Object.values(RESOURCE_TYPES).includes(resourceType)) {
-    throw createServiceError(
-      `Invalid Cloudinary resource type: ${resourceType}`,
-      400,
-      "INVALID_RESOURCE_TYPE",
-    );
-  }
+  const normalizedResourceType = validateResourceType(resourceType);
 
   try {
-    const result = await cloudinary.uploader.destroy(publicId, {
-      resource_type: resourceType,
+    const result = await cloudinary.uploader.destroy(publicId.trim(), {
+      resource_type: normalizedResourceType,
 
       invalidate: true,
     });
 
     if (result.result !== "ok" && result.result !== "not found") {
       throw createServiceError(
-        "Cloudinary resource could not be deleted.",
+        "Cloudinary resource could not be deleted",
         500,
         "CLOUDINARY_DELETE_FAILED",
       );
@@ -674,16 +752,14 @@ const deleteResource = async ({
     }
 
     throw createServiceError(
-      error.message || "Cloudinary resource deletion failed.",
+      error.message || "Cloudinary resource deletion failed",
       error.http_code || 500,
       "CLOUDINARY_DELETE_FAILED",
     );
   }
 };
 
-// ==================================================
-// Delete Image
-// ==================================================
+// ==================== Delete Image ====================
 
 const deleteImage = async (publicId) => {
   return deleteResource({
@@ -693,9 +769,7 @@ const deleteImage = async (publicId) => {
   });
 };
 
-// ==================================================
-// Delete PDF
-// ==================================================
+// ==================== Delete PDF ====================
 
 const deletePdf = async (publicId) => {
   return deleteResource({
@@ -705,9 +779,17 @@ const deletePdf = async (publicId) => {
   });
 };
 
-// ==================================================
-// Delete Resource Safely
-// ==================================================
+// ==================== Delete Document ====================
+
+const deleteDocument = async (publicId) => {
+  return deleteResource({
+    publicId,
+
+    resourceType: RESOURCE_TYPES.RAW,
+  });
+};
+
+// ==================== Delete Resource Safely ====================
 
 const deleteResourceSafely = async ({
   publicId,
@@ -737,9 +819,7 @@ const deleteResourceSafely = async ({
   }
 };
 
-// ==================================================
-// Delete Image Safely
-// ==================================================
+// ==================== Delete Image Safely ====================
 
 const deleteImageSafely = async (publicId) => {
   return deleteResourceSafely({
@@ -749,9 +829,7 @@ const deleteImageSafely = async (publicId) => {
   });
 };
 
-// ==================================================
-// Delete PDF Safely
-// ==================================================
+// ==================== Delete PDF Safely ====================
 
 const deletePdfSafely = async (publicId) => {
   return deleteResourceSafely({
@@ -761,14 +839,84 @@ const deletePdfSafely = async (publicId) => {
   });
 };
 
-// ==================================================
-// Delete Multiple Resources
-// ==================================================
+// ==================== Delete Document Safely ====================
+
+const deleteDocumentSafely = async (publicId) => {
+  return deleteResourceSafely({
+    publicId,
+
+    resourceType: RESOURCE_TYPES.RAW,
+  });
+};
+
+// ==================== Delete Resource Batch ====================
+
+const deleteResourceBatch = async ({ publicIds, resourceType }) => {
+  const normalizedResourceType = validateResourceType(resourceType);
+
+  const uniquePublicIds = [
+    ...new Set(
+      publicIds
+        .filter(Boolean)
+        .map((publicId) => String(publicId).trim())
+        .filter(Boolean),
+    ),
+  ];
+
+  if (uniquePublicIds.length === 0) {
+    return [];
+  }
+
+  const batches = chunkArray(uniquePublicIds, MAX_BATCH_DELETE_SIZE);
+
+  const results = [];
+
+  for (const batch of batches) {
+    try {
+      const result = await cloudinary.api.delete_resources(batch, {
+        resource_type: normalizedResourceType,
+
+        type: "upload",
+
+        invalidate: true,
+      });
+
+      const deleted = result.deleted || {};
+
+      batch.forEach((publicId) => {
+        const deletionStatus = deleted[publicId];
+
+        results.push({
+          success:
+            deletionStatus === "deleted" || deletionStatus === "not_found",
+
+          publicId,
+
+          result: deletionStatus || null,
+        });
+      });
+    } catch (error) {
+      batch.forEach((publicId) => {
+        results.push({
+          success: false,
+
+          publicId,
+
+          message: error.message || "Resource deletion failed",
+        });
+      });
+    }
+  }
+
+  return results;
+};
+
+// ==================== Delete Multiple Resources ====================
 
 const deleteResources = async (resources = []) => {
   if (!Array.isArray(resources)) {
     throw createServiceError(
-      "Resources must be provided as an array.",
+      "Resources must be provided as an array",
       400,
       "INVALID_RESOURCES_ARRAY",
     );
@@ -782,76 +930,69 @@ const deleteResources = async (resources = []) => {
     return [];
   }
 
-  const results = await Promise.allSettled(
-    validResources.map((resource) =>
-      deleteResource({
-        publicId: resource.publicId,
+  const groupedResources = validResources.reduce((groups, resource) => {
+    const resourceType = resource.resourceType || RESOURCE_TYPES.IMAGE;
 
-        resourceType: resource.resourceType || RESOURCE_TYPES.IMAGE,
+    validateResourceType(resourceType);
+
+    if (!groups[resourceType]) {
+      groups[resourceType] = [];
+    }
+
+    groups[resourceType].push(resource.publicId);
+
+    return groups;
+  }, {});
+
+  const groupResults = await Promise.all(
+    Object.entries(groupedResources).map(([resourceType, publicIds]) =>
+      deleteResourceBatch({
+        publicIds,
+        resourceType,
       }),
     ),
   );
 
-  return results.map((result, index) => {
-    const resource = validResources[index];
-
-    if (result.status === "fulfilled") {
-      return {
-        success: true,
-
-        publicId: resource.publicId,
-
-        result: result.value,
-      };
-    }
-
-    return {
-      success: false,
-
-      publicId: resource.publicId,
-
-      message: result.reason?.message || "Resource deletion failed.",
-    };
-  });
+  return groupResults.flat();
 };
 
-// ==================================================
-// Delete Multiple Images
-// ==================================================
+// ==================== Delete Multiple Images ====================
 
 const deleteImages = async (publicIds = []) => {
   if (!Array.isArray(publicIds)) {
     throw createServiceError(
-      "Public IDs must be provided as an array.",
+      "Public IDs must be provided as an array",
       400,
       "INVALID_PUBLIC_IDS_ARRAY",
     );
   }
 
-  const validPublicIds = publicIds.filter(Boolean);
+  return deleteResourceBatch({
+    publicIds,
 
-  if (validPublicIds.length === 0) {
-    return [];
-  }
-
-  return deleteResources(
-    validPublicIds.map((publicId) => ({
-      publicId,
-
-      resourceType: RESOURCE_TYPES.IMAGE,
-    })),
-  );
+    resourceType: RESOURCE_TYPES.IMAGE,
+  });
 };
 
-/*
-|--------------------------------------------------------------------------
-| Resource Replacement
-|--------------------------------------------------------------------------
-*/
+// ==================== Delete Multiple Documents ====================
 
-// ==================================================
-// Replace Image
-// ==================================================
+const deleteDocuments = async (publicIds = []) => {
+  if (!Array.isArray(publicIds)) {
+    throw createServiceError(
+      "Public IDs must be provided as an array",
+      400,
+      "INVALID_PUBLIC_IDS_ARRAY",
+    );
+  }
+
+  return deleteResourceBatch({
+    publicIds,
+
+    resourceType: RESOURCE_TYPES.RAW,
+  });
+};
+
+// ==================== Replace Image ====================
 
 const replaceImage = async ({
   oldPublicId,
@@ -863,13 +1004,9 @@ const replaceImage = async ({
 }) => {
   const uploadedImage = await uploadMulterImage({
     file,
-
     folder,
-
     publicId,
-
     prefix,
-
     transformation,
   });
 
@@ -880,18 +1017,13 @@ const replaceImage = async ({
   return uploadedImage;
 };
 
-// ==================================================
-// Replace PDF
-// ==================================================
+// ==================== Replace PDF ====================
 
 const replacePdf = async ({ oldPublicId, file, folder, publicId, prefix }) => {
   const uploadedPdf = await uploadMulterPdf({
     file,
-
     folder,
-
     publicId,
-
     prefix,
   });
 
@@ -902,18 +1034,7 @@ const replacePdf = async ({ oldPublicId, file, folder, publicId, prefix }) => {
   return uploadedPdf;
 };
 
-// ==================================================
-// Replace Document
-// ==================================================
-/*
-| Supports:
-|
-| - Replacing image with image
-| - Replacing image with PDF
-| - Replacing PDF with image
-| - Replacing PDF with PDF
-|
-*/
+// ==================== Replace Document ====================
 
 const replaceDocument = async ({
   oldPublicId,
@@ -922,18 +1043,12 @@ const replaceDocument = async ({
   folder,
   publicId,
   prefix,
-  transformation,
 }) => {
   const uploadedDocument = await uploadMulterDocument({
     file,
-
     folder,
-
     publicId,
-
     prefix,
-
-    transformation,
   });
 
   if (oldPublicId) {
@@ -947,15 +1062,37 @@ const replaceDocument = async ({
   return uploadedDocument;
 };
 
-/*
-|--------------------------------------------------------------------------
-| Image Helpers
-|--------------------------------------------------------------------------
-*/
+// ==================== Replace File ====================
 
-// ==================================================
-// Upload Image With Alt
-// ==================================================
+const replaceFile = async ({
+  oldPublicId,
+  oldResourceType,
+  file,
+  folder,
+  publicId,
+  prefix,
+  transformation,
+}) => {
+  const uploadedFile = await uploadMulterFile({
+    file,
+    folder,
+    publicId,
+    prefix,
+    transformation,
+  });
+
+  if (oldPublicId) {
+    await deleteResourceSafely({
+      publicId: oldPublicId,
+
+      resourceType: oldResourceType || RESOURCE_TYPES.IMAGE,
+    });
+  }
+
+  return uploadedFile;
+};
+
+// ==================== Upload Image With Alt ====================
 
 const uploadImageWithAlt = async ({
   file,
@@ -967,26 +1104,19 @@ const uploadImageWithAlt = async ({
 }) => {
   const uploadedImage = await uploadMulterImage({
     file,
-
     folder,
-
     publicId,
-
     prefix,
-
     transformation,
   });
 
   return formatImageResult({
-    uploadedFile: uploadedImage,
-
+    uploadedFile,
     alt,
   });
 };
 
-// ==================================================
-// Replace Image With Alt
-// ==================================================
+// ==================== Replace Image With Alt ====================
 
 const replaceImageWithAlt = async ({
   currentImage,
@@ -999,9 +1129,9 @@ const replaceImageWithAlt = async ({
 }) => {
   if (!file) {
     return {
-      url: currentImage?.url,
+      url: currentImage?.url || "",
 
-      publicId: currentImage?.publicId,
+      publicId: currentImage?.publicId || "",
 
       alt:
         alt !== undefined ? String(alt || "").trim() : currentImage?.alt || "",
@@ -1010,13 +1140,9 @@ const replaceImageWithAlt = async ({
 
   const uploadedImage = await uploadMulterImage({
     file,
-
     folder,
-
     publicId,
-
     prefix,
-
     transformation,
   });
 
@@ -1033,80 +1159,74 @@ const replaceImageWithAlt = async ({
   return formattedImage;
 };
 
-/*
-|--------------------------------------------------------------------------
-| Exports
-|--------------------------------------------------------------------------
-*/
+// ==================== Exports ====================
 
 module.exports = {
   CLOUDINARY_ROOT_FOLDER,
-
+  CLOUDINARY_FOLDERS,
   ALLOWED_FOLDERS,
 
+  RASTER_IMAGE_MIME_TYPES,
+  VECTOR_IMAGE_MIME_TYPES,
   IMAGE_MIME_TYPES,
 
   PDF_MIME_TYPES,
-
+  OFFICE_DOCUMENT_MIME_TYPES,
+  DOCUMENT_MIME_TYPES,
   ALLOWED_MIME_TYPES,
 
   RESOURCE_TYPES,
+  DEFAULT_IMAGE_TRANSFORMATION,
 
   createServiceError,
 
   validateFolder,
-
   validateBuffer,
-
   validateMimeType,
+  validateResourceType,
 
   sanitizeBaseName,
-
   buildPublicId,
-
   buildCloudinaryFolder,
 
   formatUploadResult,
-
   formatImageResult,
 
-  uploadImageBuffer,
+  uploadStream,
 
+  uploadImageBuffer,
+  uploadDocumentBuffer,
   uploadPdfBuffer,
 
   uploadMulterImage,
-
-  uploadMulterPdf,
-
   uploadMulterDocument,
+  uploadMulterPdf,
+  uploadMulterFile,
 
   uploadMulterImages,
-
   uploadMulterDocuments,
+  uploadMulterFiles,
 
   deleteResource,
-
   deleteImage,
-
   deletePdf,
+  deleteDocument,
 
   deleteResourceSafely,
-
   deleteImageSafely,
-
   deletePdfSafely,
+  deleteDocumentSafely,
 
+  deleteResourceBatch,
   deleteResources,
-
   deleteImages,
+  deleteDocuments,
 
   replaceImage,
-
   replacePdf,
-
   replaceDocument,
+  replaceFile,
 
   uploadImageWithAlt,
-
   replaceImageWithAlt,
 };
