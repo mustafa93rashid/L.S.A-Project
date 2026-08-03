@@ -6,38 +6,25 @@ const jobRequestController = require("../controllers/jobRequest.controller");
 const auth = require("../middlewares/auth");
 const role = require("../middlewares/role");
 const asyncHandler = require("../utils/asyncHandler");
+
 const { uploadJobRequestCv } = require("../middlewares/upload.middleware");
 
-const { validateCvFile, createJobRequestValidation, updateJobRequestStatusValidation, jobRequestIdValidation, jobRequestQueryValidation } = require("../validation/jobRequest.validate");
+const {validateCvFile,createJobRequestValidation,updateJobRequestStatusValidation,jobRequestIdValidation,jobRequestQueryValidation} = require("../validation/jobRequest.validate");
 
-/*
-|--------------------------------------------------------------------------
-| Public Routes
-|--------------------------------------------------------------------------
-*/
+// ==================== Public Routes ====================
 
-// Submit a job application from the popup
-router.post("/", uploadJobRequestCv(), validateCvFile, ...createJobRequestValidation, asyncHandler(jobRequestController.createJobRequest));
+router.post("/", [uploadJobRequestCv(), validateCvFile, ...createJobRequestValidation], asyncHandler(jobRequestController.createJobRequest));
 
-/*
-|--------------------------------------------------------------------------
-| Dashboard Routes
-|--------------------------------------------------------------------------
-*/
+// ==================== Dashboard Routes ====================
 
-// Statistics must be placed before /:id
-router.get("/statistics", auth, role(["superadmin", "hrManager"]), asyncHandler(jobRequestController.getJobRequestStatistics));
+router.get("/statistics", [auth, role(["superadmin", "manager", "hrManager"])], asyncHandler(jobRequestController.getJobRequestStatistics));
 
-// Get all job requests
-router.get("/", auth, role(["superadmin", "hrManager"]), ...jobRequestQueryValidation, asyncHandler(jobRequestController.getAllJobRequests));
+router.get("/", [auth, role(["superadmin", "manager", "hrManager"]), ...jobRequestQueryValidation], asyncHandler(jobRequestController.getAllJobRequests));
 
-// Get one job request
-router.get("/:id", auth, role(["superadmin", "hrManager"]), ...jobRequestIdValidation, asyncHandler(jobRequestController.getJobRequestById));
+router.get("/:id", [auth, role(["superadmin", "manager", "hrManager"]), ...jobRequestIdValidation], asyncHandler(jobRequestController.getJobRequestById));
 
-// Update request status
-router.patch("/:id/status", auth, role(["superadmin", "hrManager"]), ...jobRequestIdValidation, ...updateJobRequestStatusValidation, asyncHandler(jobRequestController.updateJobRequestStatus));
+router.patch("/:id/status", [auth, role(["superadmin", "manager", "hrManager"]), ...jobRequestIdValidation, ...updateJobRequestStatusValidation], asyncHandler(jobRequestController.updateJobRequestStatus));
 
-// Delete request
-router.delete("/:id", auth, role(["superadmin"]), ...jobRequestIdValidation, asyncHandler(jobRequestController.deleteJobRequest));
+router.delete("/:id", [auth, role(["superadmin"]), ...jobRequestIdValidation], asyncHandler(jobRequestController.deleteJobRequest));
 
 module.exports = router;

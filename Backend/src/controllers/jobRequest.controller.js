@@ -3,289 +3,24 @@ const { JobRequest } = require("../models/jobRequest.model");
 const { Job } = require("../models/job.model");
 
 const {
-  uploadMulterDocument,
-  deleteResource,
-  RESOURCE_TYPES,
-} = require("../services/cloudinary.service");
+  JOB_REQUEST_POPULATE_FIELDS,
+  getCurrentUserId,
+  buildDashboardFilter,
+  buildPagination,
+  buildPaginationResponse,
+  uploadCv,
+  deleteCvSafely,
+  processJobRequestSideEffects,
+  sendStatusEmailSafely,
+  updateJobRequestStatus,
+  buildJobRequestStatistics,
+  jobApplicationExists,
+} = require("../helpers/jobRequest.helper");
 
-const {
-  sendJobRequestReceivedEmail,
-  sendJobRequestStatusEmail,
-} = require("../services/email.service");
-
-const {
-  createJobRequestNotification,
-} = require("../services/notification.service");
-
-/*
-|--------------------------------------------------------------------------
-| Constants
-|--------------------------------------------------------------------------
-*/
-
-const JOB_REQUEST_POPULATE_FIELDS = [
-  {
-    path: "job",
-    select: "title location employmentType department status deadline",
-  },
-  {
-    path: "updatedBy",
-    select: "fullName email role",
-  },
-];
-
-const STATUS_DATE_FIELDS = {
-  reviewed: "reviewedAt",
-  shortlisted: "shortlistedAt",
-  accepted: "acceptedAt",
-  rejected: "rejectedAt",
-  ignored: "ignoredAt",
-};
-
-const EMAIL_STATUSES = ["accepted", "rejected"];
-
-/*
-|--------------------------------------------------------------------------
-| Helpers
-|--------------------------------------------------------------------------
-*/
-
-// ==================================================
-// Get Current User ID
-// ==================================================
-
-const getCurrentUserId = (req) => {
-  return req.user?._id || req.user?.id || null;
-};
-
-// ==================================================
-// Escape Regular Expression
-// ==================================================
-
-const escapeRegex = (value) => {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-};
-
-// ==================================================
-// Build Dashboard Filter
-// ==================================================
-
-const buildDashboardFilter = (query) => {
-  const filter = {};
-
-  if (query.status) {
-    filter.status = query.status;
-  }
-
-  if (query.job) {
-    filter.job = query.job;
-  }
-
-  if (query.search) {
-    const searchTerm = escapeRegex(query.search.trim());
-
-    filter.$or = [
-      {
-        firstName: {
-          $regex: searchTerm,
-          $options: "i",
-        },
-      },
-      {
-        lastName: {
-          $regex: searchTerm,
-          $options: "i",
-        },
-      },
-      {
-        email: {
-          $regex: searchTerm,
-          $options: "i",
-        },
-      },
-      {
-        phone: {
-          $regex: searchTerm,
-          $options: "i",
-        },
-      },
-    ];
-  }
-
-  return filter;
-};
-
-// ==================================================
-// Build Pagination
-// ==================================================
-
-const buildPagination = (query) => {
-  const page = Math.max(Number(query.page) || 1, 1);
-
-  const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
-
-  return {
-    page,
-    limit,
-    skip: (page - 1) * limit,
-  };
-};
-
-// ==================================================
-// Format CV
-// ==================================================
-
-const formatCv = (uploadedFile, originalName) => {
-  return {
-    url: uploadedFile.url,
-
-    publicId: uploadedFile.publicId,
-
-    originalName,
-
-    resourceType: uploadedFile.resourceType,
-  };
-};
-
-// ==================================================
-// Upload CV
-// ==================================================
-
-const uploadCv = async (file) => {
-  if (!file) {
-    const error = new Error("CV file is required.");
-
-    error.statusCode = 400;
-    error.code = "CV_FILE_REQUIRED";
-
-    throw error;
-  }
-
-  const uploadedFile = await uploadMulterDocument({
-    file,
-
-    folder: "resumes",
-
-    prefix: "job-request-cv",
-  });
-
-  return formatCv(uploadedFile, file.originalname);
-};
-
-// ==================================================
-// Delete CV Safely
-// ==================================================
-
-const deleteCvSafely = async (cv) => {
-  if (!cv?.publicId) {
-    return;
-  }
-
-  try {
-    await deleteResource({
-      publicId: cv.publicId,
-
-      resourceType: cv.resourceType || RESOURCE_TYPES.RAW,
-    });
-  } catch (error) {
-    console.error("Failed to delete job request CV:", {
-      publicId: cv.publicId,
-      message: error.message,
-    });
-  }
-};
-
-// ==================================================
-// Send Status Email Safely
-// ==================================================
-
-const sendStatusEmailSafely = async ({ jobRequest, job, status }) => {
-  if (!EMAIL_STATUSES.includes(status)) {
-    return;
-  }
-
-  try {
-    await sendJobRequestStatusEmail({
-      to: jobRequest.email,
-
-      fullName: `${jobRequest.firstName} ${jobRequest.lastName}`,
-
-      jobTitle: job.title,
-
-      status,
-    });
-  } catch (error) {
-    console.error("Job request status email failed:", {
-      jobRequestId: jobRequest._id,
-
-      email: jobRequest.email,
-
-      status,
-
-      message: error.message,
-    });
-  }
-};
-// ==================================================
-// Send Received Email Safely
-// ==================================================
-
-const sendReceivedEmailSafely = async ({ jobRequest, job }) => {
-  try {
-    await sendJobRequestReceivedEmail({
-      to: jobRequest.email,
-
-      fullName: `${jobRequest.firstName} ${jobRequest.lastName}`,
-
-      jobTitle: job.title,
-
-      requestId: jobRequest._id,
-    });
-  } catch (error) {
-    console.error("Job request received email failed:", {
-      jobRequestId: jobRequest._id,
-
-      email: jobRequest.email,
-
-      message: error.message,
-    });
-  }
-};
-// ==================================================
-// Create Notification Safely
-// ==================================================
-
-const createNotificationSafely = async ({ jobRequest, job }) => {
-  try {
-    await createJobRequestNotification({
-      jobRequest,
-      job,
-    });
-  } catch (error) {
-    console.error("Job request notification failed:", {
-      jobRequestId: jobRequest._id,
-
-      message: error.message,
-    });
-  }
-};
-
-/*
-|--------------------------------------------------------------------------
-| Job Request Controller
-|--------------------------------------------------------------------------
-*/
+// ==================== Job Request Controller ====================
 
 class JobRequestController {
-  /*
-    |--------------------------------------------------------------------------
-    | Public
-    |--------------------------------------------------------------------------
-    */
-
-  // ==================================================
-  // Create Job Request
-  // ==================================================
+  // ==================== Create Job Request ====================
 
   createJobRequest = async (req, res) => {
     const { job: jobId, firstName, lastName, email, phone } = req.body;
@@ -300,16 +35,27 @@ class JobRequestController {
     if (!job) {
       return res.status(404).json({
         success: false,
-
-        message: "The selected job is not available.",
+        message: "The selected job is not available",
       });
     }
 
     if (job.deadline && new Date(job.deadline) < new Date()) {
       return res.status(400).json({
         success: false,
+        message: "The application deadline for this job has passed",
+      });
+    }
 
-        message: "The application deadline for this job has passed.",
+    const duplicateApplication = await jobApplicationExists({
+      JobRequest,
+      jobId: job._id,
+      email,
+    });
+
+    if (duplicateApplication) {
+      return res.status(409).json({
+        success: false,
+        message: "You have already applied for this job",
       });
     }
 
@@ -318,57 +64,34 @@ class JobRequestController {
     try {
       const jobRequest = await JobRequest.create({
         job: job._id,
-
         firstName,
-
         lastName,
-
         email,
-
         phone,
-
         cv,
-
         status: "new",
       });
 
       await jobRequest.populate(JOB_REQUEST_POPULATE_FIELDS);
 
-      await Promise.allSettled([
-        sendReceivedEmailSafely({
-          jobRequest,
-          job,
-        }),
-
-        createNotificationSafely({
-          jobRequest,
-          job,
-        }),
-      ]);
+      await processJobRequestSideEffects({
+        jobRequest,
+        job,
+      });
 
       return res.status(201).json({
         success: true,
-
-        message: "Your job application has been submitted successfully.",
+        message: "Your job application has been submitted successfully",
 
         data: {
-          request: {
-            _id: jobRequest._id,
-
-            job: jobRequest.job,
-
-            firstName: jobRequest.firstName,
-
-            lastName: jobRequest.lastName,
-
-            email: jobRequest.email,
-
-            phone: jobRequest.phone,
-
-            status: jobRequest.status,
-
-            createdAt: jobRequest.createdAt,
-          },
+          _id: jobRequest._id,
+          job: jobRequest.job,
+          firstName: jobRequest.firstName,
+          lastName: jobRequest.lastName,
+          email: jobRequest.email,
+          phone: jobRequest.phone,
+          status: jobRequest.status,
+          createdAt: jobRequest.createdAt,
         },
       });
     } catch (error) {
@@ -378,15 +101,7 @@ class JobRequestController {
     }
   };
 
-  /*
-    |--------------------------------------------------------------------------
-    | Dashboard
-    |--------------------------------------------------------------------------
-    */
-
-  // ==================================================
-  // Get All Job Requests
-  // ==================================================
+  // ==================== Get All Job Requests ====================
 
   getAllJobRequests = async (req, res) => {
     const filter = buildDashboardFilter(req.query);
@@ -406,31 +121,21 @@ class JobRequestController {
       JobRequest.countDocuments(filter),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
-
     return res.status(200).json({
       success: true,
-
       count: requests.length,
 
-      pagination: {
+      pagination: buildPaginationResponse({
         page,
         limit,
         total,
-        totalPages,
-
-        hasNextPage: page < totalPages,
-
-        hasPreviousPage: page > 1,
-      },
+      }),
 
       data: requests,
     });
   };
 
-  // ==================================================
-  // Get Job Request By ID
-  // ==================================================
+  // ==================== Get Job Request By ID ====================
 
   getJobRequestById = async (req, res) => {
     const jobRequest = await JobRequest.findById(req.params.id)
@@ -440,77 +145,55 @@ class JobRequestController {
     if (!jobRequest) {
       return res.status(404).json({
         success: false,
-
-        message: "Job request not found.",
+        message: "Job request not found",
       });
     }
 
     return res.status(200).json({
       success: true,
-
       data: jobRequest,
     });
   };
 
+  // ==================== Update Job Request Status ====================
 
-// ==================================================
-// Update Job Request Status
-// ==================================================
+  updateJobRequestStatus = async (req, res) => {
+    const jobRequest = await JobRequest.findById(req.params.id).populate(
+      "job",
+      "title location employmentType department",
+    );
 
-updateJobRequestStatus = async (req, res) => {
-  const jobRequest = await JobRequest.findById(req.params.id).populate(
-    "job",
-    "title location employmentType department",
-  );
+    if (!jobRequest) {
+      return res.status(404).json({
+        success: false,
+        message: "Job request not found",
+      });
+    }
 
-  if (!jobRequest) {
-    return res.status(404).json({
-      success: false,
-      message: "Job request not found.",
+    const { status } = req.body;
+
+    updateJobRequestStatus(jobRequest, status);
+
+    jobRequest.updatedBy = getCurrentUserId(req);
+
+    await jobRequest.save();
+
+    await sendStatusEmailSafely({
+      jobRequest,
+      job: jobRequest.job,
+      status,
     });
-  }
 
-  const { status } = req.body;
+    await jobRequest.populate("updatedBy", "fullName email role");
 
-  const previousStatus = jobRequest.status;
+    return res.status(200).json({
+      success: true,
+      message: "Job request status updated successfully",
+      data: jobRequest,
+    });
+  };
 
-  jobRequest.status = status;
-  jobRequest.updatedBy = getCurrentUserId(req);
-
-  const newDateField = STATUS_DATE_FIELDS[status];
-
-  if (newDateField && !jobRequest[newDateField]) {
-    jobRequest[newDateField] = new Date();
-  }
-
-  const previousDateField = STATUS_DATE_FIELDS[previousStatus];
-
-  if (previousDateField && previousStatus !== status) {
-    jobRequest[previousDateField] = null;
-  }
-
-  await jobRequest.save();
-
-  await sendStatusEmailSafely({
-    jobRequest,
-    job: jobRequest.job,
-    status,
-  });
-
-  await jobRequest.populate(
-    "updatedBy",
-    "fullName email role",
-  );
-
-  return res.status(200).json({
-    success: true,
-    message: "Job request status updated successfully.",
-    data: jobRequest,
-  });
-};
-  // ==================================================
-  // Delete Job Request
-  // ==================================================
+  // ==================== Delete Job Request ====================
 
   deleteJobRequest = async (req, res) => {
     const jobRequest = await JobRequest.findById(req.params.id);
@@ -518,8 +201,7 @@ updateJobRequestStatus = async (req, res) => {
     if (!jobRequest) {
       return res.status(404).json({
         success: false,
-
-        message: "Job request not found.",
+        message: "Job request not found",
       });
     }
 
@@ -533,55 +215,18 @@ updateJobRequestStatus = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-
-      message: "Job request deleted successfully.",
+      message: "Job request deleted successfully",
     });
   };
 
-  // ==================================================
-  // Get Job Request Statistics
-  // ==================================================
+  // ==================== Get Job Request Statistics ====================
 
   getJobRequestStatistics = async (req, res) => {
-    const statistics = await JobRequest.aggregate([
-      {
-        $group: {
-          _id: "$status",
-          count: {
-            $sum: 1,
-          },
-        },
-      },
-    ]);
-
-    const statusCounts = {
-      new: 0,
-      reviewed: 0,
-      shortlisted: 0,
-      accepted: 0,
-      rejected: 0,
-      ignored: 0,
-    };
-
-    for (const item of statistics) {
-      if (Object.prototype.hasOwnProperty.call(statusCounts, item._id)) {
-        statusCounts[item._id] = item.count;
-      }
-    }
-
-    const total = Object.values(statusCounts).reduce(
-      (sum, count) => sum + count,
-      0,
-    );
+    const statistics = await buildJobRequestStatistics(JobRequest);
 
     return res.status(200).json({
       success: true,
-
-      data: {
-        total,
-
-        ...statusCounts,
-      },
+      data: statistics,
     });
   };
 }
