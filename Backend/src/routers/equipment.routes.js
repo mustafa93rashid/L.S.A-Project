@@ -4,74 +4,49 @@ const equipmentController = require("../controllers/equipment.controller");
 
 const auth = require("../middlewares/auth");
 const role = require("../middlewares/role");
+
 const asyncHandler = require("../utils/asyncHandler");
 
-const { uploadEquipmentImage } = require("../middlewares/upload.middleware");
+const {uploadEquipmentImage} = require("../middlewares/upload.middleware");
 
-const {
-  createCategoryValidation,
-  updateCategoryValidation,
-  createEquipmentValidation,
-  updateEquipmentValidation,
-  equipmentIdValidation,
-  categoryIdValidation,
-  equipmentSlugValidation,
-  equipmentPublicQueryValidation,
-  equipmentDashboardQueryValidation,
-} = require("../validation/equipment.validate");
+const {createCategoryValidation,updateCategoryValidation,createEquipmentValidation,updateEquipmentValidation,equipmentIdValidation,categoryIdValidation,equipmentSlugValidation,equipmentPublicQueryValidation,equipmentDashboardQueryValidation} = require("../validation/equipment.validate");
 
 const router = express.Router();
 
-/*
-|--------------------------------------------------------------------------
-| Public Category Routes
-|--------------------------------------------------------------------------
-*/
+// ==================== Public Category Routes ====================
 
 router.get("/categories/public", asyncHandler(equipmentController.getPublicCategories));
 
-/*
-|--------------------------------------------------------------------------
-| Dashboard Category Routes
-|--------------------------------------------------------------------------
-*/
+// ==================== Dashboard Category Routes ====================
 
-router.get("/categories/options", auth, role(["superadmin", "contentManager"]), asyncHandler(equipmentController.getCategoryOptions));
+router.get("/categories/options", [auth, role(["superadmin", "manager", "contentManager"])], asyncHandler(equipmentController.getCategoryOptions));
 
-router.get("/categories", auth, role(["superadmin", "contentManager"]), asyncHandler(equipmentController.getAllCategories));
+router.get("/categories", [auth, role(["superadmin", "manager", "contentManager"])], asyncHandler(equipmentController.getAllCategories));
 
-router.post("/categories", auth, role(["superadmin", "contentManager"]), ...createCategoryValidation, asyncHandler(equipmentController.createCategory));
+router.post("/categories", [auth, role(["superadmin", "manager", "contentManager"]), ...createCategoryValidation], asyncHandler(equipmentController.createCategory));
 
-router.get("/categories/:id", auth, role(["superadmin", "contentManager"]), ...categoryIdValidation, asyncHandler(equipmentController.getCategoryById));
+router.get("/categories/:id", [auth, role(["superadmin", "manager", "contentManager"]), ...categoryIdValidation], asyncHandler(equipmentController.getCategoryById));
 
-router.patch("/categories/:id", auth, role(["superadmin", "contentManager"]), ...categoryIdValidation, ...updateCategoryValidation, asyncHandler(equipmentController.updateCategory));
+router.patch("/categories/:id", [auth, role(["superadmin", "manager", "contentManager"]), ...categoryIdValidation, ...updateCategoryValidation], asyncHandler(equipmentController.updateCategory));
 
-router.delete("/categories/:id", auth, role(["superadmin", "contentManager"]), ...categoryIdValidation, asyncHandler(equipmentController.deleteCategory));
+router.delete("/categories/:id", [auth, role(["superadmin", "manager", "contentManager"]), ...categoryIdValidation], asyncHandler(equipmentController.deleteCategory));
 
-/*
-|--------------------------------------------------------------------------
-| Public Equipment Routes
-|--------------------------------------------------------------------------
-*/
+// ==================== Public Equipment Routes ====================
 
-router.get("/public", ...equipmentPublicQueryValidation, asyncHandler(equipmentController.getPublicEquipment));
+router.get("/public", [...equipmentPublicQueryValidation], asyncHandler(equipmentController.getPublicEquipment));
 
-router.get("/public/:slug", ...equipmentSlugValidation, asyncHandler(equipmentController.getPublicEquipmentBySlug));
+router.get("/public/:slug", [...equipmentSlugValidation], asyncHandler(equipmentController.getPublicEquipmentBySlug));
 
-/*
-|--------------------------------------------------------------------------
-| Dashboard Equipment Routes
-|--------------------------------------------------------------------------
-*/
+// ==================== Dashboard Equipment Routes ====================
 
-router.get("/", auth, role(["superadmin", "contentManager"]), ...equipmentDashboardQueryValidation, asyncHandler(equipmentController.getAllEquipment));
+router.get("/", [auth, role(["superadmin", "manager", "contentManager"]), ...equipmentDashboardQueryValidation], asyncHandler(equipmentController.getAllEquipment));
 
-router.post("/", auth, role(["superadmin", "contentManager"]), uploadEquipmentImage(), ...createEquipmentValidation, asyncHandler(equipmentController.createEquipment));
+router.post("/", [auth, role(["superadmin", "manager", "contentManager"]), uploadEquipmentImage(), ...createEquipmentValidation], asyncHandler(equipmentController.createEquipment));
 
-router.get("/:id", auth, role(["superadmin", "contentManager"]), ...equipmentIdValidation, asyncHandler(equipmentController.getEquipmentById));
+router.get("/:id", [auth, role(["superadmin", "manager", "contentManager"]), ...equipmentIdValidation], asyncHandler(equipmentController.getEquipmentById));
 
-router.patch("/:id", auth, role(["superadmin", "contentManager"]), uploadEquipmentImage(), ...equipmentIdValidation, ...updateEquipmentValidation, asyncHandler(equipmentController.updateEquipment));
+router.patch("/:id", [auth, role(["superadmin", "manager", "contentManager"]), uploadEquipmentImage(), ...equipmentIdValidation, ...updateEquipmentValidation], asyncHandler(equipmentController.updateEquipment));
 
-router.delete("/:id", auth, role(["superadmin", "contentManager"]), ...equipmentIdValidation, asyncHandler(equipmentController.deleteEquipment));
+router.delete("/:id", [auth, role(["superadmin", "manager", "contentManager"]), ...equipmentIdValidation], asyncHandler(equipmentController.deleteEquipment));
 
 module.exports = router;

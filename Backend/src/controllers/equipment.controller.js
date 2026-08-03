@@ -1,112 +1,45 @@
 const EquipmentCategory = require("../models/equipmentCategory.model");
 const Equipment = require("../models/equipment.model");
-const { EquipmentRequest } = require("../models/equipmentRequest.model");
 
-const { uploadMulterImage, deleteImage } = require("../services/cloudinary.service");
+const {
+  EquipmentRequest,
+} = require("../models/equipmentRequest.model");
 
-/*
-|--------------------------------------------------------------------------
-| Constants
-|--------------------------------------------------------------------------
-*/
+const {
+  escapeRegex,
+  getCurrentUserId,
+  normalizeSlug,
+  uploadEquipmentImage,
+  replaceEquipmentImage,
+  deleteEquipmentImageSafely,
+  findActiveCategory,
+  equipmentSlugExists,
+  categoryDuplicateExists,
+  updateEquipmentFields,
+  updateCategoryFields,
+} = require("../helpers/equipment.helper");
 
-const EQUIPMENT_IMAGE_FOLDER = "equipment/images";
-
-/*
-|--------------------------------------------------------------------------
-| Helpers
-|--------------------------------------------------------------------------
-*/
-
-// ==================================================
-// Escape Regular Expression
-// ==================================================
-
-const escapeRegex = (value) => {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-};
-
-// ==================================================
-// Get Current User ID
-// ==================================================
-
-const getCurrentUserId = (req) => {
-  return req.user?._id || req.user?.id;
-};
-
-// ==================================================
-// Format Equipment Image
-// ==================================================
-
-const formatEquipmentImage = (uploadedImage, alt = "") => {
-  return {
-    url: uploadedImage.url,
-    publicId: uploadedImage.publicId,
-    alt: String(alt || "").trim(),
-  };
-};
-
-// ==================================================
-// Upload Equipment Image
-// ==================================================
-
-const uploadEquipmentImage = async (file, alt = "") => {
-  const uploadedImage = await uploadMulterImage({
-    file,
-    folder: EQUIPMENT_IMAGE_FOLDER,
-    prefix: "equipment",
-  });
-
-  return formatEquipmentImage(uploadedImage, alt);
-};
-
-// ==================================================
-// Delete Equipment Image Safely
-// ==================================================
-
-const deleteEquipmentImageSafely = async (publicId) => {
-  if (!publicId) {
-    return;
-  }
-
-  try {
-    await deleteImage(publicId);
-  } catch (error) {
-    console.error("Failed to delete equipment image from Cloudinary:", {
-      publicId,
-      message: error.message,
-      code: error.code,
-    });
-  }
-};
-
-/*
-|--------------------------------------------------------------------------
-| Equipment Controller
-|--------------------------------------------------------------------------
-*/
+// ==================== Equipment Controller ====================
 
 class EquipmentController {
-  /*
-  |--------------------------------------------------------------------------
-  | Public Categories
-  |--------------------------------------------------------------------------
-  */
+  // ==================== Get Public Categories ====================
 
-  // ==================================================
-  // Get Public Categories
-  // ==================================================
-
-  getPublicCategories = async (req, res) => {
-    const categories = await EquipmentCategory.find({
-      isActive: true,
-    })
-      .select("name slug displayOrder")
-      .sort({
-        displayOrder: 1,
-        createdAt: 1,
+  getPublicCategories = async (
+    req,
+    res,
+  ) => {
+    const categories =
+      await EquipmentCategory.find({
+        isActive: true,
       })
-      .lean();
+        .select(
+          "name slug displayOrder",
+        )
+        .sort({
+          displayOrder: 1,
+          createdAt: 1,
+        })
+        .lean();
 
     return res.status(200).json({
       success: true,
@@ -115,26 +48,22 @@ class EquipmentController {
     });
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Dashboard Categories
-  |--------------------------------------------------------------------------
-  */
+  // ==================== Get Category Options ====================
 
-  // ==================================================
-  // Get Category Options
-  // ==================================================
-
-  getCategoryOptions = async (req, res) => {
-    const categories = await EquipmentCategory.find({
-      isActive: true,
-    })
-      .select("name slug")
-      .sort({
-        displayOrder: 1,
-        name: 1,
+  getCategoryOptions = async (
+    req,
+    res,
+  ) => {
+    const categories =
+      await EquipmentCategory.find({
+        isActive: true,
       })
-      .lean();
+        .select("name slug")
+        .sort({
+          displayOrder: 1,
+          name: 1,
+        })
+        .lean();
 
     return res.status(200).json({
       success: true,
@@ -143,19 +72,27 @@ class EquipmentController {
     });
   };
 
-  // ==================================================
-  // Get All Categories
-  // ==================================================
+  // ==================== Get All Categories ====================
 
-  getAllCategories = async (req, res) => {
-    const categories = await EquipmentCategory.find()
-      .populate("createdBy", "fullName email")
-      .populate("updatedBy", "fullName email")
-      .sort({
-        displayOrder: 1,
-        createdAt: -1,
-      })
-      .lean();
+  getAllCategories = async (
+    req,
+    res,
+  ) => {
+    const categories =
+      await EquipmentCategory.find()
+        .populate(
+          "createdBy",
+          "fullName email role",
+        )
+        .populate(
+          "updatedBy",
+          "fullName email role",
+        )
+        .sort({
+          displayOrder: 1,
+          createdAt: -1,
+        })
+        .lean();
 
     return res.status(200).json({
       success: true,
@@ -164,188 +101,187 @@ class EquipmentController {
     });
   };
 
-  // ==================================================
-  // Get Category By ID
-  // ==================================================
+  // ==================== Get Category By ID ====================
 
-getCategoryById = async (req, res) => {
-  const category = await EquipmentCategory.findById(req.params.id)
-    .populate("createdBy", "fullName email")
-    .populate("updatedBy", "fullName email")
-    .lean();
-
-  if (!category) {
-    return res.status(404).json({
-      success: false,
-      message: "Equipment category not found.",
-    });
-  }
-
-  const equipment = await Equipment.find({
-    category: category._id,
-  })
-    .select(
-      "title slug shortDescription image primarySpecification location availableUnits safetyCertificate displayOrder isActive",
-    )
-    .sort({
-      displayOrder: 1,
-      createdAt: -1,
-    })
-    .lean();
-
-  return res.status(200).json({
-    success: true,
-    data: {
-      category,
-      equipment,
-    },
-  });
-};
-
-  // ==================================================
-  // Create Category
-  // ==================================================
-
-  createCategory = async (req, res) => {
-    const { name, slug, displayOrder, isActive } = req.body;
-
-    const existingCategory = await EquipmentCategory.findOne({
-      $or: [
-        {
-          slug,
-        },
-        {
-          name: {
-            $regex: `^${escapeRegex(name)}$`,
-            $options: "i",
-          },
-        },
-      ],
-    }).lean();
-
-    if (existingCategory) {
-      return res.status(409).json({
-        success: false,
-        message: "An equipment category with this name or slug already exists.",
-      });
-    }
-
-    const currentUserId = getCurrentUserId(req);
-
-    const category = await EquipmentCategory.create({
-      name,
-      slug,
-      displayOrder,
-      isActive,
-      createdBy: currentUserId,
-      updatedBy: currentUserId,
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: "Equipment category created successfully.",
-      data: category,
-    });
-  };
-
-  // ==================================================
-  // Update Category
-  // ==================================================
-
-  updateCategory = async (req, res) => {
-    const category = await EquipmentCategory.findById(req.params.id);
+  getCategoryById = async (
+    req,
+    res,
+  ) => {
+    const category =
+      await EquipmentCategory.findById(
+        req.params.id,
+      )
+        .populate(
+          "createdBy",
+          "fullName email role",
+        )
+        .populate(
+          "updatedBy",
+          "fullName email role",
+        )
+        .lean();
 
     if (!category) {
       return res.status(404).json({
         success: false,
-        message: "Equipment category not found.",
+        message:
+          "Equipment category not found",
       });
     }
 
-    const { name, slug, displayOrder, isActive } = req.body;
+    const equipment =
+      await Equipment.find({
+        category: category._id,
+      })
+        .select(
+          "title slug shortDescription image primarySpecification location availableUnits safetyCertificate displayOrder isActive",
+        )
+        .sort({
+          displayOrder: 1,
+          createdAt: -1,
+        })
+        .lean();
 
-    const duplicateConditions = [];
+    return res.status(200).json({
+      success: true,
+      data: {
+        category,
+        equipment,
+      },
+    });
+  };
 
-    if (name !== undefined) {
-      duplicateConditions.push({
-        name: {
-          $regex: `^${escapeRegex(name)}$`,
-          $options: "i",
-        },
-      });
-    }
+  // ==================== Create Category ====================
 
-    if (slug !== undefined) {
-      duplicateConditions.push({
+  createCategory = async (
+    req,
+    res,
+  ) => {
+    const {
+      name,
+      slug,
+      displayOrder,
+      isActive,
+    } = req.body;
+
+    const duplicateExists =
+      await categoryDuplicateExists({
+        name,
         slug,
       });
+
+    if (duplicateExists) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "An equipment category with this name or slug already exists",
+      });
     }
 
-    if (duplicateConditions.length > 0) {
-      const existingCategory = await EquipmentCategory.findOne({
-        _id: {
-          $ne: category._id,
-        },
-        $or: duplicateConditions,
-      }).lean();
+    const currentUserId =
+      getCurrentUserId(req);
 
-      if (existingCategory) {
-        return res.status(409).json({
-          success: false,
-          message: "An equipment category with this name or slug already exists.",
-        });
-      }
+    const category =
+      await EquipmentCategory.create({
+        name,
+        slug: normalizeSlug(slug),
+        displayOrder,
+        isActive,
+        createdBy: currentUserId,
+        updatedBy: currentUserId,
+      });
+
+    return res.status(201).json({
+      success: true,
+      message:
+        "Equipment category created successfully",
+      data: category,
+    });
+  };
+
+  // ==================== Update Category ====================
+
+  updateCategory = async (
+    req,
+    res,
+  ) => {
+    const category =
+      await EquipmentCategory.findById(
+        req.params.id,
+      );
+
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Equipment category not found",
+      });
     }
 
-    if (name !== undefined) {
-      category.name = name;
+    const duplicateExists =
+      await categoryDuplicateExists({
+        name: req.body.name,
+        slug: req.body.slug,
+
+        excludedCategoryId:
+          category._id,
+      });
+
+    if (duplicateExists) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "An equipment category with this name or slug already exists",
+      });
     }
 
-    if (slug !== undefined) {
-      category.slug = slug;
-    }
+    updateCategoryFields(
+      category,
+      req.body,
+    );
 
-    if (displayOrder !== undefined) {
-      category.displayOrder = displayOrder;
-    }
-
-    if (isActive !== undefined) {
-      category.isActive = isActive;
-    }
-
-    category.updatedBy = getCurrentUserId(req);
+    category.updatedBy =
+      getCurrentUserId(req);
 
     await category.save();
 
     return res.status(200).json({
       success: true,
-      message: "Equipment category updated successfully.",
+      message:
+        "Equipment category updated successfully",
       data: category,
     });
   };
 
-  // ==================================================
-  // Delete Category
-  // ==================================================
+  // ==================== Delete Category ====================
 
-  deleteCategory = async (req, res) => {
-    const category = await EquipmentCategory.findById(req.params.id);
+  deleteCategory = async (
+    req,
+    res,
+  ) => {
+    const category =
+      await EquipmentCategory.findById(
+        req.params.id,
+      );
 
     if (!category) {
       return res.status(404).json({
         success: false,
-        message: "Equipment category not found.",
+        message:
+          "Equipment category not found",
       });
     }
 
-    const equipmentCount = await Equipment.countDocuments({
-      category: category._id,
-    });
+    const equipmentCount =
+      await Equipment.countDocuments({
+        category: category._id,
+      });
 
     if (equipmentCount > 0) {
       return res.status(409).json({
         success: false,
-        message: "This category cannot be deleted because it contains equipment.",
+        message:
+          "This category cannot be deleted because it contains equipment",
       });
     }
 
@@ -353,32 +289,30 @@ getCategoryById = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Equipment category deleted successfully.",
+      message:
+        "Equipment category deleted successfully",
     });
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Public Equipment
-  |--------------------------------------------------------------------------
-  */
+  // ==================== Get Public Equipment ====================
 
-  // ==================================================
-  // Get Public Equipment
-  // ==================================================
-
-  getPublicEquipment = async (req, res) => {
+  getPublicEquipment = async (
+    req,
+    res,
+  ) => {
     const filter = {
       isActive: true,
     };
 
     if (req.query.category) {
-      const category = await EquipmentCategory.findOne({
-        slug: req.query.category,
-        isActive: true,
-      })
-        .select("_id")
-        .lean();
+      const category =
+        await EquipmentCategory.findOne({
+          slug:
+            req.query.category,
+          isActive: true,
+        })
+          .select("_id")
+          .lean();
 
       if (!category) {
         return res.status(200).json({
@@ -388,11 +322,15 @@ getCategoryById = async (req, res) => {
         });
       }
 
-      filter.category = category._id;
+      filter.category =
+        category._id;
     }
 
     if (req.query.search) {
-      const searchTerm = escapeRegex(req.query.search);
+      const searchTerm =
+        escapeRegex(
+          req.query.search,
+        );
 
       filter.$or = [
         {
@@ -428,87 +366,104 @@ getCategoryById = async (req, res) => {
       ];
     }
 
-    const equipment = await Equipment.find(filter)
-      .populate({
-        path: "category",
-        select: "name slug displayOrder",
-        match: {
-          isActive: true,
-        },
-      })
-      .select(
-        "title slug category shortDescription image.url image.alt primarySpecification location availableUnits safetyCertificate displayOrder",
-      )
-      .sort({
-        displayOrder: 1,
-        createdAt: -1,
-      })
-      .lean();
+    const equipment =
+      await Equipment.find(filter)
+        .populate({
+          path: "category",
+          select:
+            "name slug displayOrder",
 
-    const visibleEquipment = equipment.filter((item) => item.category);
+          match: {
+            isActive: true,
+          },
+        })
+        .select(
+          "title slug category shortDescription image.url image.alt primarySpecification location availableUnits safetyCertificate displayOrder",
+        )
+        .sort({
+          displayOrder: 1,
+          createdAt: -1,
+        })
+        .lean();
+
+    const visibleEquipment =
+      equipment.filter(
+        (item) => item.category,
+      );
 
     return res.status(200).json({
       success: true,
-      count: visibleEquipment.length,
+      count:
+        visibleEquipment.length,
       data: visibleEquipment,
     });
   };
 
-  // ==================================================
-  // Get Public Equipment By Slug
-  // ==================================================
+  // ==================== Get Public Equipment By Slug ====================
 
-  getPublicEquipmentBySlug = async (req, res) => {
-    const equipment = await Equipment.findOne({
-      slug: req.params.slug,
-      isActive: true,
-    })
-      .populate({
-        path: "category",
-        select: "name slug",
-        match: {
+  getPublicEquipmentBySlug =
+    async (req, res) => {
+      const equipment =
+        await Equipment.findOne({
+          slug: req.params.slug,
           isActive: true,
-        },
-      })
-      .select("-image.publicId -createdBy -updatedBy")
-      .lean();
+        })
+          .populate({
+            path: "category",
+            select: "name slug",
 
-    if (!equipment || !equipment.category) {
-      return res.status(404).json({
-        success: false,
-        message: "Equipment not found.",
+            match: {
+              isActive: true,
+            },
+          })
+          .select(
+            "-image.publicId -createdBy -updatedBy",
+          )
+          .lean();
+
+      if (
+        !equipment ||
+        !equipment.category
+      ) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Equipment not found",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: equipment,
       });
-    }
+    };
 
-    return res.status(200).json({
-      success: true,
-      data: equipment,
-    });
-  };
+  // ==================== Get All Equipment ====================
 
-  /*
-  |--------------------------------------------------------------------------
-  | Dashboard Equipment
-  |--------------------------------------------------------------------------
-  */
-
-  // ==================================================
-  // Get All Equipment
-  // ==================================================
-
-  getAllEquipment = async (req, res) => {
+  getAllEquipment = async (
+    req,
+    res,
+  ) => {
     const filter = {};
 
     if (req.query.category) {
-      filter.category = req.query.category;
+      filter.category =
+        req.query.category;
     }
 
-    if (req.query.isActive !== undefined) {
-      filter.isActive = req.query.isActive;
+    if (
+      req.query.isActive !==
+      undefined
+    ) {
+      filter.isActive =
+        req.query.isActive;
     }
 
     if (req.query.search) {
-      const searchTerm = escapeRegex(req.query.search);
+      const searchTerm =
+        escapeRegex(
+          req.query.search,
+        );
 
       filter.$or = [
         {
@@ -532,15 +487,25 @@ getCategoryById = async (req, res) => {
       ];
     }
 
-    const equipment = await Equipment.find(filter)
-      .populate("category", "name slug isActive")
-      .populate("createdBy", "fullName email")
-      .populate("updatedBy", "fullName email")
-      .sort({
-        displayOrder: 1,
-        createdAt: -1,
-      })
-      .lean();
+    const equipment =
+      await Equipment.find(filter)
+        .populate(
+          "category",
+          "name slug isActive",
+        )
+        .populate(
+          "createdBy",
+          "fullName email role",
+        )
+        .populate(
+          "updatedBy",
+          "fullName email role",
+        )
+        .sort({
+          displayOrder: 1,
+          createdAt: -1,
+        })
+        .lean();
 
     return res.status(200).json({
       success: true,
@@ -549,21 +514,35 @@ getCategoryById = async (req, res) => {
     });
   };
 
-  // ==================================================
-  // Get Equipment By ID
-  // ==================================================
+  // ==================== Get Equipment By ID ====================
 
-  getEquipmentById = async (req, res) => {
-    const equipment = await Equipment.findById(req.params.id)
-      .populate("category", "name slug isActive")
-      .populate("createdBy", "fullName email")
-      .populate("updatedBy", "fullName email")
-      .lean();
+  getEquipmentById = async (
+    req,
+    res,
+  ) => {
+    const equipment =
+      await Equipment.findById(
+        req.params.id,
+      )
+        .populate(
+          "category",
+          "name slug isActive",
+        )
+        .populate(
+          "createdBy",
+          "fullName email role",
+        )
+        .populate(
+          "updatedBy",
+          "fullName email role",
+        )
+        .lean();
 
     if (!equipment) {
       return res.status(404).json({
         success: false,
-        message: "Equipment not found.",
+        message:
+          "Equipment not found",
       });
     }
 
@@ -573,11 +552,12 @@ getCategoryById = async (req, res) => {
     });
   };
 
-  // ==================================================
-  // Create Equipment
-  // ==================================================
+  // ==================== Create Equipment ====================
 
-  createEquipment = async (req, res) => {
+  createEquipment = async (
+    req,
+    res,
+  ) => {
     const {
       title,
       slug,
@@ -593,258 +573,267 @@ getCategoryById = async (req, res) => {
       imageAlt,
     } = req.body;
 
-    const existingEquipment = await Equipment.findOne({
-      slug,
-    }).lean();
+    const duplicateSlug =
+      await equipmentSlugExists({
+        slug,
+      });
 
-    if (existingEquipment) {
+    if (duplicateSlug) {
       return res.status(409).json({
         success: false,
-        message: "Equipment with this slug already exists.",
+        message:
+          "Equipment with this slug already exists",
       });
     }
 
-    const existingCategory = await EquipmentCategory.findOne({
-      _id: category,
-      isActive: true,
-    })
-      .select("_id")
-      .lean();
+    const activeCategory =
+      await findActiveCategory(
+        category,
+      );
 
-    if (!existingCategory) {
+    if (!activeCategory) {
       return res.status(404).json({
         success: false,
-        message: "Active equipment category not found.",
+        message:
+          "Active equipment category not found",
       });
     }
 
     let uploadedImage = null;
 
     try {
-      uploadedImage = await uploadEquipmentImage(req.file, imageAlt || title);
+      uploadedImage =
+        await uploadEquipmentImage({
+          file: req.file,
+          alt:
+            imageAlt || title,
+        });
 
-      const currentUserId = getCurrentUserId(req);
+      const currentUserId =
+        getCurrentUserId(req);
 
-      const equipment = await Equipment.create({
-        title,
-        slug,
-        category,
-        shortDescription,
-        description,
-        image: uploadedImage,
-        primarySpecification,
-        location,
-        availableUnits,
-        safetyCertificate,
-        displayOrder,
-        isActive,
-        createdBy: currentUserId,
-        updatedBy: currentUserId,
-      });
+      const equipment =
+        await Equipment.create({
+          title,
+          slug:
+            normalizeSlug(slug),
+          category,
+          shortDescription,
+          description,
+          image: uploadedImage,
+          primarySpecification,
+          location,
+          availableUnits,
+          safetyCertificate,
+          displayOrder,
+          isActive,
 
-      await equipment.populate("category", "name slug");
+          createdBy:
+            currentUserId,
+
+          updatedBy:
+            currentUserId,
+        });
+
+      await equipment.populate(
+        "category",
+        "name slug",
+      );
 
       return res.status(201).json({
         success: true,
-        message: "Equipment created successfully.",
+        message:
+          "Equipment created successfully",
         data: equipment,
       });
     } catch (error) {
-      if (uploadedImage?.publicId) {
-        await deleteEquipmentImageSafely(uploadedImage.publicId);
+      if (
+        uploadedImage?.publicId
+      ) {
+        await deleteEquipmentImageSafely(
+          uploadedImage.publicId,
+        );
       }
 
       throw error;
     }
   };
 
-  // ==================================================
-  // Update Equipment
-  // ==================================================
+  // ==================== Update Equipment ====================
 
-  updateEquipment = async (req, res) => {
-    const equipment = await Equipment.findById(req.params.id);
+  updateEquipment = async (
+    req,
+    res,
+  ) => {
+    const equipment =
+      await Equipment.findById(
+        req.params.id,
+      );
 
     if (!equipment) {
       return res.status(404).json({
         success: false,
-        message: "Equipment not found.",
+        message:
+          "Equipment not found",
       });
     }
 
     const {
-      title,
       slug,
       category,
-      shortDescription,
-      description,
-      primarySpecification,
-      location,
-      availableUnits,
-      safetyCertificate,
-      displayOrder,
-      isActive,
       imageAlt,
     } = req.body;
 
-    if (slug !== undefined && slug !== equipment.slug) {
-      const existingEquipment = await Equipment.findOne({
-        slug,
-        _id: {
-          $ne: equipment._id,
-        },
-      }).lean();
+    if (slug !== undefined) {
+      const duplicateSlug =
+        await equipmentSlugExists({
+          slug,
 
-      if (existingEquipment) {
+          excludedEquipmentId:
+            equipment._id,
+        });
+
+      if (duplicateSlug) {
         return res.status(409).json({
           success: false,
-          message: "Equipment with this slug already exists.",
+          message:
+            "Equipment with this slug already exists",
         });
       }
     }
 
     if (category !== undefined) {
-      const existingCategory = await EquipmentCategory.findOne({
-        _id: category,
-        isActive: true,
-      })
-        .select("_id")
-        .lean();
+      const activeCategory =
+        await findActiveCategory(
+          category,
+        );
 
-      if (!existingCategory) {
+      if (!activeCategory) {
         return res.status(404).json({
           success: false,
-          message: "Active equipment category not found.",
+          message:
+            "Active equipment category not found",
         });
       }
     }
 
-    const oldImagePublicId = equipment.image?.publicId;
-
-    let newUploadedImage = null;
+    let imageReplacement = null;
 
     try {
-      if (req.file) {
-        newUploadedImage = await uploadEquipmentImage(
-          req.file,
-          imageAlt !== undefined ? imageAlt : equipment.image?.alt || title || equipment.title,
-        );
+      imageReplacement =
+        await replaceEquipmentImage({
+          equipment,
+          file: req.file,
+          imageAlt,
 
-        equipment.image = newUploadedImage;
-      } else if (imageAlt !== undefined) {
-        equipment.image.alt = imageAlt;
-      }
+          fallbackAlt:
+            req.body.title ||
+            equipment.title,
+        });
 
-      if (title !== undefined) {
-        equipment.title = title;
-      }
+      updateEquipmentFields(
+        equipment,
+        req.body,
+      );
 
-      if (slug !== undefined) {
-        equipment.slug = slug;
-      }
-
-      if (category !== undefined) {
-        equipment.category = category;
-      }
-
-      if (shortDescription !== undefined) {
-        equipment.shortDescription = shortDescription;
-      }
-
-      if (description !== undefined) {
-        equipment.description = description;
-      }
-
-      if (primarySpecification !== undefined) {
-        equipment.primarySpecification = primarySpecification;
-      }
-
-      if (location !== undefined) {
-        equipment.location = location;
-      }
-
-      if (availableUnits !== undefined) {
-        equipment.availableUnits = availableUnits;
-      }
-
-      if (safetyCertificate !== undefined) {
-        equipment.safetyCertificate = safetyCertificate;
-      }
-
-      if (displayOrder !== undefined) {
-        equipment.displayOrder = displayOrder;
-      }
-
-      if (isActive !== undefined) {
-        equipment.isActive = isActive;
-      }
-
-      equipment.updatedBy = getCurrentUserId(req);
+      equipment.updatedBy =
+        getCurrentUserId(req);
 
       await equipment.save();
 
-      if (newUploadedImage?.publicId && oldImagePublicId && oldImagePublicId !== newUploadedImage.publicId) {
-        await deleteEquipmentImageSafely(oldImagePublicId);
+      if (
+        imageReplacement?.oldPublicId &&
+        imageReplacement.oldPublicId !==
+          imageReplacement.newPublicId
+      ) {
+        await deleteEquipmentImageSafely(
+          imageReplacement.oldPublicId,
+        );
       }
 
-      await equipment.populate("category", "name slug");
+      await equipment.populate(
+        "category",
+        "name slug",
+      );
 
       return res.status(200).json({
         success: true,
-        message: "Equipment updated successfully.",
+        message:
+          "Equipment updated successfully",
         data: equipment,
       });
     } catch (error) {
-      if (newUploadedImage?.publicId) {
-        await deleteEquipmentImageSafely(newUploadedImage.publicId);
+      if (
+        imageReplacement?.newPublicId
+      ) {
+        await deleteEquipmentImageSafely(
+          imageReplacement.newPublicId,
+        );
       }
 
       throw error;
     }
   };
 
-  // ==================================================
-  // Delete Equipment
-  // ==================================================
+  // ==================== Delete Equipment ====================
 
-  deleteEquipment = async (req, res) => {
-    const equipment = await Equipment.findById(req.params.id);
+  deleteEquipment = async (
+    req,
+    res,
+  ) => {
+    const equipment =
+      await Equipment.findById(
+        req.params.id,
+      );
 
     if (!equipment) {
       return res.status(404).json({
         success: false,
-        message: "Equipment not found.",
+        message:
+          "Equipment not found",
       });
     }
 
-    const requestsCount = await EquipmentRequest.countDocuments({
-      equipment: equipment._id,
-    });
+    const requestsCount =
+      await EquipmentRequest.countDocuments(
+        {
+          equipment:
+            equipment._id,
+        },
+      );
 
     if (requestsCount > 0) {
       equipment.isActive = false;
-      equipment.updatedBy = getCurrentUserId(req);
+
+      equipment.updatedBy =
+        getCurrentUserId(req);
 
       await equipment.save();
 
       return res.status(200).json({
         success: true,
-        message: "Equipment has existing requests and was deactivated instead of permanently deleted.",
+        message:
+          "Equipment has existing requests and was deactivated instead of permanently deleted",
         data: equipment,
       });
     }
 
-    const imagePublicId = equipment.image?.publicId;
+    const imagePublicId =
+      equipment.image?.publicId;
 
     await equipment.deleteOne();
 
-    await deleteEquipmentImageSafely(imagePublicId);
+    await deleteEquipmentImageSafely(
+      imagePublicId,
+    );
 
     return res.status(200).json({
       success: true,
-      message: "Equipment deleted successfully.",
+      message:
+        "Equipment deleted successfully",
     });
   };
 }
 
-module.exports = new EquipmentController();
+module.exports =
+  new EquipmentController();

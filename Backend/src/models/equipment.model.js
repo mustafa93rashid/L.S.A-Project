@@ -1,14 +1,6 @@
 const mongoose = require("mongoose");
 
-/*
-|--------------------------------------------------------------------------
-| Shared Schemas
-|--------------------------------------------------------------------------
-*/
-
-// ==================================================
-// Image Schema
-// ==================================================
+// ==================== Shared Image Schema ====================
 
 const imageSchema = new mongoose.Schema(
   {
@@ -36,15 +28,12 @@ const imageSchema = new mongoose.Schema(
   },
 );
 
-// ==================================================
-// Safety Certificate Schema
-// ==================================================
+// ==================== Safety Certificate Schema ====================
 
 const safetyCertificateSchema = new mongoose.Schema(
   {
     isAvailable: {
       type: Boolean,
-      required: true,
       default: false,
     },
 
@@ -60,19 +49,11 @@ const safetyCertificateSchema = new mongoose.Schema(
   },
 );
 
-/*
-|--------------------------------------------------------------------------
-| Equipment Schema
-|--------------------------------------------------------------------------
-*/
+// ==================== Equipment Schema ====================
 
 const equipmentSchema = new mongoose.Schema(
   {
-    /*
-    |--------------------------------------------------------------------------
-    | Basic Information
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Basic Information ====================
 
     title: {
       type: String,
@@ -114,22 +95,14 @@ const equipmentSchema = new mongoose.Schema(
       maxlength: 5000,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Main Image
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Main Image ====================
 
     image: {
       type: imageSchema,
       required: true,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Primary Specification
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Primary Specification ====================
 
     primarySpecification: {
       label: {
@@ -149,11 +122,7 @@ const equipmentSchema = new mongoose.Schema(
       },
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Location And Availability
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Location And Availability ====================
 
     location: {
       type: String,
@@ -165,46 +134,38 @@ const equipmentSchema = new mongoose.Schema(
 
     availableUnits: {
       type: Number,
-      required: true,
       default: 0,
       min: 0,
+      max: 99999,
+
       validate: {
         validator: Number.isInteger,
-        message: "Available units must be an integer.",
+        message: "Available units must be an integer",
       },
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Safety Certificate Information
-    |--------------------------------------------------------------------------
-    |
-    | This contains text information only.
-    | It does not contain an uploaded file.
-    |
-    */
+    // ==================== Safety Certificate ====================
 
     safetyCertificate: {
       type: safetyCertificateSchema,
+
       default: () => ({
         isAvailable: false,
         message: "",
       }),
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Display Settings
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Display Settings ====================
 
     displayOrder: {
       type: Number,
       default: 0,
       min: 0,
+      max: 999,
+
       validate: {
         validator: Number.isInteger,
-        message: "Display order must be an integer.",
+        message: "Display order must be an integer",
       },
     },
 
@@ -213,11 +174,7 @@ const equipmentSchema = new mongoose.Schema(
       default: true,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Audit Fields
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Audit Information ====================
 
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -237,11 +194,7 @@ const equipmentSchema = new mongoose.Schema(
   },
 );
 
-/*
-|--------------------------------------------------------------------------
-| Indexes
-|--------------------------------------------------------------------------
-*/
+// ==================== Indexes ====================
 
 equipmentSchema.index({
   category: 1,
@@ -268,12 +221,9 @@ equipmentSchema.index({
   "primarySpecification.value": "text",
 });
 
-/*
-|--------------------------------------------------------------------------
-| Model
-|--------------------------------------------------------------------------
-*/
+// ==================== Equipment Model ====================
 
-const Equipment = mongoose.models.Equipment || mongoose.model("Equipment", equipmentSchema);
+const Equipment =
+  mongoose.models.Equipment || mongoose.model("Equipment", equipmentSchema);
 
 module.exports = Equipment;

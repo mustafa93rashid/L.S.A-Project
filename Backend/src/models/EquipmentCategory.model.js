@@ -1,10 +1,6 @@
 const mongoose = require("mongoose");
 
-/*
-|--------------------------------------------------------------------------
-| Equipment Category Schema
-|--------------------------------------------------------------------------
-*/
+// ==================== Equipment Category Schema ====================
 
 const equipmentCategorySchema = new mongoose.Schema(
   {
@@ -22,12 +18,20 @@ const equipmentCategorySchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
+      minlength: 2,
+      maxlength: 120,
     },
 
     displayOrder: {
       type: Number,
       default: 0,
       min: 0,
+      max: 999,
+
+      validate: {
+        validator: Number.isInteger,
+        message: "Display order must be an integer",
+      },
     },
 
     isActive: {
@@ -35,11 +39,7 @@ const equipmentCategorySchema = new mongoose.Schema(
       default: true,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Audit Fields
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Audit Information ====================
 
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -59,11 +59,7 @@ const equipmentCategorySchema = new mongoose.Schema(
   },
 );
 
-/*
-|--------------------------------------------------------------------------
-| Indexes
-|--------------------------------------------------------------------------
-*/
+// ==================== Indexes ====================
 
 equipmentCategorySchema.index({
   isActive: 1,
@@ -74,11 +70,7 @@ equipmentCategorySchema.index({
   name: 1,
 });
 
-/*
-|--------------------------------------------------------------------------
-| Model
-|--------------------------------------------------------------------------
-*/
+// ==================== Equipment Category Model ====================
 
 const EquipmentCategory =
   mongoose.models.EquipmentCategory ||
