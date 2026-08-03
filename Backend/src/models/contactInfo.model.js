@@ -1,18 +1,8 @@
 const mongoose = require("mongoose");
 
-/*
-|--------------------------------------------------------------------------
-| Contact Information Schema
-|--------------------------------------------------------------------------
-*/
-
 const contactInfoSchema = new mongoose.Schema(
   {
-    /*
-    |--------------------------------------------------------------------------
-    | Main Information
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Main Information ====================
 
     title: {
       type: String,
@@ -28,18 +18,25 @@ const contactInfoSchema = new mongoose.Schema(
       maxlength: 1000,
     },
 
-    address: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 500,
+    // ==================== Location Information ====================
+
+    location: {
+      address: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 500,
+      },
+
+      mapUrl: {
+        type: String,
+        trim: true,
+        default: "",
+        maxlength: 1000,
+      },
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Phone Numbers
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Phone Numbers ====================
 
     phones: {
       type: [
@@ -59,11 +56,7 @@ const contactInfoSchema = new mongoose.Schema(
       maxlength: 30,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Email
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Email Information ====================
 
     email: {
       type: String,
@@ -73,11 +66,7 @@ const contactInfoSchema = new mongoose.Schema(
       maxlength: 254,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Working Hours
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Working Hours ====================
 
     workingHours: {
       type: String,
@@ -93,11 +82,7 @@ const contactInfoSchema = new mongoose.Schema(
       maxlength: 250,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Social Links
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Social Media Links ====================
 
     socialLinks: {
       facebook: {
@@ -125,22 +110,14 @@ const contactInfoSchema = new mongoose.Schema(
       },
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Display Settings
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Display Settings ====================
 
     isActive: {
       type: Boolean,
       default: true,
     },
 
-    /*
-    |--------------------------------------------------------------------------
-    | Audit
-    |--------------------------------------------------------------------------
-    */
+    // ==================== Audit Information ====================
 
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -154,17 +131,16 @@ const contactInfoSchema = new mongoose.Schema(
   },
 );
 
-/*
-|--------------------------------------------------------------------------
-| Model
-|--------------------------------------------------------------------------
-*/
+// ==================== Indexes ====================
+
+contactInfoSchema.index({
+  isActive: 1,
+});
+
+// ==================== Contact Information Model ====================
 
 const ContactInfo =
   mongoose.models.ContactInfo ||
-  mongoose.model(
-    "ContactInfo",
-    contactInfoSchema,
-  );
+  mongoose.model("ContactInfo", contactInfoSchema);
 
 module.exports = ContactInfo;

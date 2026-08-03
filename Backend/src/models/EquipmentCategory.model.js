@@ -74,9 +74,6 @@ equipmentCategorySchema.index({
 
 const EquipmentCategory =
   mongoose.models.EquipmentCategory ||
-  mongoose.model(
-    "EquipmentCategory",
-    equipmentCategorySchema,
-  );
+  mongoose.model("EquipmentCategory", equipmentCategorySchema);
 
 module.exports = EquipmentCategory;
