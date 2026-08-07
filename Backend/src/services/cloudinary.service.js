@@ -198,6 +198,17 @@ const sanitizeBaseName = (value) => {
   );
 };
 
+// ==================== Get File Extension ====================
+
+/** Lowercased extension without the dot, or null when the name has none.
+ * Used only to keep the extension on raw-document public IDs (see
+ * uploadDocumentBuffer) — sanitizeBaseName strips it for the base name. */
+const getFileExtension = (originalName) => {
+  const match = /\.([a-zA-Z0-9]+)$/.exec(String(originalName || "").trim());
+
+  return match ? match[1].toLowerCase() : null;
+};
+
 // ==================== Build Public ID ====================
 
 const buildPublicId = ({ folder, originalName, prefix }) => {
@@ -454,13 +465,27 @@ const uploadDocumentBuffer = async ({
       prefix,
     });
 
+  // Cloudinary raw resources don't infer or append a format the way
+  // image/video resources do — without the extension baked into the
+  // public_id, the delivery URL has none, and Cloudinary falls back to a
+  // generic application/octet-stream content-type and an extension-less
+  // Content-Disposition filename, so browsers can't preview it and
+  // downloaded copies can't be opened by the OS. buildPublicId() strips
+  // the extension when sanitizing the base name, so it's restored here,
+  // on the final ID, for raw uploads only.
+  const extension = getFileExtension(originalName);
+
+  const publicIdWithExtension = extension
+    ? `${finalPublicId}.${extension}`
+    : finalPublicId;
+
   const result = await uploadStream({
     buffer,
 
     options: {
       folder: buildCloudinaryFolder(normalizedFolder),
 
-      public_id: finalPublicId,
+      public_id: publicIdWithExtension,
 
       resource_type: RESOURCE_TYPES.RAW,
 

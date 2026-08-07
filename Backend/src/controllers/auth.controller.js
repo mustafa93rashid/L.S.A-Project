@@ -107,6 +107,9 @@ class AuthController {
     delete userResponse.passwordChangeCode;
     delete userResponse.passwordChangeCodeExpires;
     delete userResponse.pendingPassword;
+    delete userResponse.pendingEmail;
+    delete userResponse.emailChangeCode;
+    delete userResponse.emailChangeCodeExpires;
     delete userResponse.activationToken;
     delete userResponse.activationTokenExpires;
 

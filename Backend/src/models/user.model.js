@@ -111,6 +111,28 @@ const userSchema = new mongoose.Schema(
       default: undefined,
     },
 
+    // ==================== Email Change ====================
+
+    pendingEmail: {
+      type: String,
+      select: false,
+      lowercase: true,
+      trim: true,
+      default: undefined,
+    },
+
+    emailChangeCode: {
+      type: String,
+      select: false,
+      default: undefined,
+    },
+
+    emailChangeCodeExpires: {
+      type: Date,
+      select: false,
+      default: undefined,
+    },
+
     // ==================== Account Activation ====================
 
     activationToken: {

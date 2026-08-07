@@ -7,11 +7,15 @@ const userController = require("../controllers/user.controller");
 const auth = require("../middlewares/auth");
 const role = require("../middlewares/role");
 const { uploadUserAvatar } = require("../middlewares/upload.middleware");
+const {
+  emailChangeRequestLimiter,
+  emailChangeVerifyLimiter,
+} = require("../middlewares/limiter");
 
 const asyncHandler = require("../utils/asyncHandler");
 
 const {
-  updateProfileValidation, createUserValidation, activateAccountValidation, userIdValidation, updateUserStatusValidation, updateUserRoleValidation} = require("../validation/user.validate");
+  updateProfileValidation, requestEmailChangeValidation, verifyEmailChangeValidation, createUserValidation, activateAccountValidation, userIdValidation, updateUserStatusValidation, updateUserRoleValidation} = require("../validation/user.validate");
 
 // ==================== Current User Routes ====================
 
@@ -20,6 +24,12 @@ router.get("/profile", [auth], asyncHandler(userController.getProfile));
 router.patch("/profile", [auth, uploadUserAvatar(), ...updateProfileValidation], asyncHandler(userController.updateProfile));
 
 router.delete("/profile/image", [auth], asyncHandler(userController.deleteProfileImage));
+
+// ==================== Email Change Routes ====================
+
+router.post("/profile/email-change/request", [auth, emailChangeRequestLimiter, ...requestEmailChangeValidation], asyncHandler(userController.requestEmailChange));
+
+router.post("/profile/email-change/verify", [auth, emailChangeVerifyLimiter, ...verifyEmailChangeValidation], asyncHandler(userController.verifyEmailChange));
 
 // ==================== Account Activation Route ====================
 

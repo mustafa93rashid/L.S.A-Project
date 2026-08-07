@@ -47,6 +47,22 @@ const passwordChangeVerifyLimiter = createLimiter({
   message: "Too many verification attempts. Please try again after 15 minutes.",
 });
 
+// ==================== Email Change Request Limiter ====================
+
+const emailChangeRequestLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  message: "Too many email change requests. Please try again after 15 minutes.",
+});
+
+// ==================== Email Change Verification Limiter ====================
+
+const emailChangeVerifyLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  message: "Too many verification attempts. Please try again after 15 minutes.",
+});
+
 // ==================== Forgot Password Limiter ====================
 
 const forgotPasswordLimiter = createLimiter({
@@ -77,6 +93,8 @@ module.exports = {
   signinLimiter,
   passwordChangeRequestLimiter,
   passwordChangeVerifyLimiter,
+  emailChangeRequestLimiter,
+  emailChangeVerifyLimiter,
   forgotPasswordLimiter,
   resetPasswordLimiter,
   refreshTokenLimiter,

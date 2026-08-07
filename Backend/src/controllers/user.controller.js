@@ -11,9 +11,11 @@ const { replaceImage, deleteImage } = require("../services/cloudinary.service");
 class UserController {
   // ==================== Get Profile ====================
   getProfile = async (req, res) => {
-    const user = await User.findById(req.user._id).select(
-      "-password -passwordResetToken -passwordResetExpires -activationToken -activationTokenExpires",
-    );
+    const user = await User.findById(req.user._id)
+      .select(
+        "-password -passwordResetToken -passwordResetExpires -activationToken -activationTokenExpires",
+      )
+      .populate("createdBy", "fullName email role");
 
     if (!user) {
       return res.status(404).json({
@@ -30,8 +32,13 @@ class UserController {
   };
 
   // ==================== Update Profile ====================
+  // Deliberately does NOT accept `email` — see requestEmailChange /
+  // verifyEmailChange below. updateProfileValidation already rejects an
+  // `email` key with a 400 before this runs, so there's nothing to guard
+  // here; this comment exists so a future edit doesn't "helpfully" re-add
+  // direct email writes to this endpoint.
   updateProfile = async (req, res) => {
-    const { fullName, email, phone, department } = req.body;
+    const { fullName, phone, department } = req.body;
 
     const user = await User.findById(req.user._id);
 
@@ -44,26 +51,6 @@ class UserController {
 
     if (fullName !== undefined) {
       user.fullName = fullName;
-    }
-
-    if (email !== undefined) {
-      const normalizedEmail = email.toLowerCase().trim();
-
-      const existingUser = await User.findOne({
-        email: normalizedEmail,
-        _id: {
-          $ne: user._id,
-        },
-      });
-
-      if (existingUser) {
-        return res.status(409).json({
-          success: false,
-          message: "A user with this email address already exists",
-        });
-      }
-
-      user.email = normalizedEmail;
     }
 
     if (phone !== undefined) {
@@ -100,6 +87,181 @@ class UserController {
       data: updatedUser,
     });
   };
+
+  // ==================== Request Email Change ====================
+  requestEmailChange = async (req, res) => {
+    const { newEmail } = req.body;
+
+    const normalizedEmail = newEmail.toLowerCase().trim();
+
+    if (normalizedEmail === req.user.email) {
+      return res.status(400).json({
+        success: false,
+        message: "New email must be different from your current email.",
+      });
+    }
+
+    const existingUser = await User.findOne({
+      email: normalizedEmail,
+      _id: {
+        $ne: req.user._id,
+      },
+    });
+
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: "A user with this email address already exists",
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const verificationCode =
+      verificationCodeService.generateVerificationCode();
+
+    user.pendingEmail = normalizedEmail;
+
+    user.emailChangeCode =
+      verificationCodeService.hashVerificationCode(verificationCode);
+
+    user.emailChangeCodeExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+    await user.save({
+      validateBeforeSave: false,
+    });
+
+    try {
+      // Sent to the NEW address only — the current email is never notified
+      // and never touched until verification succeeds.
+      await emailService.sendEmailChangeVerificationEmail({
+        to: normalizedEmail,
+        fullName: user.fullName,
+        verificationCode,
+      });
+    } catch (error) {
+      user.pendingEmail = undefined;
+      user.emailChangeCode = undefined;
+      user.emailChangeCodeExpires = undefined;
+
+      await user.save({
+        validateBeforeSave: false,
+      });
+
+      throw error;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Verification code sent to the new email address.",
+    });
+  };
+
+  // ==================== Verify Email Change ====================
+  verifyEmailChange = async (req, res) => {
+    const { verificationCode } = req.body;
+
+    const user = await User.findById(req.user._id).select(
+      "+pendingEmail +emailChangeCode +emailChangeCodeExpires",
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (!user.pendingEmail || !user.emailChangeCode) {
+      return res.status(400).json({
+        success: false,
+        message: "No pending email change found.",
+      });
+    }
+
+    if (
+      !user.emailChangeCodeExpires ||
+      user.emailChangeCodeExpires < Date.now()
+    ) {
+      // Only the code is cleared on expiry — `pendingEmail` is kept so
+      // Resend can issue a fresh code without asking the user to retype
+      // the new address.
+      user.emailChangeCode = undefined;
+      user.emailChangeCodeExpires = undefined;
+
+      await user.save({
+        validateBeforeSave: false,
+      });
+
+      return res.status(400).json({
+        success: false,
+        message: "Verification code has expired",
+      });
+    }
+
+    const isVerificationCodeValid =
+      verificationCodeService.verifyVerificationCode(
+        verificationCode,
+        user.emailChangeCode,
+      );
+
+    if (!isVerificationCodeValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid verification code",
+      });
+    }
+
+    // Re-checked here, not just at request time — someone else could have
+    // claimed this address while verification was pending.
+    const existingUser = await User.findOne({
+      email: user.pendingEmail,
+      _id: {
+        $ne: user._id,
+      },
+    });
+
+    if (existingUser) {
+      user.pendingEmail = undefined;
+      user.emailChangeCode = undefined;
+      user.emailChangeCodeExpires = undefined;
+
+      await user.save({
+        validateBeforeSave: false,
+      });
+
+      return res.status(409).json({
+        success: false,
+        message:
+          "This email address was just claimed by another account. Please request a new verification code with a different address.",
+      });
+    }
+
+    user.email = user.pendingEmail;
+    user.pendingEmail = undefined;
+    user.emailChangeCode = undefined;
+    user.emailChangeCodeExpires = undefined;
+
+    await user.save();
+
+    const updatedUser = await User.findById(user._id).select(
+      "-password -passwordResetToken -passwordResetExpires -activationToken -activationTokenExpires",
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Email address updated successfully.",
+      data: updatedUser,
+    });
+  };
+
   // ==================== Delete Profile Image ====================
   deleteProfileImage = async (req, res) => {
     const user = await User.findById(req.user._id);
@@ -446,6 +608,7 @@ class UserController {
 
     const allowedRoles = [
       "superadmin",
+      "manager",
       "equipmentManager",
       "hrManager",
       "contentManager",

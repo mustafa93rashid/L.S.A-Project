@@ -34,19 +34,21 @@ const updateProfileValidation = [
       "Full name must be between 3 and 100 characters",
     ),
 
-  body("email")
-    .optional()
-    .trim()
-    .notEmpty()
-    .withMessage(
-      "Email cannot be empty",
-    )
-    .bail()
-    .isEmail()
-    .withMessage(
-      "Please enter a valid email address",
-    )
-    .normalizeEmail(),
+  // Email is intentionally NOT editable through this endpoint — changing it
+  // requires verifying ownership of the new address first (see
+  // requestEmailChangeValidation/verifyEmailChangeValidation below). This
+  // guard is what actually closes the unverified-email-change gap: without
+  // it, a client could still silently write `email` here even though the
+  // dedicated flow exists.
+  body("email").custom((value) => {
+    if (value !== undefined) {
+      throw new Error(
+        "Email changes require verification. Use the email-change flow.",
+      );
+    }
+
+    return true;
+  }),
 
   body("phone")
     .optional()
@@ -81,7 +83,6 @@ const updateProfileValidation = [
     (value, { req }) => {
       const editableFields = [
         "fullName",
-        "email",
         "phone",
         "department",
       ];
@@ -105,6 +106,35 @@ const updateProfileValidation = [
       return true;
     },
   ),
+
+  validate,
+];
+
+// ==================== Request Email Change Validation ====================
+
+const requestEmailChangeValidation = [
+  body("newEmail")
+    .trim()
+    .notEmpty()
+    .withMessage("New email is required")
+    .bail()
+    .isEmail()
+    .withMessage("Please enter a valid email address")
+    .normalizeEmail(),
+
+  validate,
+];
+
+// ==================== Verify Email Change Validation ====================
+
+const verifyEmailChangeValidation = [
+  body("verificationCode")
+    .trim()
+    .notEmpty()
+    .withMessage("Verification code is required")
+    .bail()
+    .matches(/^\d{6}$/)
+    .withMessage("Verification code must contain exactly 6 digits"),
 
   validate,
 ];
@@ -263,6 +293,8 @@ module.exports = {
   allowedRoles,
 
   updateProfileValidation,
+  requestEmailChangeValidation,
+  verifyEmailChangeValidation,
   createUserValidation,
   activateAccountValidation,
   userIdValidation,

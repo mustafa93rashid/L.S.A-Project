@@ -179,6 +179,45 @@ Do not share this code with anyone.
   });
 };
 
+// ==================== Send Email Change Verification Email ====================
+
+const sendEmailChangeVerificationEmail = async ({
+  to,
+  fullName,
+  verificationCode,
+}) => {
+  const subject = "Confirm Your New LSA Email Address";
+
+  const text = `
+Hello ${fullName || "User"},
+
+Your email change verification code is:
+
+${verificationCode}
+
+This code expires in 10 minutes.
+
+Do not share this code with anyone. If you did not request this change, you can safely ignore this email — your current sign-in email remains unchanged.
+    `.trim();
+
+  const html = createVerificationEmailTemplate({
+    title: "Confirm Your New Email",
+    fullName,
+    description:
+      "We received a request to change the email address on your account to this one. Use the secure code below to confirm this address.",
+    verificationCode,
+    expirationText:
+      "This code expires in 10 minutes. Do not share it with anyone.",
+  });
+
+  return sendEmail({
+    to,
+    subject,
+    text,
+    html,
+  });
+};
+
 // ==================== Send Account Activation Email ====================
 
 const sendAccountActivationEmail = async ({ to, fullName, activationUrl }) => {
@@ -418,6 +457,7 @@ module.exports = {
   sendPasswordResetEmail,
   sendSignupVerificationEmail,
   sendPasswordChangeVerificationEmail,
+  sendEmailChangeVerificationEmail,
   sendAccountActivationEmail,
 
   sendEquipmentRequestReceivedEmail,

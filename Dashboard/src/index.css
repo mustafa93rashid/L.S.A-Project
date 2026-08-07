@@ -1,0 +1,346 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+/*
+ * ============================================================
+ * LSA Design System v2 — "Confident Enterprise Minimalism"
+ * ============================================================
+ *
+ * Light mode only, by deliberate decision — dark mode has been fully
+ * removed (there was never a live toggle for it; see git history / the
+ * Phase 10.5→v2 redesign changelog for the prior token set).
+ *
+ * Two-tone brand identity — this is the core visual idea of the redesign:
+ *   - Deep navy  = brand identity (the Sidebar's fixed surface — LSA's own
+ *     brand color, unchanged in spirit from the original palette, refined
+ *     for more depth/contrast).
+ *   - Professional blue = the interactive system (every button, link,
+ *     active state, and focus ring in the app). The contrast between the
+ *     dark, still, navy brand surface and the crisp, active blue
+ *     interactive layer is the dashboard's single strongest visual
+ *     signature — deliberately not diluted by using blue anywhere else it
+ *     isn't functionally "this is interactive."
+ *
+ * Typography — no webfont: the redesign leans on the OS's own modern UI
+ * font (Segoe UI Variable / SF Pro / system-ui) rather than loading an
+ * external face, for zero added network cost and zero flash-of-unstyled-
+ * text risk. Hierarchy comes from a real modular scale + weight +
+ * tracking, not a second font family. Fixed mapping (keep to it; don't
+ * reach for an arbitrary size):
+ *   text-2xl font-semibold tracking-tight  -> page title (h1)
+ *   text-lg  font-semibold tracking-tight  -> section title (h2)
+ *   text-base font-semibold                -> card title
+ *   text-sm                                -> body copy (the default)
+ *   text-sm text-muted-foreground          -> secondary/supporting text
+ *   text-xs                                -> captions, table meta
+ *   text-xs font-semibold uppercase tracking-wide text-muted-foreground
+ *                                           -> eyebrow/overline label
+ *
+ * Spacing — Tailwind's default 4px-based scale, used under an explicit
+ * 8pt-rhythm rule: every component padding/gap snaps to 8/16/24/32/48px
+ * (Tailwind 2/4/6/8/12); 4px (Tailwind 1) is reserved for fine text-
+ * adjacent gaps only (icon-to-label, badge dot-to-text), never page/
+ * section/card-level spacing.
+ *
+ * Elevation — three levels: `shadow-xs` (resting/default), `shadow-card`
+ * (hover/raised card), `shadow-elevated` (modal/drawer/popover — the one
+ * navy-tinted, larger-blur "premium" shadow, matching LSA's own brand
+ * navy rather than a generic black).
+ * ============================================================
+ */
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans:
+    'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Inter', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+
+  /* Semantic status colors — distinct from the brand/interactive colors,
+     never used for CTAs, only for state. Each has a base (text/icon), a
+     -subtle (background tint, e.g. badge/alert fill), and the base again
+     doubles as the border color at reduced opacity via the component. */
+  --color-destructive: var(--destructive);
+  --color-destructive-subtle: var(--destructive-subtle);
+
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+
+  /* Topbar's own floating-header surface — distinct from both
+     --background (the page) and --card (standard content cards). */
+  --color-topbar-surface: var(--topbar-surface);
+  --color-topbar-border: var(--topbar-border);
+  --color-banner-border: var(--banner-border);
+
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 8px 20px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+  --shadow-elevated:
+    0 24px 56px rgba(15, 27, 66, 0.14), 0 8px 20px rgba(15, 27, 66, 0.08);
+  --shadow-float: /* Topbar shell's own floating-header shadow: a faint
+    inset top highlight (a "catching light" edge) plus a tight near-shadow
+    and a wide soft far-shadow — two shadow distances read as more
+    physically grounded than one flat blur, for a convincing "detached
+    from the page" lift without a hard edge. */
+    inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 32px -8px rgba(15, 23, 42, 0.09);
+  --shadow-banner: /* The Welcome Banner's own, lighter elevation — sits
+    one layer up from --shadow-float (page -> shell -> banner), so it
+    needs less shadow, not more: a bright top highlight plus a tight,
+    faintly primary-tinted ambient shadow. */
+    inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 1px 2px rgba(15, 23, 42, 0.03),
+    0 10px 24px -14px rgba(37, 99, 235, 0.28);
+}
+
+:root {
+  /* ==================== Neutrals & Surfaces ==================== */
+  --background: #f8fafc; /* soft cool page background — not pure white,
+                             so surfaces (cards) read as a distinct layer */
+  --foreground: #0f172a;
+
+  --card: #ffffff; /* Surface */
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  --muted: #f1f5f9; /* Muted Surface — table headers, subtle sections */
+  --muted-foreground: #64748b;
+
+  --accent: #eff4ff; /* soft primary-tinted hover wash (table rows, list items) */
+  --accent-foreground: #1d3a8a;
+
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+
+  /* ==================== Primary (interactive system) ==================== */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-active: #1e40af;
+  --primary-foreground: #ffffff;
+  --ring: var(--primary); /* every focus ring in the app is the interactive blue */
+
+  /* ==================== Secondary ==================== */
+  --secondary: #f1f5f9;
+  --secondary-hover: #e2e8f0;
+  --secondary-foreground: #0f172a;
+
+  /* ==================== Status ==================== */
+  --destructive: #dc2626;
+  --destructive-subtle: #fef2f2;
+  --success: #16a34a;
+  --success-subtle: #f0fdf4;
+  --warning: #d97706;
+  --warning-subtle: #fffbeb;
+  --info: #0891b2;
+  --info-subtle: #ecfeff;
+
+  /* ==================== Topbar (misc references) ====================
+     The Topbar's header element itself now renders `.bg-welcome-banner`
+     directly (see Topbar.tsx) — these two tokens just back a couple of
+     smaller surface-matching details elsewhere (ProfileMenu's focus-ring
+     offset, CommandPalette's trigger border) that don't need the full
+     multi-layer treatment. */
+  --topbar-surface: #f7faff;
+  --topbar-border: rgba(148, 163, 184, 0.18);
+
+  /* ==================== Welcome Banner ====================
+     The Topbar's signature surface (following manual refinement, this is
+     also the Topbar's only surface — see Topbar.tsx) — a tonal blue/slate
+     base with more presence than a flat near-white, two off-corner
+     brand-color glows (blue + navy, echoing the app's two-tone identity),
+     an extremely faint engineering grid + precision-dot pattern for a
+     restrained technical texture, and a soft top highlight for a
+     "catching light" edge. Every layer is built from these tokens by the
+     `.bg-welcome-banner` utility below — deliberately not a flat
+     `background: #f7faff`. Tuned one notch cooler/deeper than the initial
+     pass so the surface reads clearly against --background (#f8fafc)
+     while staying unmistakably light-mode. */
+  --banner-surface-start: #eef4fc; /* light, faint blue */
+  --banner-surface-mid: #eaf1f9; /* the gradient's deepest point — cool slate-blue */
+  --banner-surface-end: #edf3fa; /* settles back slightly lighter */
+  --banner-highlight: rgba(
+    255,
+    255,
+    255,
+    0.55
+  ); /* top-left "catching light" —
+                                                      dialed back from the
+                                                      original 0.7 so it
+                                                      doesn't wash the
+                                                      deeper base back out */
+  --banner-glow-primary: rgba(37, 99, 235, 0.11); /* interactive blue, top-left */
+  --banner-glow-navy: rgba(15, 27, 66, 0.1); /* brand navy, bottom-right */
+  --banner-grid-line: rgba(15, 27, 66, 0.055); /* blueprint hairlines */
+  --banner-grid-dot: rgba(37, 99, 235, 0.14); /* precision dots at grid nodes */
+  --banner-border: rgba(37, 99, 235, 0.14); /* faint interactive-blue edge */
+  --banner-emblem-start: var(--primary);
+  --banner-emblem-end: var(
+    --sidebar
+  ); /* the accent icon tile borrows both
+                                           halves of the two-tone identity */
+
+  /* ==================== Charts ==================== */
+  --chart-1: #2563eb; /* primary blue */
+  --chart-2: #0f1b42; /* brand navy */
+  --chart-3: #0891b2; /* cyan */
+  --chart-4: #d97706; /* amber */
+  --chart-5: #7c3aed; /* violet */
+
+  --radius: 0.75rem; /* 12px — crisper, more enterprise than the prior 14px */
+
+  /* ==================== Sidebar (brand identity, fixed) ====================
+     Deliberately its own dark surface, not derived from the light-mode
+     tokens above — this is the one place the brand's navy identity lives,
+     independent of the interactive blue system. */
+  --sidebar: #0f1b42;
+  --sidebar-foreground: #e8edfb;
+  --sidebar-primary: #3b82f6; /* active nav indicator — brighter blue than
+                                  the base --primary, for contrast against
+                                  the dark navy ground */
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #182a5e; /* hover/active row background */
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #24316b;
+  --sidebar-ring: #60a5fa;
+  --sidebar-surface-end: #0c1638; /* bottom stop of the sidebar's own
+                                      subtle top-to-bottom depth gradient —
+                                      a few % darker than --sidebar, giving
+                                      the rail a physical, layered surface
+                                      instead of a flat fill */
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@layer components {
+  /* The Welcome Banner's signature surface — seven layers, front to back:
+       1. a soft white highlight, top-left, simulating a caught light
+       2. a precision-dot grid (tiled radial-gradient dots)
+       3-4. hairline vertical + horizontal grid rules (blueprint texture)
+       5-6. two off-corner brand-color glows (interactive blue, brand navy)
+       7. a tonal linear base blending blue / slate / white
+     Every layer stays at trace opacity by design — remove the text and
+     icons and this should still read as an intentionally designed
+     surface, not a flat rectangle, while never affecting text contrast. */
+  .bg-welcome-banner {
+    background-color: var(--banner-surface-end);
+    background-repeat:
+      no-repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+    background-size:
+      auto,
+      26px 26px,
+      auto,
+      auto,
+      auto,
+      auto,
+      auto;
+    background-image:
+      radial-gradient(38% 65% at 8% -8%, var(--banner-highlight), transparent 62%),
+      radial-gradient(var(--banner-grid-dot) 1px, transparent 1.6px),
+      repeating-linear-gradient(
+        90deg,
+        var(--banner-grid-line) 0,
+        var(--banner-grid-line) 1px,
+        transparent 1px,
+        transparent 26px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        var(--banner-grid-line) 0,
+        var(--banner-grid-line) 1px,
+        transparent 1px,
+        transparent 26px
+      ),
+      radial-gradient(58% 130% at 102% 130%, var(--banner-glow-navy), transparent 62%),
+      radial-gradient(50% 110% at -4% 8%, var(--banner-glow-primary), transparent 58%),
+      linear-gradient(
+        120deg,
+        var(--banner-surface-start) 0%,
+        var(--banner-surface-mid) 55%,
+        var(--banner-surface-end) 100%
+      );
+  }
+
+  /* The greeting's accent emblem — a small tile carrying both halves of
+     the two-tone brand identity (interactive blue -> brand navy) in one
+     diagonal sweep, rather than a flat icon fill. */
+  .bg-banner-emblem {
+    background-image: linear-gradient(
+      135deg,
+      var(--banner-emblem-start) 0%,
+      var(--banner-emblem-end) 100%
+    );
+  }
+}
+
+/* Every Dialog/Sheet/dropdown transition goes through tw-animate-css's
+   animate-in/animate-out utilities — this is the standard universal
+   override so a user with prefers-reduced-motion set doesn't get them. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

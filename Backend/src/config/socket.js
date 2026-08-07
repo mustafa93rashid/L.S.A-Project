@@ -22,6 +22,18 @@ const getAllowedOrigins = () => {
   return [process.env.CLIENT_URL, process.env.DASHBOARD_URL].filter(Boolean);
 };
 
+// ==================== Extract Access Token From Cookie Header ====================
+
+const extractAccessTokenFromCookieHeader = (cookieHeader) => {
+  if (!cookieHeader) {
+    return null;
+  }
+
+  const match = cookieHeader.match(/(?:^|;\s*)accessToken=([^;]+)/);
+
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
 // ==================== Extract Socket Token ====================
 
 const extractSocketToken = (socket) => {
@@ -33,17 +45,15 @@ const extractSocketToken = (socket) => {
 
   const authorizationHeader = socket.handshake.headers?.authorization;
 
-  if (!authorizationHeader) {
-    return null;
+  if (authorizationHeader) {
+    const bearerMatch = authorizationHeader.match(/^Bearer\s+(.+)$/i);
+
+    if (bearerMatch) {
+      return bearerMatch[1].trim() || null;
+    }
   }
 
-  const bearerMatch = authorizationHeader.match(/^Bearer\s+(.+)$/i);
-
-  if (!bearerMatch) {
-    return null;
-  }
-
-  return bearerMatch[1].trim() || null;
+  return extractAccessTokenFromCookieHeader(socket.handshake.headers?.cookie);
 };
 
 // ==================== Initialize Socket Server ====================
