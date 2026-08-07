@@ -19,13 +19,12 @@ function getGreeting(date: Date): string {
 }
 
 /**
- * The Welcome Banner — the Topbar's signature visual identity now that
- * the route title is gone: a dynamic greeting, a quiet secondary message,
- * and a subtle date/time caption. Its background/border/shadow now live
- * on the Topbar's own `<header>` (following manual refinement — a single
- * merged surface rather than a separately-styled nested panel); this
- * component owns the content and the one decorative accent left inside
- * it, a soft blurred glow kept behind the text via `-z-10`.
+ * The greeting content living inside the Topbar's "Structured Control
+ * Bar" shell (see Topbar.tsx below): a small "WORKSPACE" eyebrow, the
+ * dynamic greeting with the first name in the interactive blue, a quiet
+ * secondary message, and a subtle date/time caption. No background,
+ * border, or shadow of its own — those live on the Topbar's own
+ * <header> now, not on a per-zone surface.
  */
 function WelcomeBanner() {
   const user = useSessionStore((state) => state.user)
@@ -33,22 +32,17 @@ function WelcomeBanner() {
   const firstName = user?.fullName?.split(' ')[0]
 
   return (
-    <div className=" relative flex min-w-0 flex-1 items-center gap-3 self-stretch overflow-hidden   px-4  sm:gap-4 sm:px-5 lg:px-6">
-      {/* Decorative only — a single soft blurred glow, never a literal
-          shape, kept behind all content via -z-10. Visible at every
-          Topbar width; sized down on narrower screens so it stays
-          proportional and never crowds the greeting text. */}
+    <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4 lg:gap-6">
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute -top-8 -right-6 -z-10 size-32 rounded-full  blur-2xl sm:-top-10 sm:-right-8 sm:size-40 sm:blur-3xl lg:-top-12 lg:-right-10 lg:size-48"
-      />
-
-      <span
-        aria-hidden="true"
-        className="hidden h-9 w-px shrink-0 self-center bg-gradient-to-b from-transparent via-primary/25 to-transparent sm:block"
+        className="hidden h-9 w-px shrink-0 self-center bg-border sm:block"
       />
 
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+        <span className="text-[10px] font-semibold tracking-wide text-sidebar uppercase">
+          Workspace
+        </span>
+
         <p className="truncate text-[21px] leading-tight font-semibold tracking-tight sm:text-2xl">
           <span className="text-foreground">{getGreeting(now)}</span>
           {firstName ? (
@@ -80,11 +74,15 @@ function WelcomeBanner() {
 }
 
 /**
- * The authenticated shell's floating chrome — and, following manual
- * refinement, the Welcome Banner's surface as well: one premium panel
- * (fully rounded, `bg-welcome-banner`, `border-banner-border`,
- * `shadow-float`, margin on every side so it detaches from the page)
- * rather than a separate nested banner layer.
+ * The authenticated shell's floating chrome, redesigned as a
+ * "Structured Control Bar" (see
+ * docs/superpowers/specs/2026-08-08-topbar-redesign-design.md): a
+ * full-width navy->blue accent rule across the very top (the app's own
+ * two-tone brand identity, `--sidebar` -> `--primary`, expressed as a
+ * rule rather than a soft gradient wash) sitting on a flat `bg-card`
+ * surface, with solid `border-border` dividers marking greeting / search
+ * / notification+avatar as visibly distinct zones. Structure and rules
+ * carry the "engineering precision" identity here, not blur or texture.
  *
  * A three-column CSS Grid (`minmax(0,1fr) auto minmax(0,1fr)`) — not
  * flex — is what keeps CommandPalette genuinely centered on the Topbar's
@@ -92,39 +90,49 @@ function WelcomeBanner() {
  * of how much the greeting or the notification/avatar cluster actually
  * use, so the center track (and CommandPalette inside it) never drifts
  * off-center the way it would sitting in ordinary flex remaining-space.
+ * The zone dividers are plain conditional borders on the center/right
+ * grid items (`self-stretch` so the border spans the bar's full height),
+ * not separate grid columns — simpler, and immune to the "empty column
+ * still eats a gap" class of bugs.
  *
  * No route title lives here — each page's own PageHeader/Breadcrumbs
- * already carries that; duplicating it was the old design's mistake. No
- * profile/logout controls live in the Sidebar either; the sole account
- * entry point is the avatar in the right-hand cluster, beside
- * NotificationBell (see ProfileMenu.tsx) — right side stays down to
- * exactly those two controls, nothing else.
+ * already carries that. No profile/logout controls live in the Sidebar
+ * either; the sole account entry point is the avatar in the right-hand
+ * cluster, beside NotificationBell (see ProfileMenu.tsx) — right side
+ * stays down to exactly those two controls, nothing else.
  */
 export function Topbar({ onOpenMobileNav }: TopbarProps) {
   return (
-    <header className="relative z-10 m-2 grid h-24 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 rounded-2xl border border-banner-border bg-welcome-banner p-2 shadow-float sm:m-3 sm:gap-4 sm:p-2.5 lg:m-4 lg:gap-5 lg:p-3">
-      <div className="flex min-w-0 items-center gap-3 sm:gap-4 lg:gap-5">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="shrink-0 transition-transform duration-200 ease-out active:scale-95 lg:hidden"
-          onClick={onOpenMobileNav}
-          aria-label="Open navigation"
-        >
-          <Menu className="size-4" />
-        </Button>
+    <header className="relative z-10 m-2 flex h-24 shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-float sm:m-3 lg:m-4">
+      <div
+        className="h-1 shrink-0 bg-gradient-to-r from-sidebar to-primary"
+        aria-hidden="true"
+      />
 
-        <WelcomeBanner />
-      </div>
+      <div className="grid flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 p-2 sm:gap-4 sm:p-2.5 lg:gap-5 lg:p-3">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4 lg:gap-5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0 transition-transform duration-200 ease-out active:scale-95 lg:hidden"
+            onClick={onOpenMobileNav}
+            aria-label="Open navigation"
+          >
+            <Menu className="size-4" />
+          </Button>
 
-      <div className="hidden items-center justify-center md:flex">
-        <CommandPalette />
-      </div>
+          <WelcomeBanner />
+        </div>
 
-      <div className="flex items-center justify-self-end gap-3 pr-1 sm:gap-4 sm:pr-1.5">
-        <NotificationBell />
-        <ProfileMenu />
+        <div className="hidden items-center justify-center self-stretch border-l border-border pl-3 sm:pl-4 lg:pl-5 md:flex">
+          <CommandPalette />
+        </div>
+
+        <div className="flex items-center justify-self-end gap-3 self-stretch pr-1 sm:gap-4 sm:border-l sm:border-border sm:pl-3 sm:pr-1.5 lg:pl-4">
+          <NotificationBell />
+          <ProfileMenu />
+        </div>
       </div>
     </header>
   )
