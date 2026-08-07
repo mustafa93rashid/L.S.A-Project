@@ -202,15 +202,15 @@ export function CommandPalette() {
         <button
           type="button"
           title="Search — Ctrl/Cmd+K"
-          className="group flex h-10 items-center gap-2.5 rounded-full border border-topbar-border bg-card px-4 text-muted-foreground shadow-[inset_0_1px_2px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.04),0_10px_24px_-16px_rgba(15,23,42,0.16)] outline-none transition-[border-color,box-shadow] duration-200 ease-out hover:border-primary/30 hover:shadow-[inset_0_1px_2px_rgba(15,23,42,0.03),0_10px_24px_-16px_rgba(15,23,42,0.16),0_0_0_3px_rgba(37,99,235,0.08)] focus-visible:border-primary/40 focus-visible:shadow-[inset_0_1px_2px_rgba(15,23,42,0.03),0_10px_24px_-16px_rgba(15,23,42,0.16),0_0_0_3px_rgba(37,99,235,0.12)] active:scale-[0.99] aria-expanded:border-primary/40 aria-expanded:shadow-[inset_0_1px_2px_rgba(15,23,42,0.03),0_10px_24px_-16px_rgba(15,23,42,0.16),0_0_0_3px_rgba(37,99,235,0.12)] md:w-72 lg:w-110 lg:px-5 xl:w-130 2xl:w-140"
+          className="group flex h-10 items-center gap-2.5 rounded-lg border border-border bg-card px-4 text-muted-foreground shadow-[inset_0_1px_2px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.04),0_10px_24px_-16px_rgba(15,23,42,0.16)] outline-none transition-[border-color,box-shadow] duration-200 ease-out hover:border-primary/30 hover:shadow-[inset_0_1px_2px_rgba(15,23,42,0.03),0_10px_24px_-16px_rgba(15,23,42,0.16),0_0_0_3px_rgba(37,99,235,0.08)] focus-visible:border-primary/40 focus-visible:shadow-[inset_0_1px_2px_rgba(15,23,42,0.03),0_10px_24px_-16px_rgba(15,23,42,0.16),0_0_0_3px_rgba(37,99,235,0.12)] active:scale-[0.99] aria-expanded:border-primary/40 aria-expanded:shadow-[inset_0_1px_2px_rgba(15,23,42,0.03),0_10px_24px_-16px_rgba(15,23,42,0.16),0_0_0_3px_rgba(37,99,235,0.12)] md:w-72 lg:w-110 lg:px-5 xl:w-130 2xl:w-140"
         >
           <Search
             className="size-4 shrink-0 text-muted-foreground/70 transition-colors duration-200 ease-out group-hover:text-primary/70"
             strokeWidth={1.75}
             aria-hidden="true"
           />
-          <span className="flex-1 truncate text-left text-[13.5px] text-muted-foreground/85">
-            Search…
+          <span className="flex-1 truncate text-left font-mono text-[13px] text-muted-foreground/85">
+            Search anything…
           </span>
           {!open ? (
             <span className="flex shrink-0 items-center gap-1">
