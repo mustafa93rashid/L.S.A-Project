@@ -25,9 +25,11 @@ All file paths below are relative to `D:\L.S.A Backend\Dashboard\` unless stated
 - [ ] **Step 1: Create and switch to a feature branch**
 
 Run (from the repo root, `D:\L.S.A Backend`):
+
 ```bash
 git checkout -b topbar-structured-control-bar
 ```
+
 Expected: `Switched to a new branch 'topbar-structured-control-bar'`
 
 ---
@@ -35,6 +37,7 @@ Expected: `Switched to a new branch 'topbar-structured-control-bar'`
 ### Task 2: CommandPalette trigger — sharper corners, generic border, monospace placeholder
 
 **Files:**
+
 - Modify: `src/features/command-palette/CommandPalette.tsx`
 
 - [ ] **Step 1: Update the trigger button's className and placeholder**
@@ -80,9 +83,11 @@ Only three things changed: `rounded-full` → `rounded-lg`, `border-topbar-borde
 - [ ] **Step 2: Verify**
 
 Run (from `Dashboard/`):
+
 ```bash
 npm run typecheck && npm run lint && npm run format:check && npm run build
 ```
+
 Expected: all four succeed with no errors (lint/format may print pre-existing unrelated warnings from other files — confirm nothing new appears for `CommandPalette.tsx`).
 
 - [ ] **Step 3: Commit**
@@ -108,6 +113,7 @@ EOF
 ### Task 3: ProfileMenu — correct the focus-ring offset color
 
 **Files:**
+
 - Modify: `src/components/layout/ProfileMenu.tsx`
 
 - [ ] **Step 1: Update the ring-offset token**
@@ -131,6 +137,7 @@ Reason: the Topbar's actual background is becoming `--card` (flat white) in Task
 ```bash
 npm run typecheck && npm run lint && npm run format:check && npm run build
 ```
+
 Expected: all four succeed.
 
 - [ ] **Step 3: Commit**
@@ -153,6 +160,7 @@ EOF
 ### Task 4: Topbar.tsx — the Structured Control Bar rewrite
 
 **Files:**
+
 - Modify: `src/components/layout/Topbar.tsx`
 
 - [ ] **Step 1: Replace `WelcomeBanner`'s doc comment and body**
@@ -421,6 +429,7 @@ Key mechanics to understand (so you can verify the result visually, not just tha
 ```bash
 npm run typecheck && npm run lint && npm run format:check && npm run build
 ```
+
 Expected: all four succeed.
 
 - [ ] **Step 4: Commit**
@@ -452,14 +461,17 @@ EOF
 ### Task 5: index.css — retire the dead Welcome Banner / Topbar-surface tokens
 
 **Files:**
+
 - Modify: `src/index.css`
 
 - [ ] **Step 1: Confirm nothing still references the tokens being removed**
 
 Run (from `Dashboard/`):
+
 ```bash
 grep -rn "topbar-surface\|topbar-border\|banner-surface\|banner-glow\|banner-grid\|banner-highlight\|banner-border\|banner-emblem\|bg-welcome-banner\|bg-banner-emblem\|shadow-banner" src
 ```
+
 Expected: **no output** (Tasks 2–4 already removed every usage). If anything prints, stop and find/fix that reference before continuing — deleting a token that's still referenced will silently break the utility class that depended on it (Tailwind just won't generate it) rather than raising a build error.
 
 - [ ] **Step 2: Remove the three dead `@theme inline` color registrations**
@@ -467,19 +479,19 @@ Expected: **no output** (Tasks 2–4 already removed every usage). If anything p
 Find:
 
 ```css
-  /* Topbar's own floating-header surface — distinct from both
+/* Topbar's own floating-header surface — distinct from both
      --background (the page) and --card (standard content cards). */
-  --color-topbar-surface: var(--topbar-surface);
-  --color-topbar-border: var(--topbar-border);
-  --color-banner-border: var(--banner-border);
+--color-topbar-surface: var(--topbar-surface);
+--color-topbar-border: var(--topbar-border);
+--color-banner-border: var(--banner-border);
 
-  --color-accent-foreground: var(--accent-foreground);
+--color-accent-foreground: var(--accent-foreground);
 ```
 
 Replace with:
 
 ```css
-  --color-accent-foreground: var(--accent-foreground);
+--color-accent-foreground: var(--accent-foreground);
 ```
 
 - [ ] **Step 3: Remove the dead `--shadow-banner` token**
@@ -523,16 +535,16 @@ Replace with:
 Find:
 
 ```css
-  /* ==================== Topbar (misc references) ====================
+/* ==================== Topbar (misc references) ====================
      The Topbar's header element itself now renders `.bg-welcome-banner`
      directly (see Topbar.tsx) — these two tokens just back a couple of
      smaller surface-matching details elsewhere (ProfileMenu's focus-ring
      offset, CommandPalette's trigger border) that don't need the full
      multi-layer treatment. */
-  --topbar-surface: #f7faff;
-  --topbar-border: rgba(148, 163, 184, 0.18);
+--topbar-surface: #f7faff;
+--topbar-border: rgba(148, 163, 184, 0.18);
 
-  /* ==================== Welcome Banner ====================
+/* ==================== Welcome Banner ====================
      The Topbar's signature surface (following manual refinement, this is
      also the Topbar's only surface — see Topbar.tsx) — a tonal blue/slate
      base with more presence than a flat near-white, two off-corner
@@ -544,32 +556,30 @@ Find:
      `background: #f7faff`. Tuned one notch cooler/deeper than the initial
      pass so the surface reads clearly against --background (#f8fafc)
      while staying unmistakably light-mode. */
-  --banner-surface-start: #eef4fc; /* light, faint blue */
-  --banner-surface-mid: #eaf1f9; /* the gradient's deepest point — cool slate-blue */
-  --banner-surface-end: #edf3fa; /* settles back slightly lighter */
-  --banner-highlight: rgba(255, 255, 255, 0.55); /* top-left "catching light" —
+--banner-surface-start: #eef4fc; /* light, faint blue */
+--banner-surface-mid: #eaf1f9; /* the gradient's deepest point — cool slate-blue */
+--banner-surface-end: #edf3fa; /* settles back slightly lighter */
+--banner-highlight: rgba(255, 255, 255, 0.55); /* top-left "catching light" —
                                                       dialed back from the
                                                       original 0.7 so it
                                                       doesn't wash the
                                                       deeper base back out */
-  --banner-glow-primary: rgba(37, 99, 235, 0.11); /* interactive blue, top-left */
-  --banner-glow-navy: rgba(15, 27, 66, 0.1); /* brand navy, bottom-right */
-  --banner-grid-line: rgba(15, 27, 66, 0.055); /* blueprint hairlines */
-  --banner-grid-dot: rgba(37, 99, 235, 0.14); /* precision dots at grid nodes */
-  --banner-border: rgba(37, 99, 235, 0.14); /* faint interactive-blue edge */
-  --banner-emblem-start: var(--primary);
-  --banner-emblem-end: var(
-    --sidebar
-  ); /* the accent icon tile borrows both
+--banner-glow-primary: rgba(37, 99, 235, 0.11); /* interactive blue, top-left */
+--banner-glow-navy: rgba(15, 27, 66, 0.1); /* brand navy, bottom-right */
+--banner-grid-line: rgba(15, 27, 66, 0.055); /* blueprint hairlines */
+--banner-grid-dot: rgba(37, 99, 235, 0.14); /* precision dots at grid nodes */
+--banner-border: rgba(37, 99, 235, 0.14); /* faint interactive-blue edge */
+--banner-emblem-start: var(--primary);
+--banner-emblem-end: var(--sidebar); /* the accent icon tile borrows both
                                            halves of the two-tone identity */
 
-  /* ==================== Charts ==================== */
+/* ==================== Charts ==================== */
 ```
 
 Replace with:
 
 ```css
-  /* ==================== Charts ==================== */
+/* ==================== Charts ==================== */
 ```
 
 (This deletes both the Topbar-surface block and the entire Welcome Banner block — the Topbar now uses only pre-existing generic tokens: `--card`, `--border`, `--sidebar`, `--primary`.)
@@ -657,11 +667,13 @@ Replace with:
 ```bash
 npm run typecheck && npm run lint && npm run format:check && npm run build
 ```
+
 Expected: all four succeed. This is the final gate for the whole redesign — also re-run the Step 1 grep once more as a sanity check that the deletions didn't miss anything:
 
 ```bash
 grep -rn "topbar-surface\|topbar-border\|banner-surface\|banner-glow\|banner-grid\|banner-highlight\|banner-border\|banner-emblem\|bg-welcome-banner\|bg-banner-emblem\|shadow-banner" src
 ```
+
 Expected: no output.
 
 - [ ] **Step 7: Commit**

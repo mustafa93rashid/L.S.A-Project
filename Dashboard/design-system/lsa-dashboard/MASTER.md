@@ -52,52 +52,52 @@
 All defined as CSS custom properties in `src/index.css`, consumed via Tailwind `@theme inline`
 — never hardcode a hex in a component.
 
-| Role | Hex | CSS Variable |
-|------|-----|--------------|
-| Background (page) | `#F8FAFC` | `--background` |
-| Foreground (text) | `#0F172A` | `--foreground` |
-| Card / Surface | `#FFFFFF` | `--card` |
-| Muted surface | `#F1F5F9` | `--muted` |
-| Muted foreground | `#64748B` | `--muted-foreground` |
-| Accent (hover wash) | `#EFF4FF` | `--accent` |
-| Border / Input | `#E2E8F0` | `--border` / `--input` |
-| Primary (interactive) | `#2563EB` | `--primary` |
-| Primary hover | `#1D4ED8` | `--primary-hover` |
-| Primary active | `#1E40AF` | `--primary-active` |
-| Destructive | `#DC2626` | `--destructive` |
-| Success | `#16A34A` | `--success` |
-| Warning | `#D97706` | `--warning` |
-| Info | `#0891B2` | `--info` |
-| Sidebar (brand navy) | `#0F1B42` | `--sidebar` |
-| Sidebar surface end | `#0C1638` | `--sidebar-surface-end` |
-| Sidebar primary (active nav) | `#3B82F6` | `--sidebar-primary` |
-| Topbar surface | `#F7FAFF` | `--topbar-surface` |
+| Role                            | Hex                           | CSS Variable                     |
+| ------------------------------- | ----------------------------- | -------------------------------- |
+| Background (page)               | `#F8FAFC`                     | `--background`                   |
+| Foreground (text)               | `#0F172A`                     | `--foreground`                   |
+| Card / Surface                  | `#FFFFFF`                     | `--card`                         |
+| Muted surface                   | `#F1F5F9`                     | `--muted`                        |
+| Muted foreground                | `#64748B`                     | `--muted-foreground`             |
+| Accent (hover wash)             | `#EFF4FF`                     | `--accent`                       |
+| Border / Input                  | `#E2E8F0`                     | `--border` / `--input`           |
+| Primary (interactive)           | `#2563EB`                     | `--primary`                      |
+| Primary hover                   | `#1D4ED8`                     | `--primary-hover`                |
+| Primary active                  | `#1E40AF`                     | `--primary-active`               |
+| Destructive                     | `#DC2626`                     | `--destructive`                  |
+| Success                         | `#16A34A`                     | `--success`                      |
+| Warning                         | `#D97706`                     | `--warning`                      |
+| Info                            | `#0891B2`                     | `--info`                         |
+| Sidebar (brand navy)            | `#0F1B42`                     | `--sidebar`                      |
+| Sidebar surface end             | `#0C1638`                     | `--sidebar-surface-end`          |
+| Sidebar primary (active nav)    | `#3B82F6`                     | `--sidebar-primary`              |
+| Topbar surface                  | `#F7FAFF`                     | `--topbar-surface`               |
 | Welcome Banner surface (3-stop) | `#EEF4FC → #EAF1F9 → #EDF3FA` | `--banner-surface-start/mid/end` |
 
-*Every status color (destructive/success/warning/info) also has a `-subtle` background-tint
-variant for badges/alerts — never reused as a CTA color.* **Tool validation:** the independent
+_Every status color (destructive/success/warning/info) also has a `-subtle` background-tint
+variant for badges/alerts — never reused as a CTA color._ **Tool validation:** the independent
 `--design-system` color match landed on `#0F172A` navy primary / `#F8FAFC` background —
 confirming the same navy + cool-neutral direction this project had already chosen.
 
 ### Typography
 
 - **Font:** System-native stack — `'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system,
-  'Inter', sans-serif`. **Deliberate decision, not a gap**: zero added network cost, zero
+'Inter', sans-serif`. **Deliberate decision, not a gap**: zero added network cost, zero
   flash-of-unstyled-text risk (see `index.css`'s Design System v2 header comment). Do not swap
   in a webfont (the tool's own match, Plus Jakarta Sans, is validated as dashboard-appropriate —
-  "Best For: B2B SaaS apps... admin dashboards" — and is the documented fallback choice *if* this
+  "Best For: B2B SaaS apps... admin dashboards" — and is the documented fallback choice _if_ this
   no-webfont decision is ever revisited, but it has not been).
 - **Fixed scale mapping** (don't reach for an arbitrary size):
 
-  | Class | Use |
-  |---|---|
-  | `text-2xl font-semibold tracking-tight` | Page title (h1) |
-  | `text-lg font-semibold tracking-tight` | Section title (h2) |
-  | `text-base font-semibold` | Card title |
-  | `text-sm` | Body copy (default) |
-  | `text-sm text-muted-foreground` | Secondary/supporting text |
-  | `text-xs` | Captions, table meta |
-  | `text-xs font-semibold uppercase tracking-wide text-muted-foreground` | Eyebrow/overline |
+  | Class                                                                 | Use                       |
+  | --------------------------------------------------------------------- | ------------------------- |
+  | `text-2xl font-semibold tracking-tight`                               | Page title (h1)           |
+  | `text-lg font-semibold tracking-tight`                                | Section title (h2)        |
+  | `text-base font-semibold`                                             | Card title                |
+  | `text-sm`                                                             | Body copy (default)       |
+  | `text-sm text-muted-foreground`                                       | Secondary/supporting text |
+  | `text-xs`                                                             | Captions, table meta      |
+  | `text-xs font-semibold uppercase tracking-wide text-muted-foreground` | Eyebrow/overline          |
 
 ### Spacing
 
@@ -158,7 +158,7 @@ component.
 - [ ] `cursor-pointer` / native affordance on all clickable elements
 - [ ] Hover/focus transitions in the 150–220ms range, nothing slower
 - [ ] Light-mode text contrast 4.5:1 minimum (no numeric audit exists yet — see
-  `Dashboard/docs/PRODUCTION_CHECKLIST.md`; treat as unverified, not passed)
+      `Dashboard/docs/PRODUCTION_CHECKLIST.md`; treat as unverified, not passed)
 - [ ] Focus states visible for keyboard nav (`focus-visible:ring-*`, never removed)
 - [ ] `prefers-reduced-motion` respected (already global — don't bypass it per-component)
 - [ ] Responsive: mobile / `sm` / `md` / `lg` / `xl` breakpoints, no horizontal overflow

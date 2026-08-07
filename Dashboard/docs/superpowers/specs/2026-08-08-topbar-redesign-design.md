@@ -132,7 +132,7 @@ sits on each side of them:
      (`p-2 sm:p-2.5 lg:p-3`) moved onto this inner element instead of the header itself. Overall
      header height (`h-24`) and margin scale (`m-2 sm:m-3 lg:m-4`) stay on the outer `<header>`.
 - Header classes: `bg-welcome-banner border-banner-border rounded-2xl` → `bg-card border-border
-  rounded-xl` (moved to the outer `<header>`; `overflow-hidden` added so the accent rule
+rounded-xl` (moved to the outer `<header>`; `overflow-hidden` added so the accent rule
   respects the rounded corners).
 - `WelcomeBanner`: remove the decorative blurred-glow `<span>`; change the gradient divider
   (`bg-gradient-to-b from-transparent via-primary/25 to-transparent`) to a solid
