@@ -17,6 +17,34 @@ const app = express();
 const server = http.createServer(app);
 
 //=========================================================================
+// CORS Configuration
+//=========================================================================
+ 
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.DASHBOARD_URL,
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests without Origin header
+      // such as Postman, curl, health checks, server-to-server requests
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  }),
+);
+
+//=========================================================================
 // Middleware Setup
 //=========================================================================
 app.use(express.json());
