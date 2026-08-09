@@ -5,36 +5,257 @@ import { Slot } from 'radix-ui'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  `
+    group/button
+    inline-flex
+    shrink-0
+    items-center
+    justify-center
+    whitespace-nowrap
+    rounded-xl
+    border
+    border-transparent
+    text-sm
+    font-semibold
+    tracking-[-0.01em]
+    outline-none
+    select-none
+
+    transition-[transform,background-color,border-color,color,box-shadow]
+    duration-200
+    ease-out
+
+    focus-visible:ring-3
+    focus-visible:ring-[#315b7c]/15
+
+    disabled:pointer-events-none
+    disabled:opacity-50
+
+    aria-invalid:border-destructive
+    aria-invalid:ring-3
+    aria-invalid:ring-destructive/15
+
+    [&_svg]:pointer-events-none
+    [&_svg]:shrink-0
+    [&_svg]:transition-transform
+    [&_svg]:duration-200
+
+    [&_svg:not([class*='size-'])]:size-4
+  `,
   {
     variants: {
       variant: {
-        default:
-          'bg-primary text-primary-foreground shadow-xs hover:bg-primary-hover active:bg-primary-active',
-        outline:
-          'border-border bg-card text-foreground shadow-xs hover:border-primary/40 hover:bg-accent hover:text-accent-foreground aria-expanded:border-primary/40 aria-expanded:bg-accent aria-expanded:text-accent-foreground',
-        secondary:
-          'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary-hover aria-expanded:bg-secondary-hover',
-        ghost:
-          'hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground',
-        destructive:
-          'bg-destructive-subtle text-destructive hover:bg-destructive/15 focus-visible:border-destructive/40 focus-visible:ring-destructive/20',
-        link: 'text-primary underline-offset-4 hover:text-primary-hover hover:underline',
+        /* =====================================================
+            Primary
+        ===================================================== */
+
+        default: `
+          border-[#315b7c]/15
+          bg-[#183b56]
+          text-white
+
+          shadow-[0_1px_2px_rgba(15,42,62,0.10),0_3px_8px_rgba(15,42,62,0.08)]
+
+          hover:-translate-y-[1px]
+          hover:border-[#315b7c]/20
+          hover:bg-[#204b69]
+          hover:shadow-[0_3px_10px_rgba(15,42,62,0.12)]
+
+          active:translate-y-0
+          active:scale-[0.985]
+          active:bg-[#14344d]
+
+          [&_svg]:text-white/85
+        `,
+
+        /* =====================================================
+            Outline
+        ===================================================== */
+
+        outline: `
+          border-[#315b7c]/18
+          bg-card
+          text-[#244b68]
+
+          shadow-[0_1px_2px_rgba(15,42,62,0.025)]
+
+          hover:-translate-y-[1px]
+          hover:border-[#315b7c]/28
+          hover:bg-[#315b7c]/[0.045]
+          hover:text-[#183b56]
+
+          hover:shadow-[0_3px_10px_rgba(15,42,62,0.05)]
+
+          aria-expanded:border-[#315b7c]/28
+          aria-expanded:bg-[#315b7c]/[0.05]
+
+          active:translate-y-0
+          active:bg-[#315b7c]/[0.07]
+        `,
+
+        /* =====================================================
+            Secondary
+        ===================================================== */
+
+        secondary: `
+          border-[#315b7c]/[0.06]
+          bg-[#315b7c]/[0.075]
+          text-[#244b68]
+
+          shadow-none
+
+          hover:bg-[#315b7c]/[0.11]
+          hover:text-[#183b56]
+
+          aria-expanded:bg-[#315b7c]/[0.11]
+
+          active:scale-[0.985]
+          active:bg-[#315b7c]/[0.14]
+        `,
+
+        /* =====================================================
+            Ghost
+        ===================================================== */
+
+        ghost: `
+          text-muted-foreground
+
+          hover:bg-[#315b7c]/[0.06]
+          hover:text-[#244b68]
+
+          aria-expanded:bg-[#315b7c]/[0.07]
+          aria-expanded:text-[#244b68]
+
+          active:scale-[0.97]
+          active:bg-[#315b7c]/[0.09]
+        `,
+
+        /* =====================================================
+            Destructive
+        ===================================================== */
+
+        destructive: `
+          border-red-500/10
+          bg-red-500/[0.055]
+          text-red-600
+
+          shadow-none
+
+          hover:border-red-500/18
+          hover:bg-red-500/[0.09]
+
+          active:scale-[0.985]
+          active:bg-red-500/[0.12]
+
+          focus-visible:ring-red-500/15
+        `,
+
+        /* =====================================================
+            Link
+        ===================================================== */
+
+        link: `
+          h-auto
+          rounded-none
+          border-transparent
+          bg-transparent
+          p-0
+
+          font-medium
+          text-[#315b7c]
+
+          shadow-none
+
+          underline-offset-4
+
+          hover:text-[#183b56]
+          hover:underline
+
+          active:scale-100
+        `,
       },
+
       size: {
-        default:
-          'h-8 gap-1.5 px-3 has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5',
-        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: 'h-10 gap-1.5 px-4 text-[0.925rem] has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3',
-        icon: 'size-8',
-        'icon-xs':
-          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
-        'icon-sm':
-          'size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg',
-        'icon-lg': 'size-10',
+        default: `
+          h-9
+          gap-2
+          px-3.5
+
+          has-data-[icon=inline-end]:pr-3
+          has-data-[icon=inline-start]:pl-3
+        `,
+
+        xs: `
+          h-7
+          gap-1.5
+          rounded-lg
+          px-2.5
+          text-xs
+
+          has-data-[icon=inline-end]:pr-2
+          has-data-[icon=inline-start]:pl-2
+
+          [&_svg:not([class*='size-'])]:size-3
+        `,
+
+        sm: `
+          h-8
+          gap-1.5
+          rounded-[10px]
+          px-3
+          text-[0.8rem]
+
+          has-data-[icon=inline-end]:pr-2.5
+          has-data-[icon=inline-start]:pl-2.5
+
+          [&_svg:not([class*='size-'])]:size-3.5
+        `,
+
+        lg: `
+          h-11
+          gap-2
+          rounded-xl
+          px-5
+          text-[0.9rem]
+
+          has-data-[icon=inline-end]:pr-4
+          has-data-[icon=inline-start]:pl-4
+
+          [&_svg:not([class*='size-'])]:size-[17px]
+        `,
+
+        icon: `
+          size-9
+          rounded-xl
+          p-0
+        `,
+
+        'icon-xs': `
+          size-7
+          rounded-lg
+          p-0
+
+          [&_svg:not([class*='size-'])]:size-3
+        `,
+
+        'icon-sm': `
+          size-8
+          rounded-[10px]
+          p-0
+
+          [&_svg:not([class*='size-'])]:size-3.5
+        `,
+
+        'icon-lg': `
+          size-11
+          rounded-xl
+          p-0
+
+          [&_svg:not([class*='size-'])]:size-[18px]
+        `,
       },
     },
+
     defaultVariants: {
       variant: 'default',
       size: 'default',
@@ -42,16 +263,19 @@ const buttonVariants = cva(
   },
 )
 
+interface ButtonProps
+  extends React.ComponentProps<'button'>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+
 function Button({
   className,
   variant = 'default',
   size = 'default',
   asChild = false,
   ...props
-}: React.ComponentProps<'button'> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
+}: ButtonProps) {
   const Comp = asChild ? Slot.Root : 'button'
 
   return (
@@ -59,10 +283,20 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(
+        buttonVariants({
+          variant,
+          size,
+          className,
+        }),
+      )}
       {...props}
     />
   )
 }
 
-export { Button, buttonVariants }
+export {
+  Button,
+  buttonVariants,
+  type ButtonProps,
+}

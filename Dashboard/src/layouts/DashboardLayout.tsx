@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
-import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
 
 /**
  * The authenticated app shell. Mounted once by a layout route wrapped in
@@ -21,9 +20,6 @@ export function DashboardLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenMobileNav={() => setMobileNavOpen(true)} />
         <main className="flex-1 overflow-y-auto">
-          <div className="border-b border-border bg-card px-4 py-2 lg:px-6">
-            <Breadcrumbs />
-          </div>
           <div className="p-4 lg:p-6">
             <Outlet />
           </div>

@@ -16,7 +16,7 @@ export default function EquipmentCategoryEditPage() {
   const category = data?.find((item) => item._id === id)
 
   return (
-    <PageContainer className="max-w-xl">
+    <PageContainer className="max-w-6xl">
       <BackLink to={LIST_PATH} label="Back to Equipment Categories" />
       <PageHeader title="Edit category" description="Update this equipment category." />
 

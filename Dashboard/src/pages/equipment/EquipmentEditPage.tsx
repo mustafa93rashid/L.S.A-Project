@@ -18,7 +18,7 @@ export default function EquipmentEditPage() {
   const equipment = data?.find((item) => item._id === id)
 
   return (
-    <PageContainer className="max-w-2xl">
+    <PageContainer className="max-w-6xl">
       <BackLink to={LIST_PATH} label="Back to Equipment" />
       <PageHeader title="Edit equipment" description="Update this equipment listing." />
 

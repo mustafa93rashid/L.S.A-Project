@@ -49,7 +49,7 @@ export function ProfileMenu() {
           type="button"
           title={user?.fullName ?? 'Account'}
           aria-label={accountLabel}
-          className="group relative shrink-0 rounded-full outline-none transition-transform duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] focus-visible:ring-3 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+          className="group bg-white relative shrink-0 rounded-full outline-none transition-transform duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] focus-visible:ring-3 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
         >
           <Avatar
             size="lg"

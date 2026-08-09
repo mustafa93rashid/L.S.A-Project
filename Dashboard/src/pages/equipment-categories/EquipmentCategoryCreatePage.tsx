@@ -10,7 +10,7 @@ export default function EquipmentCategoryCreatePage() {
   const navigate = useNavigate()
 
   return (
-    <PageContainer className="max-w-xl">
+    <PageContainer className="max-w-6xl">
       <BackLink to={LIST_PATH} label="Back to Equipment Categories" />
       <PageHeader
         title="Add category"
