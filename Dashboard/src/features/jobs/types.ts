@@ -3,13 +3,7 @@ import type { AuditUser } from '@/types/api'
 export const JOB_STATUSES = ['draft', 'published', 'closed'] as const
 export type JobStatus = (typeof JOB_STATUSES)[number]
 
-export const EMPLOYMENT_TYPES = [
-  'Full-Time',
-  'Part-Time',
-  'Contract',
-  'Temporary',
-  'Internship',
-] as const
+export const EMPLOYMENT_TYPES = ['Full-Time', 'Part-Time', 'Contract', 'Temporary', 'Internship'] as const
 export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number]
 
 export const JOB_DEPARTMENTS = [
@@ -28,6 +22,7 @@ export const JOB_DEPARTMENTS = [
   'Information Technology',
   'Other',
 ] as const
+
 export type JobDepartment = (typeof JOB_DEPARTMENTS)[number]
 
 export interface Job {
@@ -56,6 +51,13 @@ export interface JobFilters {
   search?: string
   page: number
   limit: number
+}
+
+export interface JobStatistics {
+  total: number
+  published: number
+  draft: number
+  closed: number
 }
 
 export interface JobPayload {

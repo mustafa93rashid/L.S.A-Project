@@ -47,10 +47,29 @@ export interface EquipmentListFilters {
   category?: string
   isActive?: boolean
   search?: string
+  page?: number
+  limit?: number
+}
+
+export interface EquipmentPagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+}
+
+export interface EquipmentListResponse {
+  success: boolean
+  count: number
+  data: Equipment[]
+  pagination: EquipmentPagination
 }
 
 /** Flat shape the form works with — reassembled into the nested
- * primarySpecification/safetyCertificate objects when building FormData. */
+ * primarySpecification/safetyCertificate objects when building FormData.
+ */
 export interface EquipmentFormValues {
   title: string
   slug: string

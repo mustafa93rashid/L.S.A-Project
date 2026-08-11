@@ -15,23 +15,17 @@ const {
   jobQueryValidation,
 } = require("../validation/job.validate");
 
-/*
-|--------------------------------------------------------------------------
-| Public Routes
-|--------------------------------------------------------------------------
-*/
+// ==================== Public Routes ====================
 
 router.get("/public", ...jobQueryValidation, asyncHandler(jobController.getPublicJobs));
 
-/*
-|--------------------------------------------------------------------------
-| Dashboard Routes
-|--------------------------------------------------------------------------
-*/
+// ==================== Dashboard Routes ====================
 
 router.post("/", auth, role(["superadmin", "hrManager"]), ...createJobValidation, asyncHandler(jobController.createJob));
 
 router.get("/", auth, role(["superadmin", "hrManager"]), ...jobQueryValidation, asyncHandler(jobController.getAllJobs));
+
+router.get("/statistics", auth, role(["superadmin", "manager", "hrManager"]), asyncHandler(jobController.getJobStatistics));
 
 router.get("/:id", auth, role(["superadmin", "hrManager"]), ...jobIdValidation, asyncHandler(jobController.getJobById));
 

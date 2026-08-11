@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import type { ColumnDef } from '@tanstack/react-table'
+
 import {
   Activity,
   CircleOff,
@@ -18,6 +19,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
 import { DataTable } from '@/components/data-table/DataTable'
+import { StatCard } from '@/components/data-display/StatCard'
+
 import { ConfirmDialog } from '@/components/overlays/ConfirmDialog'
 
 import { ApiError } from '@/types/api'
@@ -30,6 +33,10 @@ import {
 import type { EquipmentCategory } from '@/features/equipment-categories/types'
 
 export default function EquipmentCategoriesPage() {
+  /* =========================================================
+      Queries
+  ========================================================= */
+
   const {
     data,
     isLoading,
@@ -40,12 +47,20 @@ export default function EquipmentCategoriesPage() {
   const deleteMutation =
     useDeleteEquipmentCategoryMutation()
 
+  /* =========================================================
+      Local State
+  ========================================================= */
+
   const [
     deletingCategory,
     setDeletingCategory,
   ] = useState<EquipmentCategory | null>(null)
 
   const categories = data ?? []
+
+  /* =========================================================
+      Statistics
+  ========================================================= */
 
   const totalCategories = categories.length
 
@@ -56,6 +71,10 @@ export default function EquipmentCategoriesPage() {
   const inactiveCategories =
     totalCategories - activeCategories
 
+  /* =========================================================
+      Table Columns
+  ========================================================= */
+
   const columns = useMemo<
     ColumnDef<EquipmentCategory, unknown>[]
   >(
@@ -63,6 +82,7 @@ export default function EquipmentCategoriesPage() {
       {
         accessorKey: 'name',
         header: 'Category',
+
         cell: ({ row }) => (
           <div className="flex items-center gap-3">
             <div
@@ -87,11 +107,25 @@ export default function EquipmentCategoriesPage() {
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground">
+              <p
+                className="
+                  truncate
+                  text-sm
+                  font-semibold
+                  text-foreground
+                "
+              >
                 {row.original.name}
               </p>
 
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+              <p
+                className="
+                  mt-0.5
+                  truncate
+                  text-[11px]
+                  text-muted-foreground
+                "
+              >
                 Equipment category
               </p>
             </div>
@@ -102,6 +136,7 @@ export default function EquipmentCategoriesPage() {
       {
         accessorKey: 'slug',
         header: 'Slug',
+
         cell: ({ row }) => (
           <span
             className="
@@ -125,8 +160,16 @@ export default function EquipmentCategoriesPage() {
       {
         accessorKey: 'displayOrder',
         header: 'Order',
+
         cell: ({ row }) => (
-          <span className="text-sm font-medium text-foreground tabular-nums">
+          <span
+            className="
+              text-sm
+              font-medium
+              text-foreground
+              tabular-nums
+            "
+          >
             {row.original.displayOrder}
           </span>
         ),
@@ -135,6 +178,7 @@ export default function EquipmentCategoriesPage() {
       {
         accessorKey: 'isActive',
         header: 'Status',
+
         cell: ({ row }) => (
           <Badge
             variant={
@@ -154,11 +198,20 @@ export default function EquipmentCategoriesPage() {
         id: 'actions',
         header: '',
         enableSorting: false,
+
         meta: {
           hideOnMobile: true,
         },
+
         cell: ({ row }) => (
-          <div className="flex items-center justify-end gap-1">
+          <div
+            className="
+              flex
+              items-center
+              justify-end
+              gap-1
+            "
+          >
             <Button
               type="button"
               variant="ghost"
@@ -186,16 +239,16 @@ export default function EquipmentCategoriesPage() {
               variant="ghost"
               size="icon-sm"
               aria-label={`Delete ${row.original.name}`}
-              onClick={() =>
-                setDeletingCategory(
-                  row.original,
-                )
-              }
               className="
                 text-muted-foreground
                 hover:bg-destructive/10
                 hover:text-destructive
               "
+              onClick={() =>
+                setDeletingCategory(
+                  row.original,
+                )
+              }
             >
               <Trash2
                 className="size-4"
@@ -208,6 +261,10 @@ export default function EquipmentCategoriesPage() {
     ],
     [],
   )
+
+  /* =========================================================
+      Delete
+  ========================================================= */
 
   const handleDelete = () => {
     if (!deletingCategory) return
@@ -233,6 +290,10 @@ export default function EquipmentCategoriesPage() {
       },
     )
   }
+
+  /* =========================================================
+      Render
+  ========================================================= */
 
   return (
     <PageContainer className="max-w-6xl">
@@ -266,380 +327,142 @@ export default function EquipmentCategoriesPage() {
           }
         />
 
-{/* =====================================================
-    Overview
-===================================================== */}
+        {/* =====================================================
+            Overview
+        ===================================================== */}
 
-{!isLoading && !isError ? (
-  <section className="space-y-5">
+        {!isLoading && !isError ? (
+          <section className="space-y-5">
+            {/* =================================================
+                Section Header
+            ================================================= */}
 
-
-    {/* ===================================================
-        Metrics
-    =================================================== */}
-
-    <div
-      className="
-        grid
-        grid-cols-1
-        gap-3
-        sm:grid-cols-2
-        lg:grid-cols-3
-      "
-    >
-      {/* =================================================
-          Total Categories
-      ================================================= */}
-
-      <div
-        className="
-          group
-          relative
-          overflow-hidden
-          rounded-[18px]
-          border
-          border-border/70
-          bg-card
-          px-5
-          py-4
-          shadow-[0_1px_3px_rgba(0,0,0,0.025)]
-          transition-all
-          duration-200
-          hover:-translate-y-0.5
-          hover:border-foreground/10
-          hover:shadow-[0_8px_24px_rgba(0,0,0,0.045)]
-        "
-      >
-        {/* Decorative number */}
-        <span
-          aria-hidden="true"
-          className="
-            pointer-events-none
-            absolute
-            -bottom-5
-            right-1
-            select-none
-            text-[76px]
-            leading-none
-            font-semibold
-            tracking-[-0.08em]
-            text-foreground/[0.025]
-          "
-        >
-          01
-        </span>
-
-        <div className="relative flex items-center gap-4">
-          <div
-            className="
-              flex
-              size-11
-              shrink-0
-              items-center
-              justify-center
-              rounded-[13px]
-              border
-              border-border/70
-              bg-muted/40
-              text-muted-foreground
-            "
-          >
-            <Layers
-              className="size-[18px]"
-              strokeWidth={1.8}
-              aria-hidden="true"
-            />
-          </div>
-
-          <div className="min-w-0">
-            <p
-              className="
-                text-[26px]
-                leading-none
-                font-semibold
-                tracking-[-0.04em]
-                text-foreground
-                tabular-nums
-              "
-            >
-              {totalCategories}
-            </p>
-
-            <p
-              className="
-                mt-2
-                text-[10px]
-                font-semibold
-                tracking-[0.08em]
-                text-muted-foreground
-                uppercase
-              "
-            >
-              Total Categories
-            </p>
-          </div>
-        </div>
-
-        <div
-          aria-hidden="true"
-          className="
-            absolute
-            bottom-0
-            left-5
-            h-[2px]
-            w-8
-            rounded-full
-            bg-foreground/20
-            transition-all
-            duration-300
-            group-hover:w-12
-          "
-        />
-      </div>
-
-      {/* =================================================
-          Active Categories
-      ================================================= */}
-
-      <div
-        className="
-          group
-          relative
-          overflow-hidden
-          rounded-[18px]
-          border
-          border-border/70
-          bg-card
-          px-5
-          py-4
-          shadow-[0_1px_3px_rgba(0,0,0,0.025)]
-          transition-all
-          duration-200
-          hover:-translate-y-0.5
-          hover:border-success/20
-          hover:shadow-[0_8px_24px_rgba(0,0,0,0.045)]
-        "
-      >
-        <span
-          aria-hidden="true"
-          className="
-            pointer-events-none
-            absolute
-            -bottom-5
-            right-1
-            select-none
-            text-[76px]
-            leading-none
-            font-semibold
-            tracking-[-0.08em]
-            text-success/[0.035]
-          "
-        >
-          02
-        </span>
-
-        <div className="relative flex items-center gap-4">
-          <div
-            className="
-              flex
-              size-11
-              shrink-0
-              items-center
-              justify-center
-              rounded-[13px]
-              border
-              border-success/15
-              bg-success-subtle
-              text-success
-            "
-          >
-            <Activity
-              className="size-[18px]"
-              strokeWidth={1.8}
-              aria-hidden="true"
-            />
-          </div>
-
-          <div className="min-w-0">
-            <p
-              className="
-                text-[26px]
-                leading-none
-                font-semibold
-                tracking-[-0.04em]
-                text-foreground
-                tabular-nums
-              "
-            >
-              {activeCategories}
-            </p>
-
-            <div className="mt-2 flex items-center gap-2">
-              <span className="size-1.5 rounded-full bg-success" />
-
-              <p
+            <div>
+              <span
                 className="
                   text-[10px]
                   font-semibold
-                  tracking-[0.08em]
+                  tracking-[0.14em]
                   text-muted-foreground
                   uppercase
                 "
               >
-                Active Categories
-              </p>
-            </div>
-          </div>
-        </div>
+                Business Snapshot
+              </span>
 
-        <div
-          aria-hidden="true"
-          className="
-            absolute
-            bottom-0
-            left-5
-            h-[2px]
-            w-8
-            rounded-full
-            bg-success/40
-            transition-all
-            duration-300
-            group-hover:w-12
-          "
-        />
-      </div>
-
-      {/* =================================================
-          Inactive Categories
-      ================================================= */}
-
-      <div
-        className="
-          group
-          relative
-          overflow-hidden
-          rounded-[18px]
-          border
-          border-border/70
-          bg-card
-          px-5
-          py-4
-          shadow-[0_1px_3px_rgba(0,0,0,0.025)]
-          transition-all
-          duration-200
-          hover:-translate-y-0.5
-          hover:border-foreground/10
-          hover:shadow-[0_8px_24px_rgba(0,0,0,0.045)]
-        "
-      >
-        <span
-          aria-hidden="true"
-          className="
-            pointer-events-none
-            absolute
-            -bottom-5
-            right-1
-            select-none
-            text-[76px]
-            leading-none
-            font-semibold
-            tracking-[-0.08em]
-            text-foreground/[0.025]
-          "
-        >
-          03
-        </span>
-
-        <div className="relative flex items-center gap-4">
-          <div
-            className="
-              flex
-              size-11
-              shrink-0
-              items-center
-              justify-center
-              rounded-[13px]
-              border
-              border-border/70
-              bg-muted/40
-              text-muted-foreground
-            "
-          >
-            <CircleOff
-              className="size-[18px]"
-              strokeWidth={1.8}
-              aria-hidden="true"
-            />
-          </div>
-
-          <div className="min-w-0">
-            <p
-              className="
-                text-[26px]
-                leading-none
-                font-semibold
-                tracking-[-0.04em]
-                text-foreground
-                tabular-nums
-              "
-            >
-              {inactiveCategories}
-            </p>
-
-            <div className="mt-2 flex items-center gap-2">
-              <span className="size-1.5 rounded-full bg-muted-foreground/40" />
+              <h2
+                className="
+                  mt-1.5
+                  text-[15px]
+                  font-semibold
+                  tracking-[-0.015em]
+                  text-foreground
+                "
+              >
+                Core Metrics
+              </h2>
 
               <p
                 className="
-                  text-[10px]
-                  font-semibold
-                  tracking-[0.08em]
+                  mt-1
+                  text-xs
+                  leading-5
                   text-muted-foreground
-                  uppercase
                 "
               >
-                Inactive Categories
+                Key category resources currently available across the equipment catalog.
               </p>
             </div>
-          </div>
-        </div>
 
-        <div
-          aria-hidden="true"
-          className="
-            absolute
-            bottom-0
-            left-5
-            h-[2px]
-            w-8
-            rounded-full
-            bg-muted-foreground/20
-            transition-all
-            duration-300
-            group-hover:w-12
-          "
-        />
-      </div>
-    </div>
-  </section>
-) : null}
+            {/* =================================================
+                Statistics
+            ================================================= */}
+
+            <div
+              className="
+                grid
+                grid-cols-1
+                gap-3
+                sm:grid-cols-2
+                lg:grid-cols-3
+              "
+            >
+              <StatCard
+                index="01"
+                label="Total Categories"
+                value={totalCategories}
+                icon={Layers}
+              />
+
+              <StatCard
+                index="02"
+                label="Active Categories"
+                value={activeCategories}
+                icon={Activity}
+                tone="success"
+              />
+
+              <StatCard
+                index="03"
+                label="Inactive Categories"
+                value={inactiveCategories}
+                icon={CircleOff}
+              />
+            </div>
+          </section>
+        ) : null}
 
         {/* =====================================================
             Categories
         ===================================================== */}
 
         <section>
-          <div className="mb-5 flex items-end justify-between gap-4">
+          {/* ===================================================
+              Section Header
+          =================================================== */}
+
+          <div
+            className="
+              mb-5
+              flex
+              items-end
+              justify-between
+              gap-4
+            "
+          >
             <div>
-              <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+              <span
+                className="
+                  text-[10px]
+                  font-semibold
+                  tracking-[0.14em]
+                  text-muted-foreground
+                  uppercase
+                "
+              >
                 Catalog Structure
               </span>
 
-              <h2 className="mt-1.5 text-[15px] font-semibold tracking-[-0.015em] text-foreground">
+              <h2
+                className="
+                  mt-1.5
+                  text-[15px]
+                  font-semibold
+                  tracking-[-0.015em]
+                  text-foreground
+                "
+              >
                 Categories
               </h2>
 
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              <p
+                className="
+                  mt-1
+                  text-xs
+                  leading-5
+                  text-muted-foreground
+                "
+              >
                 Manage naming, ordering and visibility for equipment groups.
               </p>
             </div>
@@ -647,7 +470,16 @@ export default function EquipmentCategoriesPage() {
             {!isLoading &&
             !isError &&
             totalCategories > 0 ? (
-              <span className="hidden text-[11px] font-medium text-muted-foreground/60 tabular-nums sm:block">
+              <span
+                className="
+                  hidden
+                  text-[11px]
+                  font-medium
+                  text-muted-foreground/60
+                  tabular-nums
+                  sm:block
+                "
+              >
                 {totalCategories}{' '}
                 {totalCategories === 1
                   ? 'category'
@@ -655,6 +487,10 @@ export default function EquipmentCategoriesPage() {
               </span>
             ) : null}
           </div>
+
+          {/* ===================================================
+              Table
+          =================================================== */}
 
           <div
             className="
@@ -689,10 +525,14 @@ export default function EquipmentCategoriesPage() {
         ===================================================== */}
 
         <ConfirmDialog
-          open={Boolean(deletingCategory)}
+          open={Boolean(
+            deletingCategory,
+          )}
           onOpenChange={(open) => {
             if (!open) {
-              setDeletingCategory(null)
+              setDeletingCategory(
+                null,
+              )
             }
           }}
           title="Delete category"

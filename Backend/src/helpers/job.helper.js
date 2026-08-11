@@ -5,7 +5,6 @@ const JOB_POPULATE_FIELDS = [
     path: "createdBy",
     select: "fullName email role",
   },
-
   {
     path: "updatedBy",
     select: "fullName email role",
@@ -51,21 +50,18 @@ const buildDashboardFilter = (query) => {
           $options: "i",
         },
       },
-
       {
         shortDescription: {
           $regex: searchTerm,
           $options: "i",
         },
       },
-
       {
         location: {
           $regex: searchTerm,
           $options: "i",
         },
       },
-
       {
         department: {
           $regex: searchTerm,
@@ -103,14 +99,12 @@ const buildPublicFilter = (query) => {
           $options: "i",
         },
       },
-
       {
         shortDescription: {
           $regex: searchTerm,
           $options: "i",
         },
       },
-
       {
         location: {
           $regex: searchTerm,
@@ -127,7 +121,6 @@ const buildPublicFilter = (query) => {
 
 const buildPagination = (query) => {
   const page = Math.max(Number(query.page) || 1, 1);
-
   const limit = Math.min(Math.max(Number(query.limit) || 10, 1), 100);
 
   return {
@@ -149,6 +142,24 @@ const buildPaginationResponse = ({ page, limit, total }) => {
     totalPages,
     hasNextPage: page < totalPages,
     hasPreviousPage: page > 1,
+  };
+};
+
+// ==================== Build Job Statistics ====================
+
+const buildJobStatistics = async (Job) => {
+  const [total, published, draft, closed] = await Promise.all([
+    Job.countDocuments(),
+    Job.countDocuments({ status: "published" }),
+    Job.countDocuments({ status: "draft" }),
+    Job.countDocuments({ status: "closed" }),
+  ]);
+
+  return {
+    total,
+    published,
+    draft,
+    closed,
   };
 };
 
@@ -204,6 +215,8 @@ module.exports = {
 
   buildPagination,
   buildPaginationResponse,
+
+  buildJobStatistics,
 
   updateJobFields,
   updateJobStatus,

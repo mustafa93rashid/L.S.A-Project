@@ -7,6 +7,7 @@ const {
   buildPublicFilter,
   buildPagination,
   buildPaginationResponse,
+  buildJobStatistics,
   updateJobFields,
   updateJobStatus,
 } = require("../helpers/job.helper");
@@ -45,9 +46,7 @@ class JobController {
       requirements,
       status: finalStatus,
       deadline: deadline || null,
-
       publishedAt: finalStatus === "published" ? new Date() : null,
-
       createdBy: currentUserId,
       updatedBy: currentUserId,
     });
@@ -95,6 +94,17 @@ class JobController {
     });
   };
 
+  // ==================== Get Job Statistics ====================
+
+  getJobStatistics = async (req, res) => {
+    const statistics = await buildJobStatistics(Job);
+
+    return res.status(200).json({
+      success: true,
+      data: statistics,
+    });
+  };
+
   // ==================== Get Public Jobs ====================
 
   getPublicJobs = async (req, res) => {
@@ -118,9 +128,7 @@ class JobController {
   // ==================== Get Job By ID ====================
 
   getJobById = async (req, res) => {
-    const job = await Job.findById(req.params.id)
-      .populate(JOB_POPULATE_FIELDS)
-      .lean();
+    const job = await Job.findById(req.params.id).populate(JOB_POPULATE_FIELDS).lean();
 
     if (!job) {
       return res.status(404).json({
