@@ -358,6 +358,7 @@ class UserController {
         .select(
           "-password -passwordResetToken -passwordResetExpires -activationToken -activationTokenExpires",
         )
+        .populate("createdBy", "fullName email")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNumber),

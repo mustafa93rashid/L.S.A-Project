@@ -16,7 +16,7 @@ export default function JourneyEditPage() {
   const journey = data?.find((item) => item._id === id)
 
   return (
-    <PageContainer className="max-w-xl">
+    <PageContainer className="max-w-6xl">
       <BackLink to={LIST_PATH} label="Back to Company Journey" />
       <PageHeader title="Edit milestone" description="Update this journey milestone." />
 

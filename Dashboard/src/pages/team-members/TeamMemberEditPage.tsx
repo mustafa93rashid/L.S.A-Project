@@ -16,7 +16,7 @@ export default function TeamMemberEditPage() {
   const teamMember = data?.find((item) => item._id === id)
 
   return (
-    <PageContainer className="max-w-xl">
+    <PageContainer className="max-w-6xl">
       <BackLink to={LIST_PATH} label="Back to Team Members" />
       <PageHeader
         title="Edit team member"

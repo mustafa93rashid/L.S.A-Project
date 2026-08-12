@@ -10,7 +10,7 @@ export default function TeamMemberCreatePage() {
   const navigate = useNavigate()
 
   return (
-    <PageContainer className="max-w-xl">
+    <PageContainer className="max-w-6xl">
       <BackLink to={LIST_PATH} label="Back to Team Members" />
       <PageHeader
         title="Add team member"

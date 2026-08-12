@@ -16,7 +16,7 @@ export default function PartnerEditPage() {
   const partner = data?.find((item) => item._id === id)
 
   return (
-    <PageContainer className="max-w-xl">
+    <PageContainer className="max-w-6xl">
       <BackLink to={LIST_PATH} label="Back to Partners" />
       <PageHeader title="Edit partner" description="Update this partner's details." />
 

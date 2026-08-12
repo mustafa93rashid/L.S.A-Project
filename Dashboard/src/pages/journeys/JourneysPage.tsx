@@ -1,18 +1,46 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import type { ColumnDef } from '@tanstack/react-table'
-import { Milestone, Pencil, Plus, Trash2 } from 'lucide-react'
+import { CalendarDays, ImageIcon, Milestone, Pencil, Plus, Trash2 } from 'lucide-react'
+
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { DataTable } from '@/components/data-table/DataTable'
+import { Skeleton } from '@/components/ui/skeleton'
 import { ConfirmDialog } from '@/components/overlays/ConfirmDialog'
+import { EmptyState } from '@/components/feedback/EmptyState'
+import { ErrorState } from '@/components/feedback/ErrorState'
+
 import { ApiError } from '@/types/api'
 import { cloudinaryThumbnail } from '@/lib/cloudinary'
+
 import { useDeleteJourneyMutation, useJourneysQuery } from '@/features/journeys/queries'
 import type { Journey } from '@/features/journeys/types'
+
+function JourneyCardSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-[18px] border border-border/70 bg-card">
+      <Skeleton className="aspect-[16/7] w-full rounded-none" />
+
+      <div className="space-y-3 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+
+          <Skeleton className="size-8 rounded-lg" />
+        </div>
+
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-4/5" />
+        <Skeleton className="h-px w-full" />
+        <Skeleton className="h-3 w-20" />
+      </div>
+    </div>
+  )
+}
 
 export default function JourneysPage() {
   const { data, isLoading, isError, refetch } = useJourneysQuery()
@@ -20,121 +48,159 @@ export default function JourneysPage() {
 
   const [deletingJourney, setDeletingJourney] = useState<Journey | null>(null)
 
-  const columns = useMemo<ColumnDef<Journey, unknown>[]>(
-    () => [
-      {
-        id: 'image',
-        header: 'Image',
-        enableSorting: false,
-        cell: ({ row }) => (
-          <img
-            src={cloudinaryThumbnail(row.original.image.url, 64)}
-            alt={row.original.title}
-            className="h-10 w-10 rounded-md border border-border object-cover"
-          />
-        ),
-      },
-      { accessorKey: 'period', header: 'Period' },
-      { accessorKey: 'title', header: 'Title' },
-      {
-        accessorKey: 'side',
-        header: 'Side',
-        cell: ({ row }) => (
-          <Badge variant="secondary">
-            {row.original.side === 'left' ? 'Left' : 'Right'}
-          </Badge>
-        ),
-      },
-      {
-        id: 'actions',
-        header: 'Actions',
-        enableSorting: false,
-        meta: { hideOnMobile: true },
-        cell: ({ row }) => (
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Edit ${row.original.title}`}
-              asChild
-            >
-              <Link to={`/journeys/${row.original._id}/edit`}>
-                <Pencil className="size-4" />
-              </Link>
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Delete ${row.original.title}`}
-              onClick={() => setDeletingJourney(row.original)}
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </div>
-        ),
-      },
-    ],
-    [],
-  )
+  const journeys = data ?? []
 
   const handleDelete = () => {
     if (!deletingJourney) return
+
     deleteMutation.mutate(deletingJourney._id, {
       onSuccess: () => {
         toast.success('Journey milestone deleted successfully')
         setDeletingJourney(null)
       },
       onError: (error) => {
-        toast.error(
-          error instanceof ApiError
-            ? error.message
-            : 'Failed to delete journey milestone',
-        )
+        toast.error(error instanceof ApiError ? error.message : 'Failed to delete journey milestone')
       },
     })
   }
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="Company Journey"
-        description="Timeline milestones shown on the public About page."
-        action={
-          <Button type="button" asChild>
-            <Link to="/journeys/new">
-              <Plus className="size-4" />
-              Add milestone
-            </Link>
-          </Button>
-        }
-      />
+    <PageContainer className="max-w-6xl">
+      <div className="space-y-7">
+        <PageHeader
+          title="Company Journey"
+          description="Curate the milestones that tell the story of the company's growth and evolution."
+          action={
+            <Button type="button" asChild size="lg">
+              <Link to="/journeys/new">
+                <Plus className="size-4" strokeWidth={1.8} />
+                Add milestone
+              </Link>
+            </Button>
+          }
+        />
 
-      <DataTable
-        columns={columns}
-        data={data ?? []}
-        getRowId={(row) => row._id}
-        isLoading={isLoading}
-        isError={isError}
-        onRetry={() => refetch()}
-        emptyState={{
-          icon: Milestone,
-          title: 'No journey milestones yet',
-          description: 'Add a milestone to start building the company timeline.',
-        }}
-      />
+        <section>
+          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">Company History</span>
+              <h2 className="mt-1.5 text-[15px] font-semibold tracking-[-0.015em] text-foreground">Timeline Collection</h2>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Each milestone represents a key chapter in the company's development.</p>
+            </div>
 
-      <ConfirmDialog
-        open={Boolean(deletingJourney)}
-        onOpenChange={(open) => !open && setDeletingJourney(null)}
-        title="Delete journey milestone"
-        description={`Are you sure you want to delete "${deletingJourney?.title}"? This cannot be undone.`}
-        variant="destructive"
-        confirmLabel="Delete"
-        onConfirm={handleDelete}
-        isLoading={deleteMutation.isPending}
-      />
+            {!isLoading && !isError ? (
+
+                <div>
+                  <p className="text-[9px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">Milestones</p>
+                  <p className="mt-0.5 text-sm font-semibold text-foreground tabular-nums">{journeys.length}</p>
+                </div>
+            ) : null}
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <JourneyCardSkeleton key={index} />
+              ))}
+            </div>
+          ) : isError ? (
+            <div className="rounded-[22px] border border-border/70 bg-card px-6 py-12">
+              <ErrorState description="Journey milestones could not be loaded." onRetry={() => refetch()} />
+            </div>
+          ) : journeys.length === 0 ? (
+            <div className="rounded-[22px] border border-border/70 bg-card px-6 py-12">
+              <EmptyState icon={Milestone} title="No journey milestones yet" description="Add the first milestone to begin building the company timeline." />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {journeys.map((journey, index) => (
+                <article
+                  key={journey._id}
+                  className="group relative overflow-hidden rounded-[18px] border border-border/70 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.025)] transition-all duration-300 hover:-translate-y-0.5 hover:border-foreground/10 hover:shadow-[0_10px_26px_rgba(0,0,0,0.05)]"
+                >
+                  <div className="relative aspect-[16/7] overflow-hidden bg-muted/30">
+                    {journey.image?.url ? (
+                      <img
+                        src={cloudinaryThumbnail(journey.image.url, 520)}
+                        alt={journey.title}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-muted-foreground/35">
+                        <ImageIcon className="size-6" strokeWidth={1.5} />
+                      </div>
+                    )}
+
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+
+                    <div className="absolute left-3 top-3">
+                      <Badge className="border-white/10 bg-black/25 px-2 py-0.5 text-[10px] text-white backdrop-blur-md hover:bg-black/25">{journey.period}</Badge>
+                    </div>
+
+                    <div className="absolute right-2.5 top-2.5 flex items-center gap-0.5 rounded-lg border border-white/15 bg-black/20 p-0.5 opacity-0 backdrop-blur-md transition-opacity duration-200 group-hover:opacity-100">
+                      <Button type="button" variant="ghost" size="icon-sm" aria-label={`Edit ${journey.title}`} className="size-7 text-white/80 hover:bg-white/15 hover:text-white" asChild>
+                        <Link to={`/journeys/${journey._id}/edit`}>
+                          <Pencil className="size-3.5" strokeWidth={1.8} />
+                        </Link>
+                      </Button>
+
+                      <Button type="button" variant="ghost" size="icon-sm" aria-label={`Delete ${journey.title}`} className="size-7 text-white/75 hover:bg-destructive/30 hover:text-white" onClick={() => setDeletingJourney(journey)}>
+                        <Trash2 className="size-3.5" strokeWidth={1.8} />
+                      </Button>
+                    </div>
+
+                    <div className="absolute bottom-2.5 left-3">
+                      <span className="text-[8px] font-semibold tracking-[0.1em] text-white/60 uppercase">Milestone {String(index + 1).padStart(2, '0')}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <CalendarDays className="size-3" strokeWidth={1.8} />
+                          <span className="text-[9px] font-semibold tracking-[0.06em] uppercase">{journey.period}</span>
+                        </div>
+
+                        <h3 className="mt-1.5 truncate text-sm font-semibold tracking-[-0.015em] text-foreground">{journey.title}</h3>
+                      </div>
+
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/30 text-muted-foreground">
+                        <Milestone className="size-3.5" strokeWidth={1.8} />
+                      </div>
+                    </div>
+
+                    <p className="mt-2 line-clamp-2 min-h-[34px] text-[10px] leading-[17px] text-muted-foreground">{journey.description}</p>
+
+                    <div className="mt-3 border-t border-border/60 pt-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`size-1.5 rounded-full ${journey.side === 'left' ? 'bg-info' : 'bg-warning'}`} />
+                        <span className="text-[9px] font-medium text-muted-foreground">{journey.side === 'left' ? 'Left timeline' : 'Right timeline'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <span aria-hidden="true" className="absolute bottom-0 left-4 h-[2px] w-6 rounded-full bg-foreground/15 transition-all duration-300 group-hover:w-10 group-hover:bg-foreground/30" />
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <ConfirmDialog
+          open={Boolean(deletingJourney)}
+          onOpenChange={(open) => {
+            if (!open) setDeletingJourney(null)
+          }}
+          title="Delete journey milestone"
+          description={`Are you sure you want to delete "${deletingJourney?.title}"? This cannot be undone.`}
+          variant="destructive"
+          confirmLabel="Delete"
+          onConfirm={handleDelete}
+          isLoading={deleteMutation.isPending}
+        />
+      </div>
     </PageContainer>
   )
 }

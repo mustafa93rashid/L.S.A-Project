@@ -1,341 +1,819 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { format } from 'date-fns'
 import {
-  ArrowLeft,
-  Building2,
-  CalendarCheck,
-  Clock,
-  Info,
-  MoreVertical,
+  AtSign,
+  CalendarDays,
+  Clock3,
+  MoreHorizontal,
   Phone,
-  Shield,
-  Trash2,
-  UserCheck,
-  UserPlus,
-  UserX,
+  RotateCcw,
+  ShieldCheck,
+  UserCog,
+  UserRoundCheck,
+  UserRoundX,
 } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-import { Avatar, AvatarBadge, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { RoleBadge } from '@/components/data-display/RoleBadge'
-import { cloudinaryThumbnail } from '@/lib/cloudinary'
-import { cn } from '@/lib/utils'
+
+import { ROLE_LABELS } from '@/constants/roles'
 import type { User } from '@/features/users/types'
 
 interface UserCardProps {
   user: User
-  /** The signed-in user viewing this card — every mutating action is
-   * disabled on your own account, mirroring the backend's own
-   * `req.params.id === req.user.id` guards on status/role/delete. */
-  isSelf: boolean
+  isSelf?: boolean
   onChangeRole: () => void
   onToggleStatus: () => void
   onDelete: () => void
 }
 
-function initials(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean)
-  const first = parts[0]?.[0] ?? ''
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : ''
-  return (first + last).toUpperCase() || '?'
+function getInitials(fullName: string) {
+  return fullName
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('')
 }
 
-/** "August 5, 2026 • 4:35 PM" — full date + exact time, in whatever
- * timezone the browser itself is already in (plain `Date`/`date-fns`
- * read the system clock, nothing is hardcoded to UTC or any fixed
- * offset). Kept to the app's existing English-only formatting
- * convention (see docs/ARCHITECTURE.md's "Known deliberate non-goals")
- * rather than switching to `Intl` locale-name formatting, which would be
- * the one date on this page rendering differently from every other
- * timestamp in the dashboard. */
-function formatLastLogin(lastLoginAt: string | null): string {
-  if (!lastLoginAt) return 'Never'
-  const date = new Date(lastLoginAt)
-  return `${format(date, 'MMMM d, yyyy')} • ${format(date, 'h:mm a')}`
-}
-
-/** Verified live against `GET /users` (see the comment on
- * `User['createdBy']`): the backend never populates this field, so a
- * non-null value is always just an id — never a name to display. Showing
- * "Unknown" here is the honest fallback the id itself doesn't resolve;
- * inventing a name would be showing data the backend never sent. */
-function getCreatedByLabel(createdBy: string | null): string {
-  return createdBy === null ? 'System' : 'Unknown'
-}
-
-interface DetailRowProps {
-  icon: LucideIcon
-  label: string
-  value: string
-}
-
-function DetailRow({ icon: Icon, label, value }: DetailRowProps) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <div className="flex items-center gap-1.5 text-muted-foreground">
-        <Icon className="size-3.5 shrink-0" aria-hidden="true" />
-        <span className="text-[10.5px] font-semibold tracking-wide uppercase">
-          {label}
-        </span>
-      </div>
-      <p className="pl-5 text-[13px] font-medium text-balance text-foreground">{value}</p>
-    </div>
-  )
-}
-
-// `min-h` lives on each face directly (not the rotating parent) — a
-// percentage/`h-full` height on the front face wouldn't reliably resolve
-// against a parent whose own height is just "auto" (determined by that
-// same child), and CardContent's `flex-1` below needs a real height on
-// its own flex container to have anything to grow into.
-const FACE_BASE_CLASSES =
-  'flex min-h-92 flex-col gap-0 rounded-xl border border-border bg-card py-0 text-sm text-card-foreground shadow-xs transition-[box-shadow,border-color] duration-200 ease-out [backface-visibility:hidden] hover:border-primary/15 hover:shadow-card'
-
-/**
- * One card in the Users directory grid — a true 3D flip card. The front
- * (identity) and back (account details) are two full-height faces of the
- * same physical card, rotated 180° apart around the Y axis; only the
- * container's own rotation animates, so nothing reflows or jumps.
- *
- * Accessibility: the whole card body is a mouse-only click-to-flip
- * convenience (a plain `onClick`, no ARIA role — deliberately, so it's
- * never exposed to assistive tech as a single giant control wrapping the
- * real action menu button, which would be invalid/confusing nested
- * semantics). The actual keyboard/screen-reader-operable control is one
- * small, real `<button>` per face ("View details" / "Back to profile"),
- * each a sibling of — never a wrapper around — the menu button. Whichever
- * face isn't currently showing is `inert` (removes it from the tab order
- * and the accessibility tree in one step) and `pointer-events-none` (belt
- *-and-suspenders against `backface-visibility` hit-testing differences
- * across browsers), and focus is moved to the newly-revealed face's own
- * button after a user-initiated flip so keyboard focus never gets stuck
- * on a control that just became inert.
- */
 export function UserCard({
   user,
-  isSelf,
+  isSelf = false,
   onChangeRole,
   onToggleStatus,
   onDelete,
 }: UserCardProps) {
   const [isFlipped, setIsFlipped] = useState(false)
-  const hasInteractedRef = useRef(false)
-  const frontHintRef = useRef<HTMLButtonElement>(null)
-  const backHintRef = useRef<HTMLButtonElement>(null)
 
-  useEffect(() => {
-    if (!hasInteractedRef.current) return
-    ;(isFlipped ? backHintRef : frontHintRef).current?.focus()
-  }, [isFlipped])
+  const initials = getInitials(user.fullName)
 
-  function toggleFlip() {
-    hasInteractedRef.current = true
+  const handleCardClick = () => {
     setIsFlipped((current) => !current)
   }
 
   return (
-    // Three separate transform layers, each on its own element — a
-    // hover-lift `translateY` and the flip's `rotateY` would otherwise
-    // fight over the single CSS `transform` property on one element.
-    <div className="[perspective:1400px]">
-      <div className="transition-transform duration-200 ease-out hover:-translate-y-0.5">
-        <div
-          className="relative transition-transform duration-[450ms] ease-in-out [transform-style:preserve-3d]"
-          style={{ transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+    <div className="group relative h-[390px] w-full [perspective:1200px]">
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={`${
+          isFlipped ? 'Show user profile' : 'Show user activity'
+        } for ${user.fullName}`}
+        onClick={handleCardClick}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            handleCardClick()
+          }
+        }}
+        className={`
+          relative
+          h-full
+          w-full
+          cursor-pointer
+          transition-transform
+          duration-700
+          [transform-style:preserve-3d]
+          ${
+            isFlipped
+              ? '[transform:rotateY(180deg)]'
+              : ''
+          }
+        `}
+      >
+        {/* ================================================== */}
+        {/* Front */}
+        {/* ================================================== */}
+
+        <article
+          className="
+            absolute
+            inset-0
+            overflow-hidden
+            rounded-[22px]
+            border
+            border-border/70
+            bg-card
+            shadow-[0_1px_3px_rgba(0,0,0,0.025)]
+            transition-shadow
+            duration-300
+            [backface-visibility:hidden]
+            group-hover:shadow-[0_14px_34px_rgba(0,0,0,0.06)]
+          "
         >
-          {/* Front — identity */}
-          <Card
-            className={cn(FACE_BASE_CLASSES, isFlipped && 'pointer-events-none')}
-            inert={isFlipped || undefined}
-            aria-hidden={isFlipped}
-            onClick={toggleFlip}
-          >
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={(event) => event.stopPropagation()}
-                  className="absolute top-3 right-3 z-10 rounded-full border border-border/60 bg-card text-muted-foreground shadow-xs transition-all duration-200 ease-out hover:scale-105 hover:border-border hover:text-foreground hover:shadow-card active:scale-95"
-                  aria-label={`Actions for ${user.fullName}`}
-                >
-                  <MoreVertical className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-48"
+          <div className="relative flex h-full flex-col">
+            <div
+              className="
+                relative
+                flex
+                flex-1
+                flex-col
+                items-center
+                justify-center
+                border-b
+                border-border/60
+                bg-gradient-to-b
+                from-muted/35
+                via-card
+                to-card
+                px-5
+                py-5
+              "
+            >
+              {/* Actions */}
+
+              <div
+                className="absolute right-3 top-3 z-20"
                 onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
               >
-                <DropdownMenuItem onSelect={onChangeRole} disabled={isSelf}>
-                  <Shield className="size-4" />
-                  Change role
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={onToggleStatus} disabled={isSelf}>
-                  {user.isActive ? (
-                    <UserX className="size-4" />
-                  ) : (
-                    <UserCheck className="size-4" />
-                  )}
-                  {user.isActive ? 'Deactivate' : 'Activate'}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onSelect={onDelete}
-                  disabled={isSelf}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Actions for ${user.fullName}`}
+                      className="
+                        rounded-lg
+                        text-muted-foreground
+                        hover:bg-background
+                        hover:text-foreground
+                      "
+                    >
+                      <MoreHorizontal
+                        className="size-4"
+                        strokeWidth={1.8}
+                      />
+                    </Button>
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-48"
+                  >
+                    <DropdownMenuItem
+                      onSelect={onChangeRole}
+                    >
+                      <UserCog className="size-4" />
+                      Change role
+                    </DropdownMenuItem>
+
+                    {!isSelf ? (
+                      <>
+                        <DropdownMenuItem
+                          onSelect={onToggleStatus}
+                        >
+                          {user.isActive ? (
+                            <UserRoundX className="size-4" />
+                          ) : (
+                            <UserRoundCheck className="size-4" />
+                          )}
+
+                          {user.isActive
+                            ? 'Deactivate user'
+                            : 'Activate user'}
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
+
+                        <DropdownMenuItem
+                          className="
+                            text-destructive
+                            focus:text-destructive
+                          "
+                          onSelect={onDelete}
+                        >
+                          Delete user
+                        </DropdownMenuItem>
+                      </>
+                    ) : null}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Status */}
+
+              <div className="absolute left-4 top-4">
+                <Badge
+                  variant={
+                    user.isActive
+                      ? 'success'
+                      : 'secondary'
+                  }
                 >
-                  <Trash2 className="size-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  {user.isActive
+                    ? 'Active'
+                    : 'Inactive'}
+                </Badge>
+              </div>
 
-            <CardContent className="flex flex-1 flex-col items-center justify-center gap-3 px-6 pt-8 pb-5 text-center">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Avatar size="xl" className="shadow-card">
-                    <AvatarImage
-                      src={
-                        user.avatar.url
-                          ? cloudinaryThumbnail(user.avatar.url, 160)
-                          : undefined
-                      }
-                      alt={user.fullName}
-                    />
-                    <AvatarFallback className="font-semibold">
-                      {initials(user.fullName)}
-                    </AvatarFallback>
-                    <AvatarBadge
-                      className={user.isActive ? 'bg-success' : 'bg-muted-foreground/60'}
-                      aria-hidden="true"
-                    />
-                  </Avatar>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {user.isActive ? 'Active account' : 'Inactive account'}
-                </TooltipContent>
-              </Tooltip>
-              {/* The avatar badge is a hover-only affordance (the avatar
-                itself isn't keyboard-focusable) — this is the real,
-                always-present accessible status text. */}
-              <span className="sr-only">
-                {user.isActive ? 'Active account' : 'Inactive account'}
+              {/* Avatar */}
+
+              <div className="relative">
+                {user.avatar?.url ? (
+                  <img
+                    src={user.avatar.url}
+                    alt={user.fullName}
+                    className="
+                      size-28
+                      rounded-full
+                      border-[5px]
+                      border-card
+                      object-cover
+                      shadow-[0_10px_30px_rgba(0,0,0,0.11)]
+                      ring-1
+                      ring-border/70
+                      transition-transform
+                      duration-300
+                      group-hover:scale-[1.025]
+                    "
+                  />
+                ) : (
+                  <div
+                    className="
+                      flex
+                      size-28
+                      items-center
+                      justify-center
+                      rounded-full
+                      border-[5px]
+                      border-card
+                      bg-muted
+                      shadow-[0_10px_30px_rgba(0,0,0,0.08)]
+                      ring-1
+                      ring-border/70
+                    "
+                  >
+                    <span
+                      className="
+                        text-[28px]
+                        font-semibold
+                        tracking-[-0.06em]
+                        text-foreground
+                      "
+                    >
+                      {initials}
+                    </span>
+                  </div>
+                )}
+
+                <span
+                  className={`
+                    absolute
+                    bottom-1
+                    right-1
+                    size-[18px]
+                    rounded-full
+                    border-[4px]
+                    border-card
+                    ${
+                      user.isActive
+                        ? 'bg-success'
+                        : 'bg-muted-foreground/40'
+                    }
+                  `}
+                />
+              </div>
+
+              {/* Name */}
+
+              <div className="mt-4 flex max-w-full items-center gap-2">
+                <h3
+                  className="
+                    max-w-[240px]
+                    truncate
+                    text-center
+                    text-[17px]
+                    font-semibold
+                    tracking-[-0.025em]
+                    text-foreground
+                  "
+                >
+                  {user.fullName}
+                </h3>
+
+                {isSelf ? (
+                  <Badge
+                    variant="secondary"
+                    className="
+                      shrink-0
+                      px-1.5
+                      py-0
+                      text-[8px]
+                      font-semibold
+                      tracking-[0.08em]
+                      uppercase
+                    "
+                  >
+                    You
+                  </Badge>
+                ) : null}
+              </div>
+
+              {/* Email */}
+
+              <div
+                className="
+                  mt-1.5
+                  flex
+                  max-w-full
+                  items-center
+                  gap-1.5
+                  text-muted-foreground
+                "
+              >
+                <AtSign
+                  className="size-3 shrink-0"
+                  strokeWidth={1.8}
+                />
+
+                <span className="max-w-[240px] truncate text-[10px]">
+                  {user.email}
+                </span>
+              </div>
+
+              {/* Role */}
+
+              <div
+                className="
+                  mt-4
+                  flex
+                  items-center
+                  gap-2
+                  rounded-xl
+                  border
+                  border-border/60
+                  bg-background/70
+                  px-3
+                  py-2
+                "
+              >
+                <ShieldCheck
+                  className="size-3.5 text-muted-foreground"
+                  strokeWidth={1.8}
+                />
+
+                <div>
+                  <p
+                    className="
+                      text-[7px]
+                      font-semibold
+                      tracking-[0.1em]
+                      text-muted-foreground/55
+                      uppercase
+                    "
+                  >
+                    Assigned role
+                  </p>
+
+                  <p
+                    className="
+                      mt-0.5
+                      text-[10px]
+                      font-semibold
+                      text-foreground
+                    "
+                  >
+                    {ROLE_LABELS[user.role]}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact */}
+
+            <div className="grid grid-cols-2 divide-x divide-border/60">
+              <div className="min-w-0 px-4 py-3.5">
+                <div
+                  className="
+                    flex
+                    items-center
+                    gap-1.5
+                    text-muted-foreground/55
+                  "
+                >
+                  <AtSign
+                    className="size-3"
+                    strokeWidth={1.8}
+                  />
+
+                  <span
+                    className="
+                      text-[8px]
+                      font-semibold
+                      tracking-[0.1em]
+                      uppercase
+                    "
+                  >
+                    Email
+                  </span>
+                </div>
+
+                <p
+                  className="
+                    mt-1.5
+                    truncate
+                    text-[10px]
+                    font-medium
+                    text-foreground
+                  "
+                >
+                  {user.email}
+                </p>
+              </div>
+
+              <div className="min-w-0 px-4 py-3.5">
+                <div
+                  className="
+                    flex
+                    items-center
+                    gap-1.5
+                    text-muted-foreground/55
+                  "
+                >
+                  <Phone
+                    className="size-3"
+                    strokeWidth={1.8}
+                  />
+
+                  <span
+                    className="
+                      text-[8px]
+                      font-semibold
+                      tracking-[0.1em]
+                      uppercase
+                    "
+                  >
+                    Phone
+                  </span>
+                </div>
+
+                <p
+                  className="
+                    mt-1.5
+                    truncate
+                    text-[10px]
+                    font-medium
+                    text-foreground
+                  "
+                >
+                  {user.phone || '—'}
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+                gap-3
+                border-t
+                border-border/60
+                bg-muted/[0.08]
+                px-4
+                py-3
+              "
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={`
+                    size-1.5
+                    rounded-full
+                    ${
+                      user.isActive
+                        ? 'bg-success'
+                        : 'bg-muted-foreground/30'
+                    }
+                  `}
+                />
+
+                <span
+                  className="
+                    text-[9px]
+                    font-medium
+                    text-muted-foreground
+                  "
+                >
+                  {user.isActive
+                    ? 'Account enabled'
+                    : 'Account disabled'}
+                </span>
+              </div>
+
+              <span
+                className="
+                  text-[8px]
+                  font-semibold
+                  tracking-[0.1em]
+                  text-muted-foreground/45
+                  uppercase
+                "
+              >
+                Click for activity
               </span>
+            </div>
+          </div>
+        </article>
 
-              <div className="flex min-w-0 flex-col gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <p className="max-w-52 truncate text-[15.5px] font-semibold text-foreground">
-                      {user.fullName}
+        {/* ================================================== */}
+        {/* Back */}
+        {/* ================================================== */}
+
+        <article
+          className="
+            absolute
+            inset-0
+            overflow-hidden
+            rounded-[22px]
+            border
+            border-border/70
+            bg-card
+            shadow-[0_14px_34px_rgba(0,0,0,0.06)]
+            [backface-visibility:hidden]
+            [transform:rotateY(180deg)]
+          "
+        >
+          <div className="flex h-full flex-col">
+            {/* Back Header */}
+
+
+
+            {/* Activity Information */}
+
+            <div
+              className="
+                flex
+                flex-1
+                flex-col
+                justify-center
+                gap-3
+                p-5
+              "
+            >
+              {/* Last Login */}
+
+              <div
+                className="
+                  rounded-[18px]
+                  border
+                  border-border/70
+                  bg-muted/[0.12]
+                  p-4
+                "
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className="
+                      flex
+                      size-10
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-xl
+                      border
+                      border-border/70
+                      bg-background
+                      text-muted-foreground
+                    "
+                  >
+                    <Clock3
+                      className="size-4"
+                      strokeWidth={1.8}
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p
+                      className="
+                        text-[8px]
+                        font-semibold
+                        tracking-[0.12em]
+                        text-muted-foreground/55
+                        uppercase
+                      "
+                    >
+                      Last login
                     </p>
-                  </TooltipTrigger>
-                  <TooltipContent>{user.fullName}</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <p className="max-w-52 truncate text-[12.5px] text-muted-foreground">
-                      {user.email}
+
+                    <p
+                      className="
+                        mt-1.5
+                        text-[13px]
+                        font-semibold
+                        text-foreground
+                      "
+                    >
+                      {user.lastLoginAt
+                        ? format(
+                            new Date(user.lastLoginAt),
+                            'MMM d, yyyy',
+                          )
+                        : 'Never'}
                     </p>
-                  </TooltipTrigger>
-                  <TooltipContent>{user.email}</TooltipContent>
-                </Tooltip>
+
+                    <p
+                      className="
+                        mt-1
+                        text-[10px]
+                        text-muted-foreground
+                      "
+                    >
+                      {user.lastLoginAt
+                        ? format(
+                            new Date(user.lastLoginAt),
+                            'h:mm a',
+                          )
+                        : 'This account has not signed in yet.'}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <RoleBadge role={user.role} />
-            </CardContent>
+              {/* Joined At */}
 
-            <div className="flex justify-center border-t border-border py-2.5">
-              <Button
-                ref={frontHintRef}
-                type="button"
-                variant="ghost"
-                size="sm"
-                tabIndex={isFlipped ? -1 : 0}
-                aria-pressed={isFlipped}
-                aria-label={`View account details for ${user.fullName}`}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  toggleFlip()
-                }}
-                className="h-7 gap-1.5 px-2.5 text-[11.5px] text-muted-foreground hover:text-primary"
+              <div
+                className="
+                  rounded-[18px]
+                  border
+                  border-border/70
+                  bg-muted/[0.12]
+                  p-4
+                "
               >
-                <Info className="size-3.5" />
-                View details
-              </Button>
-            </div>
-          </Card>
+                <div className="flex items-start gap-3">
+                  <div
+                    className="
+                      flex
+                      size-10
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-xl
+                      border
+                      border-border/70
+                      bg-background
+                      text-muted-foreground
+                    "
+                  >
+                    <CalendarDays
+                      className="size-4"
+                      strokeWidth={1.8}
+                    />
+                  </div>
 
-          {/* Back — account details */}
-          <Card
-            className={cn(
-              FACE_BASE_CLASSES,
-              'absolute inset-0 [transform:rotateY(180deg)]',
-              !isFlipped && 'pointer-events-none',
-            )}
-            inert={!isFlipped || undefined}
-            aria-hidden={!isFlipped}
-            onClick={toggleFlip}
-          >
-            <CardContent className="@container flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-6">
-              <p className="text-center text-[10.5px] font-semibold tracking-wide text-muted-foreground uppercase">
-                Account details
-              </p>
+                  <div className="min-w-0">
+                    <p
+                      className="
+                        text-[8px]
+                        font-semibold
+                        tracking-[0.12em]
+                        text-muted-foreground/55
+                        uppercase
+                      "
+                    >
+                      Joined at
+                    </p>
 
-              <div className="grid grid-cols-1 gap-x-5 gap-y-4 @[22rem]:grid-cols-2">
-                <DetailRow
-                  icon={Building2}
-                  label="Department"
-                  value={user.department ?? '—'}
-                />
-                <DetailRow icon={Phone} label="Phone" value={user.phone ?? '—'} />
-                <DetailRow
-                  icon={Clock}
-                  label="Last login"
-                  value={formatLastLogin(user.lastLoginAt)}
-                />
-                <DetailRow
-                  icon={CalendarCheck}
-                  label="Joined"
-                  value={format(new Date(user.createdAt), 'MMMM d, yyyy')}
-                />
-                <DetailRow
-                  icon={UserPlus}
-                  label="Created by"
-                  value={getCreatedByLabel(user.createdBy)}
-                />
+                    <p
+                      className="
+                        mt-1.5
+                        text-[13px]
+                        font-semibold
+                        text-foreground
+                      "
+                    >
+                      {format(
+                        new Date(user.createdAt),
+                        'MMM d, yyyy',
+                      )}
+                    </p>
+
+                    <p
+                      className="
+                        mt-1
+                        text-[10px]
+                        text-muted-foreground
+                      "
+                    >
+                      {format(
+                        new Date(user.createdAt),
+                        'h:mm a',
+                      )}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </CardContent>
 
-            <div className="flex justify-center border-t border-border py-2.5">
-              <Button
-                ref={backHintRef}
-                type="button"
-                variant="ghost"
-                size="sm"
-                tabIndex={isFlipped ? 0 : -1}
-                aria-pressed={isFlipped}
-                aria-label={`Back to profile for ${user.fullName}`}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  toggleFlip()
-                }}
-                className="h-7 gap-1.5 px-2.5 text-[11.5px] text-muted-foreground hover:text-primary"
+              {/* Added By */}
+
+              <div
+                className="
+                  rounded-[18px]
+                  border
+                  border-border/70
+                  bg-muted/[0.12]
+                  p-4
+                "
               >
-                <ArrowLeft className="size-3.5" />
-                Back to profile
-              </Button>
+                <div className="flex items-start gap-3">
+                  <div
+                    className="
+                      flex
+                      size-10
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-xl
+                      border
+                      border-border/70
+                      bg-background
+                      text-muted-foreground
+                    "
+                  >
+                    <UserRoundCheck
+                      className="size-4"
+                      strokeWidth={1.8}
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p
+                      className="
+                        text-[8px]
+                        font-semibold
+                        tracking-[0.12em]
+                        text-muted-foreground/55
+                        uppercase
+                      "
+                    >
+                      Added by
+                    </p>
+
+                    <p
+                      className="
+                        mt-1.5
+                        truncate
+                        text-[13px]
+                        font-semibold
+                        text-foreground
+                      "
+                    >
+                      {user.createdBy?.fullName ?? 'System'}
+                    </p>
+
+                    <p
+                      className="
+                        mt-1
+                        truncate
+                        text-[10px]
+                        text-muted-foreground
+                      "
+                    >
+                      {user.createdBy?.email ??
+                        'System generated account'}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-          </Card>
-        </div>
+
+            {/* Back Footer */}
+
+            <div
+              className="
+                border-t
+                border-border/60
+                bg-muted/[0.08]
+                px-4
+                py-3
+                text-center
+              "
+            >
+              <span
+                className="
+                  text-[8px]
+                  font-semibold
+                  tracking-[0.1em]
+                  text-muted-foreground/45
+                  uppercase
+                "
+              >
+                Click anywhere to return to profile
+              </span>
+            </div>
+          </div>
+        </article>
       </div>
     </div>
   )
