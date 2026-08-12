@@ -16,7 +16,7 @@ export default function ProjectEditPage() {
   const project = data?.find((item) => item._id === id)
 
   return (
-    <PageContainer className="max-w-5xl">
+    <PageContainer className="max-w-6xl">
       <BackLink to={LIST_PATH} label="Back to Projects" />
       <PageHeader title="Edit project" description="Update this project case study." />
 

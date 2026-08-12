@@ -10,7 +10,7 @@ export default function ServiceCreatePage() {
   const navigate = useNavigate()
 
   return (
-    <PageContainer className="max-w-5xl">
+    <PageContainer className="max-w-6xl">
       <BackLink to={LIST_PATH} label="Back to Services" />
       <PageHeader
         title="Add service"

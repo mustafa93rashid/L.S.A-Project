@@ -1,14 +1,34 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Boxes, CheckCircle2, CircleOff, Filter, ImageIcon, MapPin, Pencil, Plus, Search, ShieldCheck, ShieldX, Trash2, Truck, X } from 'lucide-react'
+import {
+  Boxes,
+  CheckCircle2,
+  CircleOff,
+  Filter,
+  ImageIcon,
+  Pencil,
+  Plus,
+  Search,
+  ShieldCheck,
+  ShieldX,
+  Trash2,
+  Truck,
+  X,
+} from 'lucide-react'
 
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatCard } from '@/components/data-display/StatCard'
 import { Pagination } from '@/components/data-table/Pagination'
@@ -19,7 +39,10 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { ApiError } from '@/types/api'
 
-import { useDeleteEquipmentMutation, useEquipmentListQuery } from '@/features/equipment/queries'
+import {
+  useDeleteEquipmentMutation,
+  useEquipmentListQuery,
+} from '@/features/equipment/queries'
 import { useEquipmentCategoriesQuery } from '@/features/equipment-categories/queries'
 import type { Equipment } from '@/features/equipment/types'
 
@@ -27,13 +50,26 @@ const ACTIVE_FILTER_ALL = 'all'
 const DEFAULT_LIMIT = 20
 
 type EquipmentWithMedia = Equipment & {
-  image?: { url?: string } | null
-  images?: Array<{ url?: string }>
+  image?: {
+    url?: string
+  } | null
+
+  images?: Array<{
+    url?: string
+  }>
 }
 
-function getEquipmentImageUrl(equipment: Equipment): string | null {
-  const item = equipment as EquipmentWithMedia
-  return item.images?.[0]?.url ?? item.image?.url ?? null
+function getEquipmentImageUrl(
+  equipment: Equipment,
+): string | null {
+  const item =
+    equipment as EquipmentWithMedia
+
+  return (
+    item.images?.[0]?.url ??
+    item.image?.url ??
+    null
+  )
 }
 
 function EquipmentCardSkeleton() {
@@ -42,10 +78,10 @@ function EquipmentCardSkeleton() {
       <Skeleton className="aspect-[16/7] w-full rounded-none" />
 
       <div className="space-y-3 p-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <div className="space-y-2">
             <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-36" />
           </div>
 
           <Skeleton className="size-8 rounded-lg" />
@@ -53,40 +89,79 @@ function EquipmentCardSkeleton() {
 
         <Skeleton className="h-3 w-full" />
         <Skeleton className="h-3 w-4/5" />
-        <Skeleton className="h-px w-full" />
-        <Skeleton className="h-3 w-28" />
+
+        <div className="border-t border-border/60 pt-3">
+          <Skeleton className="h-3 w-28" />
+        </div>
       </div>
     </div>
   )
 }
 
 export default function EquipmentPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [
+    searchParams,
+    setSearchParams,
+  ] = useSearchParams()
 
-  const [search, setSearch] = useState(searchParams.get('q') ?? '')
-  const debouncedSearch = useDebouncedValue(search)
+  const [search, setSearch] =
+    useState(
+      searchParams.get('q') ?? '',
+    )
 
-  const categoryFilter = searchParams.get('category') ?? ACTIVE_FILTER_ALL
-  const activeFilter = searchParams.get('active') ?? ACTIVE_FILTER_ALL
+  const debouncedSearch =
+    useDebouncedValue(search)
 
-  const [page, setPage] = useState(1)
-  const [limit, setLimit] = useState(DEFAULT_LIMIT)
-  const [deletingEquipment, setDeletingEquipment] = useState<Equipment | null>(null)
+  const categoryFilter =
+    searchParams.get('category') ??
+    ACTIVE_FILTER_ALL
 
-  const { data: categories } = useEquipmentCategoriesQuery()
-  const deleteMutation = useDeleteEquipmentMutation()
+  const activeFilter =
+    searchParams.get('active') ??
+    ACTIVE_FILTER_ALL
+
+  const [page, setPage] =
+    useState(1)
+
+  const [limit, setLimit] =
+    useState(DEFAULT_LIMIT)
+
+  const [
+    deletingEquipment,
+    setDeletingEquipment,
+  ] =
+    useState<Equipment | null>(
+      null,
+    )
+
+  const {
+    data: categories,
+  } =
+    useEquipmentCategoriesQuery()
+
+  const deleteMutation =
+    useDeleteEquipmentMutation()
 
   useEffect(() => {
     setSearchParams(
       (prev) => {
-        const next = new URLSearchParams(prev)
+        const next =
+          new URLSearchParams(prev)
 
-        if (debouncedSearch) next.set('q', debouncedSearch)
-        else next.delete('q')
+        if (debouncedSearch) {
+          next.set(
+            'q',
+            debouncedSearch,
+          )
+        } else {
+          next.delete('q')
+        }
 
         return next
       },
-      { replace: true },
+      {
+        replace: true,
+      },
     )
 
     setPage(1)
@@ -94,12 +169,24 @@ export default function EquipmentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch])
 
-  const setCategoryFilter = (value: string) => {
+  const setCategoryFilter = (
+    value: string,
+  ) => {
     setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
+      const next =
+        new URLSearchParams(prev)
 
-      if (value === ACTIVE_FILTER_ALL) next.delete('category')
-      else next.set('category', value)
+      if (
+        value ===
+        ACTIVE_FILTER_ALL
+      ) {
+        next.delete('category')
+      } else {
+        next.set(
+          'category',
+          value,
+        )
+      }
 
       return next
     })
@@ -107,12 +194,24 @@ export default function EquipmentPage() {
     setPage(1)
   }
 
-  const setActiveFilter = (value: string) => {
+  const setActiveFilter = (
+    value: string,
+  ) => {
     setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
+      const next =
+        new URLSearchParams(prev)
 
-      if (value === ACTIVE_FILTER_ALL) next.delete('active')
-      else next.set('active', value)
+      if (
+        value ===
+        ACTIVE_FILTER_ALL
+      ) {
+        next.delete('active')
+      } else {
+        next.set(
+          'active',
+          value,
+        )
+      }
 
       return next
     })
@@ -126,11 +225,16 @@ export default function EquipmentPage() {
 
     setSearchParams(
       (prev) => {
-        const next = new URLSearchParams(prev)
+        const next =
+          new URLSearchParams(prev)
+
         next.delete('q')
+
         return next
       },
-      { replace: true },
+      {
+        replace: true,
+      },
     )
   }
 
@@ -140,55 +244,151 @@ export default function EquipmentPage() {
 
     setSearchParams(
       (prev) => {
-        const next = new URLSearchParams(prev)
+        const next =
+          new URLSearchParams(prev)
+
         next.delete('q')
         next.delete('category')
         next.delete('active')
+
         return next
       },
-      { replace: true },
+      {
+        replace: true,
+      },
     )
   }
 
   const filters = useMemo(
     () => ({
-      category: categoryFilter === ACTIVE_FILTER_ALL ? undefined : categoryFilter,
-      isActive: activeFilter === ACTIVE_FILTER_ALL ? undefined : activeFilter === 'true',
-      search: debouncedSearch || undefined,
+      category:
+        categoryFilter ===
+        ACTIVE_FILTER_ALL
+          ? undefined
+          : categoryFilter,
+
+      isActive:
+        activeFilter ===
+        ACTIVE_FILTER_ALL
+          ? undefined
+          : activeFilter === 'true',
+
+      search:
+        debouncedSearch ||
+        undefined,
+
       page,
       limit,
     }),
-    [categoryFilter, activeFilter, debouncedSearch, page, limit],
+    [
+      categoryFilter,
+      activeFilter,
+      debouncedSearch,
+      page,
+      limit,
+    ],
   )
 
-  const { data, isLoading, isError, refetch } = useEquipmentListQuery(filters)
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+  } =
+    useEquipmentListQuery(
+      filters,
+    )
 
-  const equipment = data?.data ?? []
+  const equipment =
+    data?.data ?? []
 
-  const totalEquipment = data?.pagination.total ?? 0
-  const activeEquipment = equipment.filter((item) => item.isActive).length
-  const inactiveEquipment = equipment.filter((item) => !item.isActive).length
-  const totalAvailableUnits = equipment.reduce((total, item) => total + (item.availableUnits ?? 0), 0)
+  const totalEquipment =
+    data?.pagination.total ?? 0
 
-  const hasActiveFilters = Boolean(search) || categoryFilter !== ACTIVE_FILTER_ALL || activeFilter !== ACTIVE_FILTER_ALL
-  const selectedCategory = categories?.find((category) => category._id === categoryFilter) ?? null
+  const activeEquipment =
+    equipment.filter(
+      (item) =>
+        item.isActive,
+    ).length
+
+  const inactiveEquipment =
+    equipment.filter(
+      (item) =>
+        !item.isActive,
+    ).length
+
+  const totalAvailableUnits =
+    equipment.reduce(
+      (
+        total,
+        item,
+      ) =>
+        total +
+        (item.availableUnits ??
+          0),
+      0,
+    )
+
+  const hasActiveFilters =
+    Boolean(search) ||
+    categoryFilter !==
+      ACTIVE_FILTER_ALL ||
+    activeFilter !==
+      ACTIVE_FILTER_ALL
+
+  const selectedCategory =
+    categories?.find(
+      (category) =>
+        category._id ===
+        categoryFilter,
+    ) ?? null
 
   const handleDelete = () => {
-    if (!deletingEquipment) return
+    if (!deletingEquipment) {
+      return
+    }
 
-    const isLastItemOnPage = equipment.length === 1 && page > 1
+    const isLastItemOnPage =
+      equipment.length === 1 &&
+      page > 1
 
-    deleteMutation.mutate(deletingEquipment._id, {
-      onSuccess: (message) => {
-        toast.success(message)
-        setDeletingEquipment(null)
+    deleteMutation.mutate(
+      deletingEquipment._id,
+      {
+        onSuccess: (
+          message,
+        ) => {
+          toast.success(message)
 
-        if (isLastItemOnPage) setPage((current) => current - 1)
+          setDeletingEquipment(
+            null,
+          )
+
+          if (
+            isLastItemOnPage
+          ) {
+            setPage(
+              (
+                current,
+              ) =>
+                current -
+                1,
+            )
+          }
+        },
+
+        onError: (
+          error,
+        ) => {
+          toast.error(
+            error instanceof
+              ApiError
+              ? error.message
+              : 'Failed to delete equipment',
+          )
+        },
       },
-      onError: (error) => {
-        toast.error(error instanceof ApiError ? error.message : 'Failed to delete equipment')
-      },
-    })
+    )
   }
 
   return (
@@ -198,38 +398,98 @@ export default function EquipmentPage() {
           title="Equipment"
           description="Manage the rentable equipment catalog displayed on the public website."
           action={
-            <Button type="button" asChild size="lg">
+            <Button
+              type="button"
+              asChild
+              size="lg"
+            >
               <Link to="/equipment/new">
-                <Plus className="size-4" strokeWidth={1.8} />
+                <Plus
+                  className="size-4"
+                  strokeWidth={
+                    1.8
+                  }
+                />
+
                 Add equipment
               </Link>
             </Button>
           }
         />
 
-        {!isLoading && !isError ? (
+        {!isLoading &&
+        !isError ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              index="01"
+              label="Total Equipment"
+              value={
+                totalEquipment
+              }
+              icon={Truck}
+            />
 
+            <StatCard
+              index="02"
+              label="Page Units"
+              value={
+                totalAvailableUnits
+              }
+              icon={Boxes}
+            />
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard index="01" label="Total Equipment" value={totalEquipment} icon={Truck} />
-              <StatCard index="02" label="Page Units" value={totalAvailableUnits} icon={Boxes} />
-              <StatCard index="03" label="Page Active" value={activeEquipment} icon={CheckCircle2} tone="success" />
-              <StatCard index="04" label="Page Inactive" value={inactiveEquipment} icon={CircleOff} />
-            </div>
+            <StatCard
+              index="03"
+              label="Page Active"
+              value={
+                activeEquipment
+              }
+              icon={
+                CheckCircle2
+              }
+              tone="success"
+            />
+
+            <StatCard
+              index="04"
+              label="Page Inactive"
+              value={
+                inactiveEquipment
+              }
+              icon={CircleOff}
+            />
+          </div>
         ) : null}
 
         <section>
           <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">Equipment Catalog</span>
-              <h2 className="mt-1.5 text-[15px] font-semibold tracking-[-0.015em] text-foreground">Catalog Collection</h2>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Browse, filter and manage equipment available on the public website.</p>
-            </div>
+              <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                Equipment Catalog
+              </span>
 
+              <h2 className="mt-1.5 text-[15px] font-semibold tracking-[-0.015em] text-foreground">
+                Catalog Collection
+              </h2>
+
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Browse, filter and manage equipment available on the public website.
+              </p>
+            </div>
 
             {data ? (
               <span className="hidden text-[11px] font-medium text-muted-foreground/60 tabular-nums sm:block">
-                {data.pagination.total} {data.pagination.total === 1 ? 'item' : 'items'}
+                {
+                  data
+                    .pagination
+                    .total
+                }{' '}
+                {data
+                  .pagination
+                  .total ===
+                1
+                  ? 'item'
+                  : 'items'}
               </span>
             ) : null}
           </div>
@@ -237,48 +497,136 @@ export default function EquipmentPage() {
           <div className="mb-5 rounded-[22px] border border-border/70 bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.025)] sm:p-5">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
               <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground/45" strokeWidth={1.8} aria-hidden="true" />
+                <Search
+                  className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground/45"
+                  strokeWidth={
+                    1.8
+                  }
+                  aria-hidden="true"
+                />
 
-                <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search equipment by title, description or location…" className="h-11 w-full rounded-xl border-border/70 bg-background pl-11 pr-11 text-[13px] shadow-none" />
+                <Input
+                  value={
+                    search
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setSearch(
+                      event
+                        .target
+                        .value,
+                    )
+                  }
+                  placeholder="Search equipment by title, description or location…"
+                  className="h-11 w-full rounded-xl border-border/70 bg-background pl-11 pr-11 text-[13px] shadow-none"
+                />
 
                 {search ? (
-                  <button type="button" aria-label="Clear search" onClick={clearSearch} className="absolute right-3 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground/45 transition-colors hover:bg-muted hover:text-foreground">
+                  <button
+                    type="button"
+                    aria-label="Clear search"
+                    onClick={
+                      clearSearch
+                    }
+                    className="absolute right-3 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground/45 transition-colors hover:bg-muted hover:text-foreground"
+                  >
                     <X className="size-3.5" />
                   </button>
                 ) : null}
               </div>
 
               <div className="hidden shrink-0 items-center gap-2 px-1 text-[10px] font-semibold tracking-[0.1em] text-muted-foreground/55 uppercase xl:flex">
-                <Filter className="size-3.5" strokeWidth={1.8} />
+                <Filter
+                  className="size-3.5"
+                  strokeWidth={
+                    1.8
+                  }
+                />
+
                 Filters
               </div>
 
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:flex xl:shrink-0">
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger aria-label="Filter by category" className="h-11 w-full rounded-xl border-border/70 bg-background px-3.5 shadow-none sm:min-w-[200px] xl:w-[220px]">
+                <Select
+                  value={
+                    categoryFilter
+                  }
+                  onValueChange={
+                    setCategoryFilter
+                  }
+                >
+                  <SelectTrigger
+                    aria-label="Filter by category"
+                    className="h-11 w-full rounded-xl border-border/70 bg-background px-3.5 shadow-none sm:min-w-[200px] xl:w-[220px]"
+                  >
                     <SelectValue placeholder="All categories" />
                   </SelectTrigger>
 
                   <SelectContent>
-                    <SelectItem value={ACTIVE_FILTER_ALL}>All categories</SelectItem>
+                    <SelectItem
+                      value={
+                        ACTIVE_FILTER_ALL
+                      }
+                    >
+                      All categories
+                    </SelectItem>
 
-                    {(categories ?? []).map((category) => (
-                      <SelectItem key={category._id} value={category._id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
+                    {(
+                      categories ??
+                      []
+                    ).map(
+                      (
+                        category,
+                      ) => (
+                        <SelectItem
+                          key={
+                            category._id
+                          }
+                          value={
+                            category._id
+                          }
+                        >
+                          {
+                            category.name
+                          }
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
 
-                <Select value={activeFilter} onValueChange={setActiveFilter}>
-                  <SelectTrigger aria-label="Filter by status" className="h-11 w-full rounded-xl border-border/70 bg-background px-3.5 shadow-none sm:min-w-[160px] xl:w-[175px]">
+                <Select
+                  value={
+                    activeFilter
+                  }
+                  onValueChange={
+                    setActiveFilter
+                  }
+                >
+                  <SelectTrigger
+                    aria-label="Filter by status"
+                    className="h-11 w-full rounded-xl border-border/70 bg-background px-3.5 shadow-none sm:min-w-[160px] xl:w-[175px]"
+                  >
                     <SelectValue placeholder="All statuses" />
                   </SelectTrigger>
 
                   <SelectContent>
-                    <SelectItem value={ACTIVE_FILTER_ALL}>All statuses</SelectItem>
-                    <SelectItem value="true">Active</SelectItem>
-                    <SelectItem value="false">Inactive</SelectItem>
+                    <SelectItem
+                      value={
+                        ACTIVE_FILTER_ALL
+                      }
+                    >
+                      All statuses
+                    </SelectItem>
+
+                    <SelectItem value="true">
+                      Active
+                    </SelectItem>
+
+                    <SelectItem value="false">
+                      Inactive
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -286,31 +634,65 @@ export default function EquipmentPage() {
 
             {hasActiveFilters ? (
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3.5">
-                <span className="mr-1 text-[9px] font-semibold tracking-[0.1em] text-muted-foreground/50 uppercase">Active filters</span>
+                <span className="mr-1 text-[9px] font-semibold tracking-[0.1em] text-muted-foreground/50 uppercase">
+                  Active filters
+                </span>
 
                 {search ? (
                   <span className="inline-flex max-w-[260px] items-center gap-1.5 rounded-lg border border-border/70 bg-muted/25 px-2.5 py-1.5 text-[11px]">
-                    <span className="font-medium text-foreground">Search</span>
-                    <span className="truncate text-muted-foreground">{search}</span>
+                    <span className="font-medium text-foreground">
+                      Search
+                    </span>
+
+                    <span className="truncate text-muted-foreground">
+                      {
+                        search
+                      }
+                    </span>
                   </span>
                 ) : null}
 
                 {selectedCategory ? (
                   <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-muted/25 px-2.5 py-1.5 text-[11px]">
-                    <span className="font-medium text-foreground">Category</span>
-                    <span className="text-muted-foreground">{selectedCategory.name}</span>
+                    <span className="font-medium text-foreground">
+                      Category
+                    </span>
+
+                    <span className="text-muted-foreground">
+                      {
+                        selectedCategory.name
+                      }
+                    </span>
                   </span>
                 ) : null}
 
-                {activeFilter !== ACTIVE_FILTER_ALL ? (
+                {activeFilter !==
+                ACTIVE_FILTER_ALL ? (
                   <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-muted/25 px-2.5 py-1.5 text-[11px]">
-                    <span className="font-medium text-foreground">Status</span>
-                    <span className="text-muted-foreground">{activeFilter === 'true' ? 'Active' : 'Inactive'}</span>
+                    <span className="font-medium text-foreground">
+                      Status
+                    </span>
+
+                    <span className="text-muted-foreground">
+                      {activeFilter ===
+                      'true'
+                        ? 'Active'
+                        : 'Inactive'}
+                    </span>
                   </span>
                 ) : null}
 
-                <Button type="button" variant="ghost" size="xs" onClick={clearFilters} className="ml-auto text-muted-foreground">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={
+                    clearFilters
+                  }
+                  className="ml-auto text-muted-foreground"
+                >
                   <X className="size-3" />
+
                   Clear all
                 </Button>
               </div>
@@ -319,121 +701,317 @@ export default function EquipmentPage() {
 
           {isLoading ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, index) => (
-                <EquipmentCardSkeleton key={index} />
-              ))}
+              {Array.from({
+                length: 8,
+              }).map(
+                (
+                  _,
+                  index,
+                ) => (
+                  <EquipmentCardSkeleton
+                    key={
+                      index
+                    }
+                  />
+                ),
+              )}
             </div>
           ) : isError ? (
             <div className="rounded-[22px] border border-border/70 bg-card px-6 py-12">
-              <ErrorState description="Equipment could not be loaded." onRetry={() => refetch()} />
+              <ErrorState
+                description="Equipment could not be loaded."
+                onRetry={() =>
+                  refetch()
+                }
+              />
             </div>
-          ) : equipment.length === 0 ? (
+          ) : equipment.length ===
+            0 ? (
             <div className="rounded-[22px] border border-border/70 bg-card px-6 py-12">
-              <EmptyState icon={Truck} title="No equipment found" description="Try adjusting your filters, or add a new equipment item." />
+              <EmptyState
+                icon={Truck}
+                title="No equipment found"
+                description="Try adjusting your filters, or add a new equipment item."
+              />
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {equipment.map((item) => {
-                const imageUrl = getEquipmentImageUrl(item)
+              {equipment.map(
+                (item) => {
+                  const imageUrl =
+                    getEquipmentImageUrl(
+                      item,
+                    )
 
-                return (
-                  <article key={item._id} className="group relative overflow-hidden rounded-[18px] border border-border/70 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.025)] transition-all duration-300 hover:-translate-y-0.5 hover:border-foreground/10 hover:shadow-[0_10px_26px_rgba(0,0,0,0.05)]">
-                    <div className="relative aspect-[16/7] overflow-hidden bg-muted/30">
-                      {imageUrl ? (
-                        <img src={imageUrl} alt={item.title} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-muted-foreground/35">
-                          <ImageIcon className="size-6" strokeWidth={1.5} />
-                        </div>
-                      )}
-
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-
-                      <div className="absolute left-3 top-3">
-                        <Badge variant={item.isActive ? 'success' : 'secondary'} className="border-white/10 shadow-sm backdrop-blur-md">
-                          {item.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </div>
-
-                      <div className="absolute right-2.5 top-2.5 flex items-center gap-0.5 rounded-lg border border-white/15 bg-black/20 p-0.5 opacity-0 backdrop-blur-md transition-opacity duration-200 group-hover:opacity-100">
-                        <Button type="button" variant="ghost" size="icon-sm" aria-label={`Edit ${item.title}`} className="size-7 text-white/80 hover:bg-white/15 hover:text-white" asChild>
-                          <Link to={`/equipment/${item._id}/edit`}>
-                            <Pencil className="size-3.5" strokeWidth={1.8} />
-                          </Link>
-                        </Button>
-
-                        <Button type="button" variant="ghost" size="icon-sm" aria-label={`Delete ${item.title}`} className="size-7 text-white/75 hover:bg-destructive/30 hover:text-white" onClick={() => setDeletingEquipment(item)}>
-                          <Trash2 className="size-3.5" strokeWidth={1.8} />
-                        </Button>
-                      </div>
-
-                      <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between gap-3">
-                        <span className="max-w-[70%] truncate text-[8px] font-semibold tracking-[0.08em] text-white/65 uppercase">{item.category?.name ?? 'Uncategorized'}</span>
-                        <span className="shrink-0 text-[8px] font-semibold text-white/65 tabular-nums">{item.availableUnits} units</span>
-                      </div>
-                    </div>
-
-                    <div className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 text-muted-foreground">
-                            <MapPin className="size-3" strokeWidth={1.8} />
-                            <span className="truncate text-[9px] font-semibold tracking-[0.04em] uppercase">{item.location || 'No location'}</span>
+                  return (
+                    <article
+                      key={
+                        item._id
+                      }
+                      className="group relative overflow-hidden rounded-[18px] border border-border/70 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.025)] transition-all duration-300 hover:-translate-y-0.5 hover:border-foreground/10 hover:shadow-[0_10px_26px_rgba(0,0,0,0.05)]"
+                    >
+                      <div className="relative aspect-[16/7] overflow-hidden bg-muted/30">
+                        {imageUrl ? (
+                          <img
+                            src={
+                              imageUrl
+                            }
+                            alt={
+                              item.title
+                            }
+                            loading="lazy"
+                            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-muted-foreground/35">
+                            <ImageIcon
+                              className="size-7"
+                              strokeWidth={
+                                1.5
+                              }
+                            />
                           </div>
+                        )}
 
-                          <h3 className="mt-1.5 truncate text-sm font-semibold tracking-[-0.015em] text-foreground">{item.title}</h3>
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+
+                        <div className="absolute left-3 top-3">
+                          <Badge
+                            variant={
+                              item.isActive
+                                ? 'success'
+                                : 'secondary'
+                            }
+                            className="border-white/10 shadow-sm backdrop-blur-md"
+                          >
+                            {item.isActive
+                              ? 'Active'
+                              : 'Inactive'}
+                          </Badge>
                         </div>
 
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/30 text-muted-foreground">
-                          <Truck className="size-3.5" strokeWidth={1.8} />
+                        <div className="absolute right-2.5 top-2.5 flex items-center gap-0.5 rounded-lg border border-white/15 bg-black/20 p-0.5 opacity-0 backdrop-blur-md transition-opacity duration-200 group-hover:opacity-100">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Edit ${item.title}`}
+                            className="size-7 text-white/80 hover:bg-white/15 hover:text-white"
+                            asChild
+                          >
+                            <Link
+                              to={`/equipment/${item._id}/edit`}
+                            >
+                              <Pencil
+                                className="size-3.5"
+                                strokeWidth={
+                                  1.8
+                                }
+                              />
+                            </Link>
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Delete ${item.title}`}
+                            className="size-7 text-white/75 hover:bg-destructive/30 hover:text-white"
+                            onClick={() =>
+                              setDeletingEquipment(
+                                item,
+                              )
+                            }
+                          >
+                            <Trash2
+                              className="size-3.5"
+                              strokeWidth={
+                                1.8
+                              }
+                            />
+                          </Button>
                         </div>
-                      </div>
 
-                      <p className="mt-2 line-clamp-2 min-h-[34px] text-[10px] leading-[17px] text-muted-foreground">{item.shortDescription}</p>
+                        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 px-3 pb-2.5">
+                          <span className="max-w-[75%] truncate text-[8px] font-semibold tracking-[0.08em] text-white/65 uppercase">
+                            {item
+                              .category
+                              ?.name ??
+                              'Uncategorized'}
+                          </span>
 
-                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/60 pt-3">
-                        <div className="flex items-center gap-1.5">
-                          <Boxes className="size-3 text-muted-foreground/55" strokeWidth={1.8} />
-                          <span className="text-[9px] font-medium text-muted-foreground">
-                            <span className="font-semibold text-foreground tabular-nums">{item.availableUnits}</span> available
+                          <span className="shrink-0 text-[8px] font-semibold text-white/65 tabular-nums">
+                            #
+                            {
+                              item.displayOrder
+                            }
                           </span>
                         </div>
+                      </div>
 
-                        <div className="flex items-center gap-1.5">
-                          {item.safetyCertificate?.isAvailable ? (
-                            <>
-                              <ShieldCheck className="size-3 text-success" strokeWidth={1.8} />
-                              <span className="text-[9px] font-medium text-success">Certified</span>
-                            </>
-                          ) : (
-                            <>
-                              <ShieldX className="size-3 text-muted-foreground/45" strokeWidth={1.8} />
-                              <span className="text-[9px] font-medium text-muted-foreground">No certificate</span>
-                            </>
-                          )}
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 text-muted-foreground">
+                              <Truck
+                                className="size-3"
+                                strokeWidth={
+                                  1.8
+                                }
+                              />
+
+                              <span className="text-[9px] font-semibold tracking-[0.06em] uppercase">
+                                Equipment
+                              </span>
+                            </div>
+
+                            <h3 className="mt-1.5 truncate text-sm font-semibold tracking-[-0.015em] text-foreground">
+                              {
+                                item.title
+                              }
+                            </h3>
+                          </div>
+
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/30 text-muted-foreground">
+                            <Truck
+                              className="size-3.5"
+                              strokeWidth={
+                                1.8
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <p className="mt-2 line-clamp-2 min-h-[34px] text-[10px] leading-[17px] text-muted-foreground">
+                          {item.shortDescription ||
+                            'No equipment description available.'}
+                        </p>
+
+                        <div className="mt-3 grid grid-cols-2 divide-x divide-border/60 border-t border-border/60 pt-3">
+                          <div className="pr-3">
+                            <div className="flex items-center gap-1.5">
+                              <Boxes
+                                className="size-3 text-muted-foreground/55"
+                                strokeWidth={
+                                  1.8
+                                }
+                              />
+
+                              <span className="text-[8px] font-semibold tracking-[0.08em] text-muted-foreground/60 uppercase">
+                                Available
+                              </span>
+                            </div>
+
+                            <p className="mt-1 truncate text-[10px] font-semibold text-foreground">
+                              {
+                                item.availableUnits
+                              }{' '}
+                              {item.availableUnits ===
+                              1
+                                ? 'unit'
+                                : 'units'}
+                            </p>
+                          </div>
+
+                          <div className="pl-3">
+                            <div className="flex items-center gap-1.5">
+                              {item
+                                .safetyCertificate
+                                ?.isAvailable ? (
+                                <ShieldCheck
+                                  className="size-3 text-success"
+                                  strokeWidth={
+                                    1.8
+                                  }
+                                />
+                              ) : (
+                                <ShieldX
+                                  className="size-3 text-muted-foreground/55"
+                                  strokeWidth={
+                                    1.8
+                                  }
+                                />
+                              )}
+
+                              <span className="text-[8px] font-semibold tracking-[0.08em] text-muted-foreground/60 uppercase">
+                                Certificate
+                              </span>
+                            </div>
+
+                            <p
+                              className={`mt-1 truncate text-[10px] font-semibold ${
+                                item
+                                  .safetyCertificate
+                                  ?.isAvailable
+                                  ? 'text-success'
+                                  : 'text-foreground'
+                              }`}
+                            >
+                              {item
+                                .safetyCertificate
+                                ?.isAvailable
+                                ? 'Certified'
+                                : 'Not available'}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <span aria-hidden="true" className="absolute bottom-0 left-4 h-[2px] w-6 rounded-full bg-foreground/15 transition-all duration-300 group-hover:w-10 group-hover:bg-foreground/30" />
-                  </article>
-                )
-              })}
+                      <span
+                        aria-hidden="true"
+                        className={`absolute bottom-0 left-4 h-[2px] w-6 rounded-full transition-all duration-300 group-hover:w-10 ${
+                          item.isActive
+                            ? 'bg-success/45'
+                            : 'bg-foreground/20'
+                        }`}
+                      />
+                    </article>
+                  )
+                },
+              )}
             </div>
           )}
 
           {data ? (
             <div className="mt-5">
               <Pagination
-                page={data.pagination.page}
-                totalPages={data.pagination.totalPages}
-                hasNextPage={data.pagination.hasNextPage}
-                hasPreviousPage={data.pagination.hasPreviousPage}
-                onPageChange={setPage}
+                page={
+                  data
+                    .pagination
+                    .page
+                }
+                totalPages={
+                  data
+                    .pagination
+                    .totalPages
+                }
+                hasNextPage={
+                  data
+                    .pagination
+                    .hasNextPage
+                }
+                hasPreviousPage={
+                  data
+                    .pagination
+                    .hasPreviousPage
+                }
+                onPageChange={
+                  setPage
+                }
                 limit={limit}
-                limitOptions={[10, 20, 50, 100]}
-                onLimitChange={(value) => {
-                  setLimit(value)
+                limitOptions={[
+                  10,
+                  20,
+                  50,
+                  100,
+                ]}
+                onLimitChange={(
+                  value,
+                ) => {
+                  setLimit(
+                    value,
+                  )
+
                   setPage(1)
                 }}
               />
@@ -442,22 +1020,30 @@ export default function EquipmentPage() {
         </section>
 
         <ConfirmDialog
-          open={Boolean(deletingEquipment)}
-          onOpenChange={(open) => {
-            if (!open) setDeletingEquipment(null)
+          open={Boolean(
+            deletingEquipment,
+          )}
+          onOpenChange={(
+            open,
+          ) => {
+            if (!open) {
+              setDeletingEquipment(
+                null,
+              )
+            }
           }}
           title="Delete equipment"
           description={`Are you sure you want to delete "${deletingEquipment?.title}"? Equipment with existing requests will be deactivated instead of deleted.`}
           variant="destructive"
           confirmLabel="Delete"
-          onConfirm={handleDelete}
-          isLoading={deleteMutation.isPending}
+          onConfirm={
+            handleDelete
+          }
+          isLoading={
+            deleteMutation.isPending
+          }
         />
       </div>
     </PageContainer>
   )
 }
-
-
-
-          

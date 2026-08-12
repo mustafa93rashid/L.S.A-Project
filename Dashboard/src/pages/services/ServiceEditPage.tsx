@@ -16,7 +16,7 @@ export default function ServiceEditPage() {
   const service = data?.find((item) => item._id === id)
 
   return (
-    <PageContainer className="max-w-5xl">
+    <PageContainer className="max-w-6xl">
       <BackLink to={LIST_PATH} label="Back to Services" />
       <PageHeader title="Edit service" description="Update this service page." />
 
