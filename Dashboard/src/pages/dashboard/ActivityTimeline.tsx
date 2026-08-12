@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import type { LucideIcon } from 'lucide-react'
-import { ArrowUpRight } from 'lucide-react'
-
+import { ArrowUpRight, Activity } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
-
+import { SectionHeader } from '@/components/layout/SectionHeader'
 export interface TimelineEntry {
   id: string
   icon: LucideIcon
@@ -23,32 +22,13 @@ interface ActivityTimelineProps {
   emptyMessage: string
 }
 
-const TONE_STYLES: Record<
-  TimelineEntry['tone'],
-  {
-    icon: string
-    indicator: string
-    label: string
-  }
-> = {
-  info: {
-    icon: 'border-info/15 bg-info-subtle text-info',
-    indicator: 'bg-info',
-    label: 'New activity',
-  },
 
-  warning: {
-    icon: 'border-warning/15 bg-warning-subtle text-warning',
-    indicator: 'bg-warning',
-    label: 'In progress',
-  },
-
-  success: {
-    icon: 'border-success/15 bg-success-subtle text-success',
-    indicator: 'bg-success',
-    label: 'Completed',
-  },
+const TONE_STYLES: Record<TimelineEntry['tone'], { icon: string; indicator: string; label: string }> = {
+  info: { icon: 'border-info/15 bg-info-subtle text-info', indicator: 'bg-info', label: 'New activity' },
+  warning: { icon: 'border-warning/15 bg-warning-subtle text-warning', indicator: 'bg-warning', label: 'In progress' },
+  success: { icon: 'border-success/15 bg-success-subtle text-success', indicator: 'bg-success', label: 'Completed' },
 }
+
 
 function ActivitySkeleton() {
   return (
@@ -65,57 +45,23 @@ function ActivitySkeleton() {
   )
 }
 
-export function ActivityTimeline({
-  entries,
-  isLoading,
-  emptyMessage,
-}: ActivityTimelineProps) {
+
+export function ActivityTimeline({ entries, isLoading, emptyMessage }: ActivityTimelineProps) {
   return (
-    <section>
-      {/* =====================================================
-          Section Header — Outside Card
-      ===================================================== */}
+    <section className="space-y-5">
 
-      <div className="mb-5 flex items-end justify-between gap-5">
-        <div className="min-w-0">
-          <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-            Activity Stream
-          </span>
+      <SectionHeader
+        eyebrow="Activity Stream"
+        title="Recent Activity"
+        description="Latest events across your operational workspace."
+        icon={Activity}
+        statLabel="Events"
+        statValue={entries.length}
+        showStat={!isLoading && entries.length > 0}
+      />
 
-          <h3 className="mt-1.5 text-[15px] font-semibold tracking-[-0.015em] text-foreground">
-            Recent Activity
-          </h3>
 
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Latest events across your operational workspace.
-          </p>
-        </div>
-
-        {!isLoading && entries.length > 0 ? (
-          <div className="hidden shrink-0 items-center gap-2 sm:flex">
-            <span className="size-1.5 rounded-full bg-success" />
-
-            <span className="text-[11px] font-medium text-muted-foreground/65 tabular-nums">
-              {entries.length} events
-            </span>
-          </div>
-        ) : null}
-      </div>
-
-      {/* =====================================================
-          Activity Card — Content Only
-      ===================================================== */}
-
-      <Card
-        className="
-          overflow-hidden
-          rounded-[20px]
-          border-border/70
-          bg-card
-          p-0
-          shadow-[0_1px_3px_rgba(0,0,0,0.025)]
-        "
-      >
+      <Card className="overflow-hidden rounded-[20px] border-border/70 bg-card p-0 shadow-[0_1px_3px_rgba(0,0,0,0.025)]">
         {isLoading ? (
           <div className="divide-y divide-border/50">
             {Array.from({ length: 5 }).map((_, index) => (
@@ -125,13 +71,8 @@ export function ActivityTimeline({
         ) : entries.length === 0 ? (
           <div className="flex min-h-[220px] items-center justify-center px-6 py-10">
             <div className="max-w-sm text-center">
-              <p className="text-sm font-medium text-foreground">
-                No recent activity
-              </p>
-
-              <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
-                {emptyMessage}
-              </p>
+              <p className="text-sm font-medium text-foreground">No recent activity</p>
+              <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{emptyMessage}</p>
             </div>
           </div>
         ) : (
@@ -142,177 +83,50 @@ export function ActivityTimeline({
 
               const content = (
                 <>
-                  {/* Icon */}
-                  <div
-                    className={cn(
-                      `
-                        relative
-                        flex
-                        size-10
-                        shrink-0
-                        items-center
-                        justify-center
-                        rounded-xl
-                        border
-                        transition-transform
-                        duration-200
-                        group-hover:scale-[1.025]
-                      `,
-                      tone.icon,
-                    )}
-                  >
-                    <Icon
-                      className="size-[17px]"
-                      strokeWidth={1.75}
-                      aria-hidden="true"
-                    />
-
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        `
-                          absolute
-                          -right-[3px]
-                          -top-[3px]
-                          size-2.5
-                          rounded-full
-                          border-2
-                          border-card
-                        `,
-                        tone.indicator,
-                      )}
-                    />
+                  <div className={cn('relative flex size-10 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-[1.025]', tone.icon)}>
+                    <Icon className="size-[17px]" strokeWidth={1.75} aria-hidden="true" />
+                    <span aria-hidden="true" className={cn('absolute -right-[3px] -top-[3px] size-2.5 rounded-full border-2 border-card', tone.indicator)} />
                   </div>
 
-                  {/* Information */}
+
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-2">
-                      <h4 className="truncate text-sm font-semibold tracking-tight text-foreground">
-                        {entry.title}
-                      </h4>
-
-                      <span className="hidden shrink-0 text-[9px] font-semibold tracking-[0.07em] text-muted-foreground/60 uppercase lg:inline">
-                        {tone.label}
-                      </span>
+                      <h4 className="truncate text-sm font-semibold tracking-tight text-foreground">{entry.title}</h4>
+                      <span className="hidden shrink-0 text-[9px] font-semibold tracking-[0.07em] text-muted-foreground/60 uppercase lg:inline">{tone.label}</span>
                     </div>
 
-                    <p className="mt-1 truncate text-xs leading-5 text-muted-foreground">
-                      {entry.subtitle}
-                    </p>
+                    <p className="mt-1 truncate text-xs leading-5 text-muted-foreground">{entry.subtitle}</p>
 
-                    <time
-                      dateTime={entry.date}
-                      className="mt-1.5 block text-[10px] font-medium text-muted-foreground/65 tabular-nums sm:hidden"
-                    >
-                      {formatDistanceToNow(new Date(entry.date), {
-                        addSuffix: true,
-                      })}
+                    <time dateTime={entry.date} className="mt-1.5 block text-[10px] font-medium text-muted-foreground/65 tabular-nums sm:hidden">
+                      {formatDistanceToNow(new Date(entry.date), { addSuffix: true })}
                     </time>
                   </div>
 
-                  {/* Desktop Time / Action */}
+
                   <div className="hidden shrink-0 items-center gap-3 sm:flex">
-                    <time
-                      dateTime={entry.date}
-                      className="min-w-[82px] text-right text-[11px] font-medium text-muted-foreground/65 tabular-nums"
-                    >
-                      {formatDistanceToNow(new Date(entry.date), {
-                        addSuffix: true,
-                      })}
+                    <time dateTime={entry.date} className="min-w-[82px] text-right text-[11px] font-medium text-muted-foreground/65 tabular-nums">
+                      {formatDistanceToNow(new Date(entry.date), { addSuffix: true })}
                     </time>
 
                     {entry.href ? (
-                      <div
-                        className="
-                          flex
-                          size-8
-                          items-center
-                          justify-center
-                          rounded-lg
-                          border
-                          border-transparent
-                          text-muted-foreground/35
-                          transition-all
-                          duration-200
-                          group-hover:border-border
-                          group-hover:bg-background
-                          group-hover:text-foreground
-                        "
-                      >
-                        <ArrowUpRight
-                          className="
-                            size-3.5
-                            transition-transform
-                            duration-200
-                            group-hover:-translate-y-0.5
-                            group-hover:translate-x-0.5
-                          "
-                          aria-hidden="true"
-                        />
+                      <div className="flex size-8 items-center justify-center rounded-lg border border-transparent text-muted-foreground/35 transition-all duration-200 group-hover:border-border group-hover:bg-background group-hover:text-foreground">
+                        <ArrowUpRight className="size-3.5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
                       </div>
                     ) : null}
                   </div>
                 </>
               )
 
+
               return (
                 <li key={entry.id}>
                   {entry.href ? (
-                    <Link
-                      to={entry.href}
-                      className="
-                        group
-                        relative
-                        grid
-                        grid-cols-[auto_minmax(0,1fr)]
-                        items-center
-                        gap-3.5
-                        px-5
-                        py-3.5
-                        transition-colors
-                        duration-150
-                        hover:bg-muted/25
-                        focus-visible:bg-muted/25
-                        focus-visible:outline-none
-                        focus-visible:ring-2
-                        focus-visible:ring-inset
-                        focus-visible:ring-ring/20
-                        sm:grid-cols-[auto_minmax(0,1fr)_auto]
-                        sm:px-5
-                      "
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="
-                          absolute
-                          bottom-3
-                          left-0
-                          top-3
-                          w-[2px]
-                          origin-center
-                          scale-y-0
-                          rounded-r-full
-                          bg-foreground/55
-                          transition-transform
-                          duration-200
-                          group-hover:scale-y-100
-                        "
-                      />
-
+                    <Link to={entry.href} className="group relative grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3.5 px-5 py-3.5 transition-colors duration-150 hover:bg-muted/25 focus-visible:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/20 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-5">
+                      <span aria-hidden="true" className="absolute bottom-3 left-0 top-3 w-[2px] origin-center scale-y-0 rounded-r-full bg-foreground/55 transition-transform duration-200 group-hover:scale-y-100" />
                       {content}
                     </Link>
                   ) : (
-                    <div
-                      className="
-                        grid
-                        grid-cols-[auto_minmax(0,1fr)]
-                        items-center
-                        gap-3.5
-                        px-5
-                        py-3.5
-                        sm:grid-cols-[auto_minmax(0,1fr)_auto]
-                      "
-                    >
+                    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3.5 px-5 py-3.5 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
                       {content}
                     </div>
                   )}
@@ -322,7 +136,7 @@ export function ActivityTimeline({
           </ol>
         )}
       </Card>
+
     </section>
   )
 }
-

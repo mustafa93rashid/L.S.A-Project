@@ -532,6 +532,171 @@ class EquipmentController {
     }
   };
 
+  // ==================== Get Equipment Statistics ====================
+
+getEquipmentStatistics = async (req, res) => {
+  const [
+    totalEquipment,
+    activeEquipment,
+    inactiveEquipment,
+    unitsStats,
+    equipmentByCategory,
+    totalRequests,
+  ] = await Promise.all([
+    // Total Equipment
+    Equipment.countDocuments(),
+
+    // Active Equipment
+    Equipment.countDocuments({
+      isActive: true,
+    }),
+
+    // Inactive Equipment
+    Equipment.countDocuments({
+      isActive: false,
+    }),
+
+    // Available Units Statistics
+    Equipment.aggregate([
+      {
+        $group: {
+          _id: null,
+
+          totalAvailableUnits: {
+            $sum: {
+              $ifNull: ["$availableUnits", 0],
+            },
+          },
+
+          averageAvailableUnits: {
+            $avg: {
+              $ifNull: ["$availableUnits", 0],
+            },
+          },
+        },
+      },
+    ]),
+
+    // Equipment By Category
+    Equipment.aggregate([
+      {
+        $group: {
+          _id: "$category",
+          count: {
+            $sum: 1,
+          },
+
+          activeCount: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$isActive", true],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          inactiveCount: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ["$isActive", false],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          totalAvailableUnits: {
+            $sum: {
+              $ifNull: ["$availableUnits", 0],
+            },
+          },
+        },
+      },
+
+      {
+        $lookup: {
+          from: "equipmentcategories",
+          localField: "_id",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+
+      {
+        $unwind: {
+          path: "$category",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      {
+        $project: {
+          _id: 0,
+
+          categoryId: "$_id",
+
+          categoryName: {
+            $ifNull: [
+              "$category.name",
+              "Uncategorized",
+            ],
+          },
+
+          categorySlug: "$category.slug",
+
+          count: 1,
+          activeCount: 1,
+          inactiveCount: 1,
+          totalAvailableUnits: 1,
+        },
+      },
+
+      {
+        $sort: {
+          count: -1,
+        },
+      },
+    ]),
+
+    // Total Equipment Requests
+    EquipmentRequest.countDocuments(),
+  ]);
+
+  const totalAvailableUnits =
+    unitsStats[0]?.totalAvailableUnits || 0;
+
+  const averageAvailableUnits =
+    unitsStats[0]?.averageAvailableUnits || 0;
+
+  return res.status(200).json({
+    success: true,
+
+    data: {
+      overview: {
+        totalEquipment,
+        activeEquipment,
+        inactiveEquipment,
+
+        totalAvailableUnits,
+
+        averageAvailableUnits:
+          Number(
+            averageAvailableUnits.toFixed(2),
+          ),
+
+        totalRequests,
+      },
+
+      equipmentByCategory,
+    },
+  });
+};
+
   // ==================== Update Equipment ====================
 
   updateEquipment = async (req, res) => {

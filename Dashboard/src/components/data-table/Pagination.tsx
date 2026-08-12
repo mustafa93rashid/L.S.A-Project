@@ -40,8 +40,8 @@ export function Pagination({
   return (
     <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
       {limit && limitOptions && onLimitChange ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Rows per page</span>
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span>Rows</span>
           <Select
             value={String(limit)}
             onValueChange={(value) => onLimitChange(Number(value))}

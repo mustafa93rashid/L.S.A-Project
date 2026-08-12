@@ -29,12 +29,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
+
 import { StatCard } from '@/components/data-display/StatCard'
 import { Pagination } from '@/components/data-table/Pagination'
+import {
+  CollectionCard,
+  CollectionCardSkeleton,
+} from '@/components/collection-card'
+
 import { ConfirmDialog } from '@/components/overlays/ConfirmDialog'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { ErrorState } from '@/components/feedback/ErrorState'
+import { SectionHeader } from '@/components/layout/SectionHeader'
 
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { ApiError } from '@/types/api'
@@ -42,11 +48,15 @@ import { ApiError } from '@/types/api'
 import {
   useDeleteEquipmentMutation,
   useEquipmentListQuery,
+  useEquipmentStatisticsQuery,
 } from '@/features/equipment/queries'
+
 import { useEquipmentCategoriesQuery } from '@/features/equipment-categories/queries'
+
 import type { Equipment } from '@/features/equipment/types'
 
 const ACTIVE_FILTER_ALL = 'all'
+
 const DEFAULT_LIMIT = 20
 
 type EquipmentWithMedia = Equipment & {
@@ -62,8 +72,7 @@ type EquipmentWithMedia = Equipment & {
 function getEquipmentImageUrl(
   equipment: Equipment,
 ): string | null {
-  const item =
-    equipment as EquipmentWithMedia
+  const item = equipment as EquipmentWithMedia
 
   return (
     item.images?.[0]?.url ??
@@ -72,42 +81,13 @@ function getEquipmentImageUrl(
   )
 }
 
-function EquipmentCardSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-[18px] border border-border/70 bg-card">
-      <Skeleton className="aspect-[16/7] w-full rounded-none" />
-
-      <div className="space-y-3 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-2">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-4 w-36" />
-          </div>
-
-          <Skeleton className="size-8 rounded-lg" />
-        </div>
-
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-4/5" />
-
-        <div className="border-t border-border/60 pt-3">
-          <Skeleton className="h-3 w-28" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function EquipmentPage() {
-  const [
-    searchParams,
-    setSearchParams,
-  ] = useSearchParams()
+  const [searchParams, setSearchParams] =
+    useSearchParams()
 
-  const [search, setSearch] =
-    useState(
-      searchParams.get('q') ?? '',
-    )
+  const [search, setSearch] = useState(
+    searchParams.get('q') ?? '',
+  )
 
   const debouncedSearch =
     useDebouncedValue(search)
@@ -120,8 +100,7 @@ export default function EquipmentPage() {
     searchParams.get('active') ??
     ACTIVE_FILTER_ALL
 
-  const [page, setPage] =
-    useState(1)
+  const [page, setPage] = useState(1)
 
   const [limit, setLimit] =
     useState(DEFAULT_LIMIT)
@@ -129,18 +108,22 @@ export default function EquipmentPage() {
   const [
     deletingEquipment,
     setDeletingEquipment,
-  ] =
-    useState<Equipment | null>(
-      null,
-    )
+  ] = useState<Equipment | null>(null)
+
+  // ================================
+  // Queries
+  // ================================
 
   const {
     data: categories,
-  } =
-    useEquipmentCategoriesQuery()
+  } = useEquipmentCategoriesQuery()
 
   const deleteMutation =
     useDeleteEquipmentMutation()
+
+  // ================================
+  // Sync Search With URL
+  // ================================
 
   useEffect(() => {
     setSearchParams(
@@ -165,9 +148,14 @@ export default function EquipmentPage() {
     )
 
     setPage(1)
+  }, [
+    debouncedSearch,
+    setSearchParams,
+  ])
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch])
+  // ================================
+  // Category Filter
+  // ================================
 
   const setCategoryFilter = (
     value: string,
@@ -177,8 +165,7 @@ export default function EquipmentPage() {
         new URLSearchParams(prev)
 
       if (
-        value ===
-        ACTIVE_FILTER_ALL
+        value === ACTIVE_FILTER_ALL
       ) {
         next.delete('category')
       } else {
@@ -194,6 +181,10 @@ export default function EquipmentPage() {
     setPage(1)
   }
 
+  // ================================
+  // Active Filter
+  // ================================
+
   const setActiveFilter = (
     value: string,
   ) => {
@@ -202,8 +193,7 @@ export default function EquipmentPage() {
         new URLSearchParams(prev)
 
       if (
-        value ===
-        ACTIVE_FILTER_ALL
+        value === ACTIVE_FILTER_ALL
       ) {
         next.delete('active')
       } else {
@@ -219,8 +209,13 @@ export default function EquipmentPage() {
     setPage(1)
   }
 
+  // ================================
+  // Clear Search
+  // ================================
+
   const clearSearch = () => {
     setSearch('')
+
     setPage(1)
 
     setSearchParams(
@@ -238,8 +233,13 @@ export default function EquipmentPage() {
     )
   }
 
+  // ================================
+  // Clear Filters
+  // ================================
+
   const clearFilters = () => {
     setSearch('')
+
     setPage(1)
 
     setSearchParams(
@@ -258,6 +258,10 @@ export default function EquipmentPage() {
       },
     )
   }
+
+  // ================================
+  // Equipment Filters
+  // ================================
 
   const filters = useMemo(
     () => ({
@@ -278,6 +282,7 @@ export default function EquipmentPage() {
         undefined,
 
       page,
+
       limit,
     }),
     [
@@ -289,45 +294,45 @@ export default function EquipmentPage() {
     ],
   )
 
+  // ================================
+  // Equipment List Query
+  // ================================
+
   const {
     data,
     isLoading,
     isError,
     refetch,
+  } = useEquipmentListQuery(filters)
+
+  // ================================
+  // Equipment Statistics Query
+  // ================================
+
+  const {
+    data: statisticsData,
+    isLoading:
+      isStatisticsLoading,
+    isError:
+      isStatisticsError,
+    refetch:
+      refetchStatistics,
   } =
-    useEquipmentListQuery(
-      filters,
-    )
+    useEquipmentStatisticsQuery()
+
+  // ================================
+  // Data
+  // ================================
 
   const equipment =
     data?.data ?? []
 
-  const totalEquipment =
-    data?.pagination.total ?? 0
+  const statistics =
+    statisticsData?.data.overview
 
-  const activeEquipment =
-    equipment.filter(
-      (item) =>
-        item.isActive,
-    ).length
-
-  const inactiveEquipment =
-    equipment.filter(
-      (item) =>
-        !item.isActive,
-    ).length
-
-  const totalAvailableUnits =
-    equipment.reduce(
-      (
-        total,
-        item,
-      ) =>
-        total +
-        (item.availableUnits ??
-          0),
-      0,
-    )
+  // ================================
+  // Filter State
+  // ================================
 
   const hasActiveFilters =
     Boolean(search) ||
@@ -343,10 +348,12 @@ export default function EquipmentPage() {
         categoryFilter,
     ) ?? null
 
+  // ================================
+  // Delete Equipment
+  // ================================
+
   const handleDelete = () => {
-    if (!deletingEquipment) {
-      return
-    }
+    if (!deletingEquipment) return
 
     const isLastItemOnPage =
       equipment.length === 1 &&
@@ -355,34 +362,24 @@ export default function EquipmentPage() {
     deleteMutation.mutate(
       deletingEquipment._id,
       {
-        onSuccess: (
-          message,
-        ) => {
+        onSuccess: (message) => {
           toast.success(message)
 
-          setDeletingEquipment(
-            null,
-          )
+          setDeletingEquipment(null)
 
           if (
             isLastItemOnPage
           ) {
             setPage(
-              (
-                current,
-              ) =>
-                current -
-                1,
+              (current) =>
+                current - 1,
             )
           }
         },
 
-        onError: (
-          error,
-        ) => {
+        onError: (error) => {
           toast.error(
-            error instanceof
-              ApiError
+            error instanceof ApiError
               ? error.message
               : 'Failed to delete equipment',
           )
@@ -394,6 +391,10 @@ export default function EquipmentPage() {
   return (
     <PageContainer className="max-w-6xl">
       <div className="space-y-7">
+        {/* ================================
+            Page Header
+        ================================= */}
+
         <PageHeader
           title="Equipment"
           description="Manage the rentable equipment catalog displayed on the public website."
@@ -406,9 +407,7 @@ export default function EquipmentPage() {
               <Link to="/equipment/new">
                 <Plus
                   className="size-4"
-                  strokeWidth={
-                    1.8
-                  }
+                  strokeWidth={1.8}
                 />
 
                 Add equipment
@@ -417,105 +416,112 @@ export default function EquipmentPage() {
           }
         />
 
-        {!isLoading &&
-        !isError ? (
+        {/* ================================
+            Statistics
+        ================================= */}
+
+        {isStatisticsLoading ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({
+              length: 4,
+            }).map((_, index) => (
+              <div
+                key={index}
+                className="h-[120px] animate-pulse rounded-[20px] border border-border/70 bg-muted/30"
+              />
+            ))}
+          </div>
+        ) : isStatisticsError ? (
+          <div className="rounded-[22px] border border-border/70 bg-card px-6 py-8">
+            <ErrorState
+              description="Equipment statistics could not be loaded."
+              onRetry={() =>
+                refetchStatistics()
+              }
+            />
+          </div>
+        ) : statistics ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               index="01"
               label="Total Equipment"
               value={
-                totalEquipment
+                statistics.totalEquipment
               }
               icon={Truck}
             />
 
             <StatCard
               index="02"
-              label="Page Units"
+              label="Available Units"
               value={
-                totalAvailableUnits
+                statistics.totalAvailableUnits
               }
               icon={Boxes}
             />
 
             <StatCard
               index="03"
-              label="Page Active"
+              label="Active Equipment"
               value={
-                activeEquipment
+                statistics.activeEquipment
               }
-              icon={
-                CheckCircle2
-              }
+              icon={CheckCircle2}
               tone="success"
             />
 
             <StatCard
               index="04"
-              label="Page Inactive"
+              label="Inactive Equipment"
               value={
-                inactiveEquipment
+                statistics.inactiveEquipment
               }
               icon={CircleOff}
             />
           </div>
         ) : null}
 
+        {/* ================================
+            Equipment Collection
+        ================================= */}
+
         <section>
-          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-                Equipment Catalog
-              </span>
+          <SectionHeader
+            eyebrow="Equipment Catalog"
+            title="Catalog Collection"
+            description="Browse, filter and manage equipment available on the public website."
+            icon={Truck}
+            statLabel="Equipment"
+            statValue={
+              data?.pagination.total ??
+              0
+            }
+            showStat={
+              !isLoading &&
+              !isError
+            }
+          />
 
-              <h2 className="mt-1.5 text-[15px] font-semibold tracking-[-0.015em] text-foreground">
-                Catalog Collection
-              </h2>
-
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Browse, filter and manage equipment available on the public website.
-              </p>
-            </div>
-
-            {data ? (
-              <span className="hidden text-[11px] font-medium text-muted-foreground/60 tabular-nums sm:block">
-                {
-                  data
-                    .pagination
-                    .total
-                }{' '}
-                {data
-                  .pagination
-                  .total ===
-                1
-                  ? 'item'
-                  : 'items'}
-              </span>
-            ) : null}
-          </div>
+          {/* ================================
+              Filters
+          ================================= */}
 
           <div className="mb-5 rounded-[22px] border border-border/70 bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.025)] sm:p-5">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+              {/* Search */}
+
               <div className="relative min-w-0 flex-1">
                 <Search
                   className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground/45"
-                  strokeWidth={
-                    1.8
-                  }
+                  strokeWidth={1.8}
                   aria-hidden="true"
                 />
 
                 <Input
-                  value={
-                    search
-                  }
-                  onChange={(
-                    event,
-                  ) =>
+                  value={search}
+                  onChange={(event) =>
                     setSearch(
-                      event
-                        .target
-                        .value,
+                      event.target.value,
                     )
                   }
                   placeholder="Search equipment by title, description or location…"
@@ -536,18 +542,22 @@ export default function EquipmentPage() {
                 ) : null}
               </div>
 
+              {/* Filters Label */}
+
               <div className="hidden shrink-0 items-center gap-2 px-1 text-[10px] font-semibold tracking-[0.1em] text-muted-foreground/55 uppercase xl:flex">
                 <Filter
                   className="size-3.5"
-                  strokeWidth={
-                    1.8
-                  }
+                  strokeWidth={1.8}
                 />
 
                 Filters
               </div>
 
+              {/* Select Filters */}
+
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:flex xl:shrink-0">
+                {/* Category */}
+
                 <Select
                   value={
                     categoryFilter
@@ -572,13 +582,8 @@ export default function EquipmentPage() {
                       All categories
                     </SelectItem>
 
-                    {(
-                      categories ??
-                      []
-                    ).map(
-                      (
-                        category,
-                      ) => (
+                    {(categories ?? []).map(
+                      (category) => (
                         <SelectItem
                           key={
                             category._id
@@ -595,6 +600,8 @@ export default function EquipmentPage() {
                     )}
                   </SelectContent>
                 </Select>
+
+                {/* Status */}
 
                 <Select
                   value={
@@ -632,6 +639,10 @@ export default function EquipmentPage() {
               </div>
             </div>
 
+            {/* ================================
+                Active Filters
+            ================================= */}
+
             {hasActiveFilters ? (
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3.5">
                 <span className="mr-1 text-[9px] font-semibold tracking-[0.1em] text-muted-foreground/50 uppercase">
@@ -645,9 +656,7 @@ export default function EquipmentPage() {
                     </span>
 
                     <span className="truncate text-muted-foreground">
-                      {
-                        search
-                      }
+                      {search}
                     </span>
                   </span>
                 ) : null}
@@ -699,19 +708,18 @@ export default function EquipmentPage() {
             ) : null}
           </div>
 
+          {/* ================================
+              Equipment List
+          ================================= */}
+
           {isLoading ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {Array.from({
                 length: 8,
               }).map(
-                (
-                  _,
-                  index,
-                ) => (
-                  <EquipmentCardSkeleton
-                    key={
-                      index
-                    }
+                (_, index) => (
+                  <CollectionCardSkeleton
+                    key={index}
                   />
                 ),
               )}
@@ -744,14 +752,10 @@ export default function EquipmentPage() {
                     )
 
                   return (
-                    <article
-                      key={
-                        item._id
-                      }
-                      className="group relative overflow-hidden rounded-[18px] border border-border/70 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.025)] transition-all duration-300 hover:-translate-y-0.5 hover:border-foreground/10 hover:shadow-[0_10px_26px_rgba(0,0,0,0.05)]"
-                    >
-                      <div className="relative aspect-[16/7] overflow-hidden bg-muted/30">
-                        {imageUrl ? (
+                    <CollectionCard
+                      key={item._id}
+                      image={
+                        imageUrl ? (
                           <img
                             src={
                               imageUrl
@@ -763,7 +767,7 @@ export default function EquipmentPage() {
                             className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-muted-foreground/35">
+                          <div className="flex h-full w-full items-center justify-center bg-muted/30 text-muted-foreground/35">
                             <ImageIcon
                               className="size-7"
                               strokeWidth={
@@ -771,26 +775,24 @@ export default function EquipmentPage() {
                               }
                             />
                           </div>
-                        )}
-
-                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-
-                        <div className="absolute left-3 top-3">
-                          <Badge
-                            variant={
-                              item.isActive
-                                ? 'success'
-                                : 'secondary'
-                            }
-                            className="border-white/10 shadow-sm backdrop-blur-md"
-                          >
-                            {item.isActive
-                              ? 'Active'
-                              : 'Inactive'}
-                          </Badge>
-                        </div>
-
-                        <div className="absolute right-2.5 top-2.5 flex items-center gap-0.5 rounded-lg border border-white/15 bg-black/20 p-0.5 opacity-0 backdrop-blur-md transition-opacity duration-200 group-hover:opacity-100">
+                        )
+                      }
+                      badges={
+                        <Badge
+                          variant={
+                            item.isActive
+                              ? 'success'
+                              : 'secondary'
+                          }
+                          className="border-white/10 shadow-sm backdrop-blur-md"
+                        >
+                          {item.isActive
+                            ? 'Active'
+                            : 'Inactive'}
+                        </Badge>
+                      }
+                      actions={
+                        <>
                           <Button
                             type="button"
                             variant="ghost"
@@ -830,169 +832,89 @@ export default function EquipmentPage() {
                               }
                             />
                           </Button>
-                        </div>
+                        </>
+                      }
+                      overlayLeft={
+                        item.category
+                          ?.name ??
+                        'Uncategorized'
+                      }
+                      overlayRight={`#${item.displayOrder}`}
+                      eyebrow="Equipment"
+                      icon={Truck}
+                      title={
+                        item.title
+                      }
+                      description={
+                        item.shortDescription ||
+                        'No equipment description available.'
+                      }
+                      footerLeft={{
+                        icon: Boxes,
 
-                        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 px-3 pb-2.5">
-                          <span className="max-w-[75%] truncate text-[8px] font-semibold tracking-[0.08em] text-white/65 uppercase">
-                            {item
-                              .category
-                              ?.name ??
-                              'Uncategorized'}
-                          </span>
+                        label:
+                          'Available',
 
-                          <span className="shrink-0 text-[8px] font-semibold text-white/65 tabular-nums">
-                            #
-                            {
-                              item.displayOrder
-                            }
-                          </span>
-                        </div>
-                      </div>
+                        value: `${item.availableUnits} ${
+                          item.availableUnits ===
+                          1
+                            ? 'unit'
+                            : 'units'
+                        }`,
+                      }}
+                      footerRight={{
+                        icon: item
+                          .safetyCertificate
+                          ?.isAvailable
+                          ? ShieldCheck
+                          : ShieldX,
 
-                      <div className="p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 text-muted-foreground">
-                              <Truck
-                                className="size-3"
-                                strokeWidth={
-                                  1.8
-                                }
-                              />
+                        label:
+                          'Certificate',
 
-                              <span className="text-[9px] font-semibold tracking-[0.06em] uppercase">
-                                Equipment
-                              </span>
-                            </div>
+                        value: item
+                          .safetyCertificate
+                          ?.isAvailable
+                          ? 'Certified'
+                          : 'Not available',
 
-                            <h3 className="mt-1.5 truncate text-sm font-semibold tracking-[-0.015em] text-foreground">
-                              {
-                                item.title
-                              }
-                            </h3>
-                          </div>
-
-                          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/30 text-muted-foreground">
-                            <Truck
-                              className="size-3.5"
-                              strokeWidth={
-                                1.8
-                              }
-                            />
-                          </div>
-                        </div>
-
-                        <p className="mt-2 line-clamp-2 min-h-[34px] text-[10px] leading-[17px] text-muted-foreground">
-                          {item.shortDescription ||
-                            'No equipment description available.'}
-                        </p>
-
-                        <div className="mt-3 grid grid-cols-2 divide-x divide-border/60 border-t border-border/60 pt-3">
-                          <div className="pr-3">
-                            <div className="flex items-center gap-1.5">
-                              <Boxes
-                                className="size-3 text-muted-foreground/55"
-                                strokeWidth={
-                                  1.8
-                                }
-                              />
-
-                              <span className="text-[8px] font-semibold tracking-[0.08em] text-muted-foreground/60 uppercase">
-                                Available
-                              </span>
-                            </div>
-
-                            <p className="mt-1 truncate text-[10px] font-semibold text-foreground">
-                              {
-                                item.availableUnits
-                              }{' '}
-                              {item.availableUnits ===
-                              1
-                                ? 'unit'
-                                : 'units'}
-                            </p>
-                          </div>
-
-                          <div className="pl-3">
-                            <div className="flex items-center gap-1.5">
-                              {item
-                                .safetyCertificate
-                                ?.isAvailable ? (
-                                <ShieldCheck
-                                  className="size-3 text-success"
-                                  strokeWidth={
-                                    1.8
-                                  }
-                                />
-                              ) : (
-                                <ShieldX
-                                  className="size-3 text-muted-foreground/55"
-                                  strokeWidth={
-                                    1.8
-                                  }
-                                />
-                              )}
-
-                              <span className="text-[8px] font-semibold tracking-[0.08em] text-muted-foreground/60 uppercase">
-                                Certificate
-                              </span>
-                            </div>
-
-                            <p
-                              className={`mt-1 truncate text-[10px] font-semibold ${
-                                item
-                                  .safetyCertificate
-                                  ?.isAvailable
-                                  ? 'text-success'
-                                  : 'text-foreground'
-                              }`}
-                            >
-                              {item
-                                .safetyCertificate
-                                ?.isAvailable
-                                ? 'Certified'
-                                : 'Not available'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <span
-                        aria-hidden="true"
-                        className={`absolute bottom-0 left-4 h-[2px] w-6 rounded-full transition-all duration-300 group-hover:w-10 ${
-                          item.isActive
-                            ? 'bg-success/45'
-                            : 'bg-foreground/20'
-                        }`}
-                      />
-                    </article>
+                        valueClassName:
+                          item
+                            .safetyCertificate
+                            ?.isAvailable
+                            ? 'text-success'
+                            : undefined,
+                      }}
+                      active={
+                        item.isActive
+                      }
+                    />
                   )
                 },
               )}
             </div>
           )}
 
+          {/* ================================
+              Pagination
+          ================================= */}
+
           {data ? (
             <div className="mt-5">
               <Pagination
                 page={
-                  data
-                    .pagination
-                    .page
+                  data.pagination.page
                 }
                 totalPages={
-                  data
-                    .pagination
+                  data.pagination
                     .totalPages
                 }
                 hasNextPage={
-                  data
-                    .pagination
+                  data.pagination
                     .hasNextPage
                 }
                 hasPreviousPage={
-                  data
-                    .pagination
+                  data.pagination
                     .hasPreviousPage
                 }
                 onPageChange={
@@ -1008,9 +930,7 @@ export default function EquipmentPage() {
                 onLimitChange={(
                   value,
                 ) => {
-                  setLimit(
-                    value,
-                  )
+                  setLimit(value)
 
                   setPage(1)
                 }}
@@ -1019,13 +939,15 @@ export default function EquipmentPage() {
           ) : null}
         </section>
 
+        {/* ================================
+            Delete Confirmation
+        ================================= */}
+
         <ConfirmDialog
           open={Boolean(
             deletingEquipment,
           )}
-          onOpenChange={(
-            open,
-          ) => {
+          onOpenChange={(open) => {
             if (!open) {
               setDeletingEquipment(
                 null,
@@ -1036,9 +958,7 @@ export default function EquipmentPage() {
           description={`Are you sure you want to delete "${deletingEquipment?.title}"? Equipment with existing requests will be deactivated instead of deleted.`}
           variant="destructive"
           confirmLabel="Delete"
-          onConfirm={
-            handleDelete
-          }
+          onConfirm={handleDelete}
           isLoading={
             deleteMutation.isPending
           }

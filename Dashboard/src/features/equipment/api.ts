@@ -1,6 +1,11 @@
 import { apiClient } from '@/lib/api-client'
 import type { ApiEnvelope } from '@/types/api'
-import type { Equipment, EquipmentListFilters, EquipmentListResponse } from '@/features/equipment/types'
+import type {
+  Equipment,
+  EquipmentListFilters,
+  EquipmentListResponse,
+  EquipmentStatisticsResponse,
+} from '@/features/equipment/types'
 
 export async function getEquipmentList(filters: EquipmentListFilters): Promise<EquipmentListResponse> {
   const response = await apiClient.get<EquipmentListResponse>('/equipments', {
@@ -44,4 +49,13 @@ export async function deleteEquipment(id: string): Promise<string> {
   const response = await apiClient.delete<ApiEnvelope<Equipment>>(`/equipments/${id}`)
 
   return response.data.message ?? 'Equipment deleted successfully'
+}
+
+export async function getEquipmentStatistics(): Promise<EquipmentStatisticsResponse> {
+  const response =
+    await apiClient.get<EquipmentStatisticsResponse>(
+      '/equipments/statistics',
+    )
+
+  return response.data
 }

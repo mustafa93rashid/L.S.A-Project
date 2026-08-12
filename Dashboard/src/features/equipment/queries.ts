@@ -7,6 +7,8 @@ export const equipmentKeys = {
   all: ['equipment'] as const,
   list: (filters: EquipmentListFilters) => [...equipmentKeys.all, 'list', filters] as const,
   detail: (id: string) => [...equipmentKeys.all, 'detail', id] as const,
+    statistics: () =>
+    [...equipmentKeys.all, 'statistics'] as const,
 }
 
 export const equipmentCategoryOptionKeys = ['equipmentCategories', 'options'] as const
@@ -65,5 +67,19 @@ export function useDeleteEquipmentMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: equipmentKeys.all })
     },
+  })
+}
+
+export function useEquipmentStatisticsQuery(
+  enabled = true,
+) {
+  return useQuery({
+    queryKey:
+      equipmentKeys.statistics(),
+
+    queryFn:
+      api.getEquipmentStatistics,
+
+    enabled,
   })
 }

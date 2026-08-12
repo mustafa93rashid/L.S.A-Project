@@ -98,6 +98,10 @@ class ContactInfoController {
     }
 
     if (location !== undefined) {
+      if (!contactInfo.location) {
+        contactInfo.location = {};
+      }
+
       if (location.address !== undefined) {
         contactInfo.location.address = location.address;
       }
@@ -128,6 +132,10 @@ class ContactInfoController {
     }
 
     if (socialLinks !== undefined) {
+      if (!contactInfo.socialLinks) {
+        contactInfo.socialLinks = {};
+      }
+
       if (socialLinks.facebook !== undefined) {
         contactInfo.socialLinks.facebook = socialLinks.facebook;
       }

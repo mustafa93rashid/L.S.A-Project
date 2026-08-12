@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
+import { GlobalQuickActions } from '@/components/layout/GlobalQuickActions'
 
 /**
  * The authenticated app shell. Mounted once by a layout route wrapped in
@@ -25,6 +26,8 @@ export function DashboardLayout() {
           </div>
         </main>
       </div>
+            <GlobalQuickActions />
+
     </div>
   )
 }

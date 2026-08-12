@@ -86,3 +86,30 @@ export interface EquipmentFormValues {
   isActive?: boolean
   imageAlt?: string
 }
+
+export interface EquipmentStatisticsOverview {
+  totalEquipment: number
+  activeEquipment: number
+  inactiveEquipment: number
+  totalAvailableUnits: number
+  averageAvailableUnits: number
+  totalRequests: number
+}
+
+export interface EquipmentCategoryStatistics {
+  categoryId: string
+  categoryName: string
+  categorySlug?: string
+  count: number
+  activeCount: number
+  inactiveCount: number
+  totalAvailableUnits: number
+}
+
+export interface EquipmentStatisticsResponse {
+  success: boolean
+  data: {
+    overview: EquipmentStatisticsOverview
+    equipmentByCategory: EquipmentCategoryStatistics[]
+  }
+}

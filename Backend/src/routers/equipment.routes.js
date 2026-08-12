@@ -43,6 +43,8 @@ router.get("/", [auth, role(["superadmin", "manager", "contentManager"]), ...equ
 
 router.post("/", [auth, role(["superadmin", "manager", "contentManager"]), uploadEquipmentImage(), ...createEquipmentValidation], asyncHandler(equipmentController.createEquipment));
 
+router.get("/statistics", auth,role(["superadmin", "manager", "contentManager"]), asyncHandler(equipmentController.getEquipmentStatistics));
+
 router.get("/:id", [auth, role(["superadmin", "manager", "contentManager"]), ...equipmentIdValidation], asyncHandler(equipmentController.getEquipmentById));
 
 router.patch("/:id", [auth, role(["superadmin", "manager", "contentManager"]), uploadEquipmentImage(), ...equipmentIdValidation, ...updateEquipmentValidation], asyncHandler(equipmentController.updateEquipment));
