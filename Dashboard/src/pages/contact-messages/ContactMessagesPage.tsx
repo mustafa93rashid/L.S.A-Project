@@ -24,6 +24,7 @@ import { useContactMessagesQuery, useContactMessageStatisticsQuery, useDeleteCon
 import { contactMessageStatusLabel, contactMessageStatusTone } from '@/features/contact-messages/utils'
 import { CONTACT_MESSAGE_SERVICES, CONTACT_MESSAGE_STATUSES, type ContactMessage, type ContactMessageService, type ContactMessageStatus } from '@/features/contact-messages/types'
 import { ContactMessageDrawer } from '@/features/contact-messages/components/ContactMessageDrawer'
+import { SectionHeader } from '@/components/layout/SectionHeader'
 
 const ALL = 'all'
 const DEFAULT_LIMIT = 20
@@ -180,174 +181,212 @@ export default function ContactMessagesPage() {
             </div>
         ) : null}
 
-        <section>
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">Message Management</span>
-              <h2 className="mt-1.5 text-[15px] font-semibold tracking-[-0.015em] text-foreground">Contact Inbox</h2>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Search, filter and review incoming customer inquiries.</p>
-            </div>
+<section className="space-y-5">
+  <SectionHeader
+    eyebrow="Message Management"
+    title="Contact Inbox"
+    description="Search, filter and review incoming customer inquiries."
+    icon={Mail}
+    statLabel="Messages"
+  />
 
-            {data ? (
-              <span className="hidden text-[11px] font-medium text-muted-foreground/60 tabular-nums sm:block">
-                {data.pagination.total} {data.pagination.total === 1 ? 'message' : 'messages'}
-              </span>
-            ) : null}
-          </div>
+  <div className="rounded-[22px] border border-border/70 bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.025)] sm:p-5">
+    <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+      <div className="relative min-w-0 flex-1">
+        <Search
+          className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground/45"
+          strokeWidth={1.8}
+          aria-hidden="true"
+        />
 
-          <div className="rounded-[22px] border border-border/70 bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.025)] sm:p-5">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-              <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground/45" strokeWidth={1.8} aria-hidden="true" />
+        <Input
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value)
+            setPage(1)
+          }}
+          placeholder="Search by name, email, phone, or message…"
+          className="h-11 w-full rounded-xl border-border/70 bg-background pl-11 pr-11 text-[13px] shadow-none"
+        />
 
-                <Input
-                  value={search}
-                  onChange={(event) => {
-                    setSearch(event.target.value)
-                    setPage(1)
-                  }}
-                  placeholder="Search by name, email, phone, or message…"
-                  className="h-11 w-full rounded-xl border-border/70 bg-background pl-11 pr-11 text-[13px] shadow-none"
-                />
+        {search ? (
+          <button
+            type="button"
+            aria-label="Clear search"
+            onClick={() => {
+              setSearch('')
+              setPage(1)
+            }}
+            className="absolute right-3 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground/45 transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-3.5" />
+          </button>
+        ) : null}
+      </div>
 
-                {search ? (
-                  <button
-                    type="button"
-                    aria-label="Clear search"
-                    onClick={() => {
-                      setSearch('')
-                      setPage(1)
-                    }}
-                    className="absolute right-3 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground/45 transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                ) : null}
-              </div>
+      <div className="hidden shrink-0 items-center gap-2 px-1 text-[10px] font-semibold tracking-[0.1em] text-muted-foreground/55 uppercase xl:flex">
+        <Filter
+          className="size-3.5"
+          strokeWidth={1.8}
+          aria-hidden="true"
+        />
+        Filters
+      </div>
 
-              <div className="hidden shrink-0 items-center gap-2 px-1 text-[10px] font-semibold tracking-[0.1em] text-muted-foreground/55 uppercase xl:flex">
-                <Filter className="size-3.5" strokeWidth={1.8} aria-hidden="true" />
-                Filters
-              </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:flex xl:shrink-0">
+        <Select
+          value={status}
+          onValueChange={(value) => {
+            setStatus(value)
+            setPage(1)
+          }}
+        >
+          <SelectTrigger
+            aria-label="Filter by status"
+            className="h-11 w-full rounded-xl border-border/70 bg-background px-3.5 shadow-none sm:min-w-[180px] xl:w-[190px]"
+          >
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
 
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:flex xl:shrink-0">
-                <Select
-                  value={status}
-                  onValueChange={(value) => {
-                    setStatus(value)
-                    setPage(1)
-                  }}
-                >
-                  <SelectTrigger aria-label="Filter by status" className="h-11 w-full rounded-xl border-border/70 bg-background px-3.5 shadow-none sm:min-w-[180px] xl:w-[190px]">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>
+              All statuses
+            </SelectItem>
 
-                  <SelectContent>
-                    <SelectItem value={ALL}>All statuses</SelectItem>
+            {CONTACT_MESSAGE_STATUSES.map((value) => (
+              <SelectItem key={value} value={value}>
+                {contactMessageStatusLabel(value)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-                    {CONTACT_MESSAGE_STATUSES.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {contactMessageStatusLabel(value)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        <Select
+          value={service}
+          onValueChange={(value) => {
+            setService(value)
+            setPage(1)
+          }}
+        >
+          <SelectTrigger
+            aria-label="Filter by service"
+            className="h-11 w-full rounded-xl border-border/70 bg-background px-3.5 shadow-none sm:min-w-[210px] xl:w-[230px]"
+          >
+            <SelectValue placeholder="Service" />
+          </SelectTrigger>
 
-                <Select
-                  value={service}
-                  onValueChange={(value) => {
-                    setService(value)
-                    setPage(1)
-                  }}
-                >
-                  <SelectTrigger aria-label="Filter by service" className="h-11 w-full rounded-xl border-border/70 bg-background px-3.5 shadow-none sm:min-w-[210px] xl:w-[230px]">
-                    <SelectValue placeholder="Service" />
-                  </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>
+              All services
+            </SelectItem>
 
-                  <SelectContent>
-                    <SelectItem value={ALL}>All services</SelectItem>
+            {CONTACT_MESSAGE_SERVICES.map((value) => (
+              <SelectItem key={value} value={value}>
+                {value}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
 
-                    {CONTACT_MESSAGE_SERVICES.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+    {hasActiveFilters ? (
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3.5">
+        <span className="mr-1 text-[9px] font-semibold tracking-[0.1em] text-muted-foreground/50 uppercase">
+          Active filters
+        </span>
 
-            {hasActiveFilters ? (
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3.5">
-                <span className="mr-1 text-[9px] font-semibold tracking-[0.1em] text-muted-foreground/50 uppercase">Active filters</span>
+        {search ? (
+          <span className="inline-flex max-w-[260px] items-center gap-1.5 rounded-lg border border-border/70 bg-muted/25 px-2.5 py-1.5 text-[11px]">
+            <span className="font-medium text-foreground">
+              Search
+            </span>
 
-                {search ? (
-                  <span className="inline-flex max-w-[260px] items-center gap-1.5 rounded-lg border border-border/70 bg-muted/25 px-2.5 py-1.5 text-[11px]">
-                    <span className="font-medium text-foreground">Search</span>
-                    <span className="truncate text-muted-foreground">{search}</span>
-                  </span>
-                ) : null}
+            <span className="truncate text-muted-foreground">
+              {search}
+            </span>
+          </span>
+        ) : null}
 
-                {status !== ALL ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-muted/25 px-2.5 py-1.5 text-[11px]">
-                    <span className="font-medium text-foreground">Status</span>
-                    <span className="text-muted-foreground">{contactMessageStatusLabel(status as ContactMessageStatus)}</span>
-                  </span>
-                ) : null}
+        {status !== ALL ? (
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-muted/25 px-2.5 py-1.5 text-[11px]">
+            <span className="font-medium text-foreground">
+              Status
+            </span>
 
-                {service !== ALL ? (
-                  <span className="inline-flex max-w-[260px] items-center gap-1.5 rounded-lg border border-border/70 bg-muted/25 px-2.5 py-1.5 text-[11px]">
-                    <span className="font-medium text-foreground">Service</span>
-                    <span className="truncate text-muted-foreground">{service}</span>
-                  </span>
-                ) : null}
+            <span className="text-muted-foreground">
+              {contactMessageStatusLabel(
+                status as ContactMessageStatus,
+              )}
+            </span>
+          </span>
+        ) : null}
 
-                <Button type="button" variant="ghost" size="xs" onClick={clearFilters} className="ml-auto text-muted-foreground">
-                  <X className="size-3" />
-                  Clear all
-                </Button>
-              </div>
-            ) : null}
-          </div>
+        {service !== ALL ? (
+          <span className="inline-flex max-w-[260px] items-center gap-1.5 rounded-lg border border-border/70 bg-muted/25 px-2.5 py-1.5 text-[11px]">
+            <span className="font-medium text-foreground">
+              Service
+            </span>
 
-          <div className="mt-5 overflow-hidden rounded-[22px] border border-border/70 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.025)]">
-            <DataTable
-              columns={columns}
-              data={messages}
-              getRowId={(row) => row._id}
-              isLoading={isLoading}
-              isError={isError}
-              onRetry={() => refetch()}
-              onRowClick={(row) => {
-                setSelectedMessage(row)
-                setDrawerOpen(true)
-              }}
-              emptyState={{
-                icon: Mail,
-                title: 'No contact messages found',
-                description: 'Try adjusting your filters — new inquiries will appear here as they arrive.',
-              }}
-            />
-          </div>
+            <span className="truncate text-muted-foreground">
+              {service}
+            </span>
+          </span>
+        ) : null}
 
-          {data ? (
-            <div className="mt-4">
-              <Pagination
-                page={data.pagination.page}
-                totalPages={data.pagination.totalPages}
-                hasNextPage={data.pagination.hasNextPage}
-                hasPreviousPage={data.pagination.hasPreviousPage}
-                onPageChange={setPage}
-                limit={limit}
-                limitOptions={[10, 20, 50, 100]}
-                onLimitChange={(value) => {
-                  setLimit(value)
-                  setPage(1)
-                }}
-              />
-            </div>
-          ) : null}
-        </section>
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          onClick={clearFilters}
+          className="ml-auto text-muted-foreground"
+        >
+          <X className="size-3" />
+          Clear all
+        </Button>
+      </div>
+    ) : null}
+  </div>
+
+  <div className="overflow-hidden rounded-[22px] border border-border/70 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.025)]">
+    <DataTable
+      columns={columns}
+      data={messages}
+      getRowId={(row) => row._id}
+      isLoading={isLoading}
+      isError={isError}
+      onRetry={() => refetch()}
+      onRowClick={(row) => {
+        setSelectedMessage(row)
+        setDrawerOpen(true)
+      }}
+      emptyState={{
+        icon: Mail,
+        title: 'No contact messages found',
+        description:
+          'Try adjusting your filters — new inquiries will appear here as they arrive.',
+      }}
+    />
+  </div>
+
+  {data ? (
+    <div>
+      <Pagination
+        page={data.pagination.page}
+        totalPages={data.pagination.totalPages}
+        hasNextPage={data.pagination.hasNextPage}
+        hasPreviousPage={data.pagination.hasPreviousPage}
+        onPageChange={setPage}
+        limit={limit}
+        limitOptions={[10, 20, 50, 100]}
+        onLimitChange={(value) => {
+          setLimit(value)
+          setPage(1)
+        }}
+      />
+    </div>
+  ) : null}
+</section>
 
         <ContactMessageDrawer open={drawerOpen} onOpenChange={setDrawerOpen} message={selectedMessage} />
 

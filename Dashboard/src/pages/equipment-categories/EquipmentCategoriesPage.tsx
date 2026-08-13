@@ -137,13 +137,6 @@ export default function EquipmentCategoriesPage() {
 
         {!isLoading && !isError ? (
           <section className="space-y-5">
-
-            <SectionHeader
-              eyebrow="Business Snapshot"
-              title="Core Metrics"
-              description="Key category resources currently available across the equipment catalog."
-            />
-
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <StatCard index="01" label="Total Categories" value={totalCategories} icon={Layers} />
               <StatCard index="02" label="Active Categories" value={activeCategories} icon={Activity} tone="success" />
@@ -161,9 +154,7 @@ export default function EquipmentCategoriesPage() {
             title="Categories"
             description="Manage naming, ordering and visibility for equipment groups."
             icon={Layers}
-            statLabel="Categories"
-            statValue={totalCategories}
-            showStat={!isLoading && !isError && totalCategories > 0}
+
           />
 
           <div className="overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.025)]">

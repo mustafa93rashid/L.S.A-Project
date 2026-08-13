@@ -97,6 +97,9 @@ app.use("/api/v1/contacts", require("./routers/contactInfo.routes"));
 // Contact Message routes
 app.use("/api/v1/contact-messages", require("./routers/contactMessage.routes"));
 
+// Notification routes
+app.use("/api/v1/notifications", require("./routers/notification.routes"));
+
 //=========================================================================
 // Error Handling Middleware
 //=========================================================================

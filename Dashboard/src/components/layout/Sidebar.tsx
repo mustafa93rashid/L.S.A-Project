@@ -128,7 +128,6 @@ function NavRow({
 }
 
 function SidebarBrand({ collapsed }: { collapsed: boolean }) {
-  const environment = import.meta.env.PROD ? 'Production' : 'Development'
 
   return (
     <div
@@ -146,9 +145,7 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
             LSA Dashboard
           </span>
           <div className="flex items-center gap-1.5">
-            <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.06] px-1.5 py-px text-[9.5px] font-semibold tracking-wide text-sidebar-foreground/60 uppercase">
-              {environment}
-            </span>
+
             <span className="text-[9.5px] font-medium text-sidebar-foreground/30 tabular-nums">
               {DASHBOARD_VERSION}
             </span>

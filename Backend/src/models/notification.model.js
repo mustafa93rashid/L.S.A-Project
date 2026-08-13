@@ -8,14 +8,14 @@ const mongoose = require("mongoose");
 
 const NOTIFICATION_TYPES = [
   "equipmentRequest",
-"jobRequest",  
+  "jobRequest",
   "contactMessage",
   "system",
 ];
 
 const NOTIFICATION_REFERENCE_MODELS = [
   "EquipmentRequest",
-"JobRequest",
+  "JobRequest",
   "ContactMessage",
 ];
 
@@ -27,6 +27,19 @@ const NOTIFICATION_REFERENCE_MODELS = [
 
 const notificationSchema = new mongoose.Schema(
   {
+    /*
+    |--------------------------------------------------------------------------
+    | Recipient
+    |--------------------------------------------------------------------------
+    */
+
+    recipient: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
     /*
     |--------------------------------------------------------------------------
     | Notification Type
@@ -70,12 +83,12 @@ const notificationSchema = new mongoose.Schema(
       model: {
         type: String,
         enum: NOTIFICATION_REFERENCE_MODELS,
-        required: true,
+        default: null,
       },
 
       id: {
         type: mongoose.Schema.Types.ObjectId,
-        required: true,
+        default: null,
       },
     },
 
@@ -87,7 +100,7 @@ const notificationSchema = new mongoose.Schema(
 
     metadata: {
       type: mongoose.Schema.Types.Mixed,
-      default: {},
+      default: () => ({}),
     },
 
     /*
@@ -113,6 +126,11 @@ const notificationSchema = new mongoose.Schema(
     |--------------------------------------------------------------------------
     */
 
+    expiresAt: {
+      type: Date,
+      default: null,
+    },
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -132,11 +150,18 @@ const notificationSchema = new mongoose.Schema(
 */
 
 notificationSchema.index({
+  recipient: 1,
+  createdAt: -1,
+});
+
+notificationSchema.index({
+  recipient: 1,
   isRead: 1,
   createdAt: -1,
 });
 
 notificationSchema.index({
+  recipient: 1,
   type: 1,
   createdAt: -1,
 });
@@ -146,6 +171,11 @@ notificationSchema.index({
   "reference.id": 1,
 });
 
+notificationSchema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: 0 },
+);
+
 /*
 |--------------------------------------------------------------------------
 | Model
@@ -154,10 +184,7 @@ notificationSchema.index({
 
 const Notification =
   mongoose.models.Notification ||
-  mongoose.model(
-    "Notification",
-    notificationSchema,
-  );
+  mongoose.model("Notification", notificationSchema);
 
 /*
 |--------------------------------------------------------------------------
@@ -168,4 +195,5 @@ const Notification =
 module.exports = {
   Notification,
   NOTIFICATION_TYPES,
+  NOTIFICATION_REFERENCE_MODELS,
 };

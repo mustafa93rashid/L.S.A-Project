@@ -2,13 +2,33 @@ import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Building2, CalendarDays, CheckCircle2, CircleDot, FileCheck2, Filter, Inbox, MessageCircleMore, Search, Trash2, UserRound, Wrench, X } from 'lucide-react'
+import {
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  CircleDot,
+  FileCheck2,
+  Filter,
+  Inbox,
+  MessageCircleMore,
+  Search,
+  Trash2,
+  UserRound,
+  Wrench,
+  X,
+} from 'lucide-react'
 
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { DataTable } from '@/components/data-table/DataTable'
 import { Pagination } from '@/components/data-table/Pagination'
 import { StatCard } from '@/components/data-display/StatCard'
@@ -19,10 +39,22 @@ import { useSessionStore } from '@/stores/session.store'
 import { ROLES } from '@/constants/roles'
 import { ApiError } from '@/types/api'
 
-import { useDeleteEquipmentRequestMutation, useEquipmentRequestsQuery, useEquipmentRequestStatisticsQuery } from '@/features/equipment-requests/queries'
-import { equipmentRequestStatusLabel, equipmentRequestStatusTone } from '@/features/equipment-requests/utils'
-import { EQUIPMENT_REQUEST_STATUSES, type EquipmentRequest, type EquipmentRequestStatus } from '@/features/equipment-requests/types'
+import {
+  useDeleteEquipmentRequestMutation,
+  useEquipmentRequestsQuery,
+  useEquipmentRequestStatisticsQuery,
+} from '@/features/equipment-requests/queries'
+import {
+  equipmentRequestStatusLabel,
+  equipmentRequestStatusTone,
+} from '@/features/equipment-requests/utils'
+import {
+  EQUIPMENT_REQUEST_STATUSES,
+  type EquipmentRequest,
+  type EquipmentRequestStatus,
+} from '@/features/equipment-requests/types'
 import { EquipmentRequestDrawer } from '@/features/equipment-requests/components/EquipmentRequestDrawer'
+import { SectionHeader } from '@/components/layout/SectionHeader'
 
 const ALL_STATUSES = 'all'
 const DEFAULT_LIMIT = 20
@@ -76,8 +108,12 @@ export default function EquipmentRequestsPage() {
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold tracking-tight text-foreground">{row.original.fullName}</p>
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">Equipment request</p>
+              <p className="truncate text-sm font-semibold tracking-tight text-foreground">
+                {row.original.fullName}
+              </p>
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                Equipment request
+              </p>
             </div>
           </div>
         ),
@@ -87,8 +123,14 @@ export default function EquipmentRequestsPage() {
         header: 'Company',
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
-            <Building2 className="size-3.5 shrink-0 text-muted-foreground/45" strokeWidth={1.8} aria-hidden="true" />
-            <span className="max-w-[180px] truncate text-sm text-foreground">{row.original.company || '—'}</span>
+            <Building2
+              className="size-3.5 shrink-0 text-muted-foreground/45"
+              strokeWidth={1.8}
+              aria-hidden="true"
+            />
+            <span className="max-w-[180px] truncate text-sm text-foreground">
+              {row.original.company || '—'}
+            </span>
           </div>
         ),
       },
@@ -97,23 +139,40 @@ export default function EquipmentRequestsPage() {
         header: 'Equipment',
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
-            <Wrench className="size-3.5 shrink-0 text-muted-foreground/45" strokeWidth={1.8} aria-hidden="true" />
-            <span className="max-w-[200px] truncate text-sm font-medium text-foreground">{row.original.equipment?.title ?? '—'}</span>
+            <Wrench
+              className="size-3.5 shrink-0 text-muted-foreground/45"
+              strokeWidth={1.8}
+              aria-hidden="true"
+            />
+            <span className="max-w-[200px] truncate text-sm font-medium text-foreground">
+              {row.original.equipment?.title ?? '—'}
+            </span>
           </div>
         ),
       },
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <StatusBadge label={equipmentRequestStatusLabel(row.original.status)} tone={equipmentRequestStatusTone(row.original.status)} />,
+        cell: ({ row }) => (
+          <StatusBadge
+            label={equipmentRequestStatusLabel(row.original.status)}
+            tone={equipmentRequestStatusTone(row.original.status)}
+          />
+        ),
       },
       {
         accessorKey: 'createdAt',
         header: 'Submitted',
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
-            <CalendarDays className="size-3.5 shrink-0 text-muted-foreground/45" strokeWidth={1.8} aria-hidden="true" />
-            <span className="text-[12px] font-medium text-muted-foreground tabular-nums">{format(new Date(row.original.createdAt), 'MMM d, yyyy')}</span>
+            <CalendarDays
+              className="size-3.5 shrink-0 text-muted-foreground/45"
+              strokeWidth={1.8}
+              aria-hidden="true"
+            />
+            <span className="text-[12px] font-medium text-muted-foreground tabular-nums">
+              {format(new Date(row.original.createdAt), 'MMM d, yyyy')}
+            </span>
           </div>
         ),
       },
@@ -160,7 +219,9 @@ export default function EquipmentRequestsPage() {
         if (isLastRowOnPage) setPage((current) => current - 1)
       },
       onError: (error) => {
-        toast.error(error instanceof ApiError ? error.message : 'Failed to delete request')
+        toast.error(
+          error instanceof ApiError ? error.message : 'Failed to delete request',
+        )
       },
     })
   }
@@ -168,39 +229,74 @@ export default function EquipmentRequestsPage() {
   return (
     <PageContainer className="max-w-6xl">
       <div className="space-y-7">
-        <PageHeader title="Equipment Requests" description="Review and manage equipment leads submitted through the public request form." />
+        <PageHeader
+          title="Equipment Requests"
+          description="Review and manage equipment leads submitted through the public request form."
+        />
 
         {statistics ? (
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              <StatCard index="01" label="Total Requests" value={statistics.total} icon={Inbox} />
-              <StatCard index="02" label="New" value={statistics.new} icon={CircleDot} tone="info" />
-              <StatCard index="03" label="Contacted" value={statistics.contacted} icon={MessageCircleMore} tone="warning" />
-              <StatCard index="04" label="Quoted" value={statistics.quoted} icon={FileCheck2} tone="warning" />
-              <StatCard index="05" label="Approved" value={statistics.approved} icon={CheckCircle2} tone="success" />
-              <StatCard index="06" label="Completed" value={statistics.completed} icon={CheckCircle2} tone="success" />
-            </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <StatCard
+              index="01"
+              label="Total Requests"
+              value={statistics.total}
+              icon={Inbox}
+            />
+            <StatCard
+              index="02"
+              label="New"
+              value={statistics.new}
+              icon={CircleDot}
+              tone="info"
+            />
+            <StatCard
+              index="03"
+              label="Contacted"
+              value={statistics.contacted}
+              icon={MessageCircleMore}
+              tone="warning"
+            />
+            <StatCard
+              index="04"
+              label="Quoted"
+              value={statistics.quoted}
+              icon={FileCheck2}
+              tone="warning"
+            />
+            <StatCard
+              index="05"
+              label="Approved"
+              value={statistics.approved}
+              icon={CheckCircle2}
+              tone="success"
+            />
+            <StatCard
+              index="06"
+              label="Completed"
+              value={statistics.completed}
+              icon={CheckCircle2}
+              tone="success"
+            />
+          </div>
         ) : null}
 
-        <section>
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">Request Management</span>
-              <h2 className="mt-1.5 text-[15px] font-semibold tracking-[-0.015em] text-foreground">Equipment Requests</h2>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Search, filter and review incoming customer equipment requests.</p>
-            </div>
-
-            {data ? (
-              <span className="hidden text-[11px] font-medium text-muted-foreground/60 tabular-nums sm:block">
-                {data.pagination.total} {data.pagination.total === 1 ? 'request' : 'requests'}
-              </span>
-            ) : null}
-          </div>
+        <section className="space-y-5">
+          <SectionHeader
+            eyebrow="Request Management"
+            title="Equipment Requests"
+            description="Search, filter and review incoming customer equipment requests."
+            icon={Inbox}
+            statLabel="Requests"
+          />
 
           <div className="rounded-[22px] border border-border/70 bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.025)] sm:p-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground/45" strokeWidth={1.8} aria-hidden="true" />
+                <Search
+                  className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground/45"
+                  strokeWidth={1.8}
+                  aria-hidden="true"
+                />
 
                 <Input
                   value={search}
@@ -239,7 +335,10 @@ export default function EquipmentRequestsPage() {
                   setPage(1)
                 }}
               >
-                <SelectTrigger aria-label="Filter by status" className="h-11 w-full rounded-xl border-border/70 bg-background px-3.5 shadow-none sm:min-w-[190px] lg:w-[210px]">
+                <SelectTrigger
+                  aria-label="Filter by status"
+                  className="h-11 w-full rounded-xl border-border/70 bg-background px-3.5 shadow-none sm:min-w-[190px] lg:w-[210px]"
+                >
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
 
@@ -257,11 +356,14 @@ export default function EquipmentRequestsPage() {
 
             {hasActiveFilters ? (
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3.5">
-                <span className="mr-1 text-[9px] font-semibold tracking-[0.1em] text-muted-foreground/50 uppercase">Active filters</span>
+                <span className="mr-1 text-[9px] font-semibold tracking-[0.1em] text-muted-foreground/50 uppercase">
+                  Active filters
+                </span>
 
                 {search ? (
                   <span className="inline-flex max-w-[260px] items-center gap-1.5 rounded-lg border border-border/70 bg-muted/25 px-2.5 py-1.5 text-[11px]">
                     <span className="font-medium text-foreground">Search</span>
+
                     <span className="truncate text-muted-foreground">{search}</span>
                   </span>
                 ) : null}
@@ -269,11 +371,20 @@ export default function EquipmentRequestsPage() {
                 {status !== ALL_STATUSES ? (
                   <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-muted/25 px-2.5 py-1.5 text-[11px]">
                     <span className="font-medium text-foreground">Status</span>
-                    <span className="text-muted-foreground">{equipmentRequestStatusLabel(status as EquipmentRequestStatus)}</span>
+
+                    <span className="text-muted-foreground">
+                      {equipmentRequestStatusLabel(status as EquipmentRequestStatus)}
+                    </span>
                   </span>
                 ) : null}
 
-                <Button type="button" variant="ghost" size="xs" onClick={clearFilters} className="ml-auto text-muted-foreground">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={clearFilters}
+                  className="ml-auto text-muted-foreground"
+                >
                   <X className="size-3" />
                   Clear all
                 </Button>
@@ -281,7 +392,7 @@ export default function EquipmentRequestsPage() {
             ) : null}
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-[22px] border border-border/70 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.025)]">
+          <div className="overflow-hidden rounded-[22px] border border-border/70 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.025)]">
             <DataTable
               columns={columns}
               data={requests}
@@ -296,13 +407,14 @@ export default function EquipmentRequestsPage() {
               emptyState={{
                 icon: Inbox,
                 title: 'No equipment requests found',
-                description: 'Try adjusting your filters — new requests will appear here as they arrive.',
+                description:
+                  'Try adjusting your filters — new requests will appear here as they arrive.',
               }}
             />
           </div>
 
           {data ? (
-            <div className="mt-4">
+            <div>
               <Pagination
                 page={data.pagination.page}
                 totalPages={data.pagination.totalPages}
@@ -320,7 +432,11 @@ export default function EquipmentRequestsPage() {
           ) : null}
         </section>
 
-        <EquipmentRequestDrawer open={drawerOpen} onOpenChange={setDrawerOpen} request={selectedRequest} />
+        <EquipmentRequestDrawer
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          request={selectedRequest}
+        />
 
         <ConfirmDialog
           open={Boolean(deletingRequest)}

@@ -166,13 +166,12 @@ export default function JobRequestsPage() {
         ) : null}
 
         <section>
-          <div className="mb-5 flex items-end justify-between gap-4">
+          <div className="flex items-end justify-between gap-4">
 
           <SectionHeader
             eyebrow="Recruitment Management"
             title="Applicant Pipeline"
             description="Search, filter and review incoming job applications."
-
           />
           </div>
 

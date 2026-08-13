@@ -1,6 +1,7 @@
 const { Notification } = require("../models/notification.model");
+const User = require("../models/user.model");
 
-const { emitToRoles } = require("../config/socket");
+const { emitToUser } = require("../config/socket");
 
 // ==================== Notification Roles ====================
 
@@ -10,157 +11,249 @@ const EQUIPMENT_NOTIFICATION_ROLES = [
   "equipmentManager",
 ];
 
-const JOB_NOTIFICATION_ROLES = ["superadmin", "manager", "hrManager"];
+const JOB_NOTIFICATION_ROLES = [
+  "superadmin",
+  "manager",
+  "hrManager",
+];
 
-const CONTACT_NOTIFICATION_ROLES = ["superadmin", "manager", "contentManager"];
+const CONTACT_NOTIFICATION_ROLES = [
+  "superadmin",
+  "manager",
+  "contentManager",
+];
+
+// ==================== Get Notification Recipients ====================
+
+const getNotificationRecipients = async (roles) => {
+  const users = await User.find({
+    role: {
+      $in: roles,
+    },
+
+    isActive: true,
+
+    isAccountActivated: true,
+  })
+    .select("_id")
+    .lean();
+
+  return users;
+};
 
 // ==================== Emit Notification Safely ====================
 
-const emitNotificationSafely = ({ roles, notification }) => {
+const emitNotificationSafely = ({
+  userId,
+  notification,
+}) => {
   try {
-    emitToRoles(roles, "notification:new", {
-      success: true,
-      data: notification,
-    });
+    emitToUser(
+      userId,
+      "notification:new",
+      {
+        success: true,
+        data: notification,
+      },
+    );
   } catch (error) {
-    console.error("Failed to emit dashboard notification:", {
-      notificationId: notification?._id,
+    console.error(
+      "Failed to emit dashboard notification:",
+      {
+        userId,
 
-      type: notification?.type,
+        notificationId: notification?._id,
 
-      message: error.message,
-    });
+        type: notification?.type,
+
+        message: error.message,
+      },
+    );
   }
+};
+
+// ==================== Create Notifications For Roles ====================
+
+const createNotificationsForRoles = async ({
+  roles,
+  notificationData,
+}) => {
+  const recipients =
+    await getNotificationRecipients(roles);
+
+  if (recipients.length === 0) {
+    return [];
+  }
+
+  const notificationsData = recipients.map(
+    (user) => ({
+      ...notificationData,
+
+      recipient: user._id,
+
+      isRead: false,
+
+      readAt: null,
+    }),
+  );
+
+  const notifications =
+    await Notification.insertMany(
+      notificationsData,
+    );
+
+  notifications.forEach((notification) => {
+    emitNotificationSafely({
+      userId: notification.recipient.toString(),
+
+      notification,
+    });
+  });
+
+  return notifications;
 };
 
 // ==================== Create Equipment Request Notification ====================
 
-const createEquipmentRequestNotification = async ({
-  equipmentRequest,
-  equipment,
-}) => {
-  const notification = await Notification.create({
-    type: "equipmentRequest",
+const createEquipmentRequestNotification =
+  async ({
+    equipmentRequest,
+    equipment,
+  }) => {
+    const notifications =
+      await createNotificationsForRoles({
+        roles: EQUIPMENT_NOTIFICATION_ROLES,
 
-    title: "New Equipment Request",
+        notificationData: {
+          type: "equipmentRequest",
 
-    message: `${equipmentRequest.fullName} submitted a request for "${equipment.title}".`,
+          title: "New Equipment Request",
 
-    reference: {
-      model: "EquipmentRequest",
+          message: `${equipmentRequest.fullName} submitted a request for "${equipment.title}".`,
 
-      id: equipmentRequest._id,
-    },
+          reference: {
+            model: "EquipmentRequest",
 
-    metadata: {
-      equipmentId: equipment._id,
+            id: equipmentRequest._id,
+          },
 
-      equipmentTitle: equipment.title,
+          metadata: {
+            equipmentId: equipment._id,
 
-      requesterName: equipmentRequest.fullName,
+            equipmentTitle:
+              equipment.title,
 
-      requesterEmail: equipmentRequest.email,
+            requesterName:
+              equipmentRequest.fullName,
 
-      company: equipmentRequest.company,
+            requesterEmail:
+              equipmentRequest.email,
 
-      status: equipmentRequest.status,
-    },
+            company:
+              equipmentRequest.company,
 
-    isRead: false,
-  });
+            status:
+              equipmentRequest.status,
+          },
+        },
+      });
 
-  emitNotificationSafely({
-    roles: EQUIPMENT_NOTIFICATION_ROLES,
-
-    notification,
-  });
-
-  return notification;
-};
+    return notifications;
+  };
 
 // ==================== Create Job Request Notification ====================
 
-const createJobRequestNotification = async ({ jobRequest, job }) => {
-  const applicantName = `${jobRequest.firstName} ${jobRequest.lastName}`.trim();
+const createJobRequestNotification =
+  async ({
+    jobRequest,
+    job,
+  }) => {
+    const applicantName =
+      `${jobRequest.firstName} ${jobRequest.lastName}`.trim();
 
-  const notification = await Notification.create({
-    type: "jobRequest",
+    const notifications =
+      await createNotificationsForRoles({
+        roles: JOB_NOTIFICATION_ROLES,
 
-    title: "New Job Application",
+        notificationData: {
+          type: "jobRequest",
 
-    message: `${applicantName} applied for "${job.title}".`,
+          title: "New Job Application",
 
-    reference: {
-      model: "JobRequest",
+          message: `${applicantName} applied for "${job.title}".`,
 
-      id: jobRequest._id,
-    },
+          reference: {
+            model: "JobRequest",
 
-    metadata: {
-      applicantName,
+            id: jobRequest._id,
+          },
 
-      applicantEmail: jobRequest.email,
+          metadata: {
+            applicantName,
 
-      phone: jobRequest.phone,
+            applicantEmail:
+              jobRequest.email,
 
-      jobId: job._id,
+            phone:
+              jobRequest.phone,
 
-      jobTitle: job.title,
+            jobId: job._id,
 
-      status: jobRequest.status,
-    },
+            jobTitle: job.title,
 
-    isRead: false,
-  });
+            status:
+              jobRequest.status,
+          },
+        },
+      });
 
-  emitNotificationSafely({
-    roles: JOB_NOTIFICATION_ROLES,
-
-    notification,
-  });
-
-  return notification;
-};
+    return notifications;
+  };
 
 // ==================== Create Contact Message Notification ====================
 
-const createContactMessageNotification = async ({ contactMessage }) => {
-  const notification = await Notification.create({
-    type: "contactMessage",
+const createContactMessageNotification =
+  async ({
+    contactMessage,
+  }) => {
+    const notifications =
+      await createNotificationsForRoles({
+        roles: CONTACT_NOTIFICATION_ROLES,
 
-    title: "New Contact Message",
+        notificationData: {
+          type: "contactMessage",
 
-    message: `${contactMessage.fullName} submitted a new inquiry about "${contactMessage.service}".`,
+          title: "New Contact Message",
 
-    reference: {
-      model: "ContactMessage",
+          message: `${contactMessage.fullName} submitted a new inquiry about "${contactMessage.service}".`,
 
-      id: contactMessage._id,
-    },
+          reference: {
+            model: "ContactMessage",
 
-    metadata: {
-      senderName: contactMessage.fullName,
+            id: contactMessage._id,
+          },
 
-      senderEmail: contactMessage.email,
+          metadata: {
+            senderName:
+              contactMessage.fullName,
 
-      senderPhone: contactMessage.phone,
+            senderEmail:
+              contactMessage.email,
 
-      service: contactMessage.service,
+            senderPhone:
+              contactMessage.phone,
 
-      status: contactMessage.status,
-    },
+            service:
+              contactMessage.service,
 
-    isRead: false,
-  });
+            status:
+              contactMessage.status,
+          },
+        },
+      });
 
-  emitNotificationSafely({
-    roles: CONTACT_NOTIFICATION_ROLES,
-
-    notification,
-  });
-
-  return notification;
-};
+    return notifications;
+  };
 
 // ==================== Exports ====================
 
