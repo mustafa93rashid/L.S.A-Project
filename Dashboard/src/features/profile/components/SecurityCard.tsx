@@ -20,6 +20,7 @@ import {
   type RequestPasswordChangeInput,
   type VerifyPasswordChangeInput,
 } from '@/features/auth/schema'
+import { ShieldCheck } from 'lucide-react'
 
 type Phase = 'idle' | 'request' | 'verify'
 
@@ -153,7 +154,7 @@ export function SecurityCard() {
   })
 
   return (
-    <FormSection title="Security" description="Manage your account password.">
+    <FormSection title="Security" description="Manage your account password." icon={ShieldCheck}>
       {phase === 'idle' ? (
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1">

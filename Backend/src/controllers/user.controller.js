@@ -398,135 +398,149 @@ class UserController {
     });
   };
 
-  // ==================== Create User ====================
-  createUser = async (req, res) => {
-    const { fullName, email, role } = req.body;
+// ==================== Create User ====================
+createUser = async (req, res) => {
+  const { fullName, email, role } = req.body;
 
-    const normalizedEmail = email.toLowerCase().trim();
+  const normalizedEmail = email.toLowerCase().trim();
 
-    const existingUser = await User.findOne({
-      email: normalizedEmail,
+  const existingUser = await User.findOne({
+    email: normalizedEmail,
+  });
+
+  if (existingUser) {
+    return res.status(409).json({
+      success: false,
+      message: "A user with this email address already exists",
     });
+  }
 
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: "A user with this email address already exists",
-      });
-    }
+  const activationToken =
+    verificationCodeService.generateResetToken();
 
-    const activationToken = verificationCodeService.generateResetToken();
+  const hashedActivationToken =
+    verificationCodeService.hashResetToken(activationToken);
 
-    const hashedActivationToken =
-      verificationCodeService.hashResetToken(activationToken);
+  const temporaryPassword =
+    crypto.randomBytes(32).toString("hex");
 
-    const temporaryPassword = crypto.randomBytes(32).toString("hex");
+  const hashedTemporaryPassword =
+    await passwordService.hash(temporaryPassword);
 
-    const hashedTemporaryPassword =
-      await passwordService.hash(temporaryPassword);
+  const user = await User.create({
+    fullName,
+    email: normalizedEmail,
+    role,
+    password: hashedTemporaryPassword,
+    isActive: false,
+    isAccountActivated: false,
+    activationToken: hashedActivationToken,
+    activationTokenExpires:
+      Date.now() + 24 * 60 * 60 * 1000,
+    createdBy: req.user._id,
+  });
 
-    const user = await User.create({
-      fullName,
-      email: normalizedEmail,
-      role,
-      password: hashedTemporaryPassword,
-      isActive: false,
-      isAccountActivated: false,
-      activationToken: hashedActivationToken,
-      activationTokenExpires: Date.now() + 24 * 60 * 60 * 1000,
-      createdBy: req.user._id,
+  const dashboardUrl =
+    process.env.DASHBOARD_URL ||
+    "http://localhost:5173";
+
+  const activationUrl =
+    `${dashboardUrl}/activate-account/${activationToken}`;
+
+  try {
+    await emailService.sendAccountActivationEmail({
+      to: user.email,
+      fullName: user.fullName,
+      activationUrl,
     });
+  } catch (error) {
+    await User.findByIdAndDelete(user._id);
 
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    throw error;
+  }
 
-    const activationUrl = `${frontendUrl}/activate-account/${activationToken}`;
+  const createdUser = await User.findById(user._id).select(
+    "-password -passwordResetToken -passwordResetExpires -activationToken -activationTokenExpires",
+  );
 
-    try {
-      await emailService.sendAccountActivationEmail({
-        to: user.email,
-        fullName: user.fullName,
-        activationUrl,
-      });
-    } catch (error) {
-      await User.findByIdAndDelete(user._id);
+  return res.status(201).json({
+    success: true,
+    message:
+      "User created successfully. An activation email has been sent.",
+    data: createdUser,
+  });
+};
 
-      throw error;
-    }
+// ==================== Activate Account ====================
+activateAccount = async (req, res) => {
+  const { token, password, confirmPassword } = req.body;
 
-    const createdUser = await User.findById(user._id).select(
-      "-password -passwordResetToken -passwordResetExpires -activationToken -activationTokenExpires",
-    );
-
-    return res.status(201).json({
-      success: true,
-      message: "User created successfully. An activation email has been sent.",
-      data: createdUser,
+  if (!token) {
+    return res.status(400).json({
+      success: false,
+      message: "Activation token is required.",
     });
-  };
+  }
 
-  // ==================== Activate Account ====================
-  activateAccount = async (req, res) => {
-    const { token, password, confirmPassword } = req.body;
+  if (!password || !confirmPassword) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "Password and confirm password are required.",
+    });
+  }
 
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: "Activation token is required.",
-      });
-    }
+  if (password !== confirmPassword) {
+    return res.status(400).json({
+      success: false,
+      message: "Passwords do not match.",
+    });
+  }
 
-    if (!password || !confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "Password and confirm password are required.",
-      });
-    }
-
-    if (password !== confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "Passwords do not match.",
-      });
-    }
-
-    const hashedActivationToken = verificationCodeService.hashResetToken(
+  const hashedActivationToken =
+    verificationCodeService.hashResetToken(
       token.trim(),
     );
 
-    const user = await User.findOne({
-      activationToken: hashedActivationToken,
-      activationTokenExpires: {
-        $gt: new Date(),
-      },
-    }).select("+activationToken +activationTokenExpires +password");
+  const user = await User.findOne({
+    activationToken: hashedActivationToken,
+    activationTokenExpires: {
+      $gt: new Date(),
+    },
+  }).select(
+    "+activationToken +activationTokenExpires +password",
+  );
 
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or expired activation token.",
-      });
-    }
-
-    if (user.isAccountActivated) {
-      return res.status(400).json({
-        success: false,
-        message: "Account is already activated.",
-      });
-    }
-
-    user.password = await passwordService.hash(password);
-    user.isActive = true;
-    user.isAccountActivated = true;
-    user.activationToken = undefined;
-    user.activationTokenExpires = undefined;
-
-    await user.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Account activated successfully. You can now sign in.",
+  if (!user) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid or expired activation token.",
     });
-  };
+  }
+
+  if (user.isAccountActivated) {
+    return res.status(400).json({
+      success: false,
+      message: "Account is already activated.",
+    });
+  }
+
+  user.password =
+    await passwordService.hash(password);
+
+  user.isActive = true;
+  user.isAccountActivated = true;
+  user.activationToken = undefined;
+  user.activationTokenExpires = undefined;
+
+  await user.save();
+
+  return res.status(200).json({
+    success: true,
+    message:
+      "Account activated successfully. You can now sign in.",
+  });
+};
 
   // ==================== Update User Status ====================
   updateUserStatus = async (req, res) => {

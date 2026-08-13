@@ -11,6 +11,7 @@ import { buildFormData } from '@/lib/form-data'
 import { useUpdateProfileMutation } from '@/features/profile/queries'
 import { personalInfoSchema, type PersonalInfoInput } from '@/features/profile/schema'
 import type { ProfileUser } from '@/features/profile/types'
+import { UserRound } from 'lucide-react'
 
 interface PersonalInfoCardProps {
   profile: ProfileUser
@@ -63,6 +64,8 @@ export function PersonalInfoCard({ profile }: PersonalInfoCardProps) {
     <FormSection
       title="Personal Information"
       description="Update your name, contact details, and department."
+        icon={UserRound}
+
     >
       <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
         {formError ? <p className="text-sm text-destructive">{formError}</p> : null}

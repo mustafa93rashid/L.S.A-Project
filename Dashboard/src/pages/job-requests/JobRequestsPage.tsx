@@ -19,6 +19,7 @@ import { useJobRequestsQuery, useJobRequestStatisticsQuery } from '@/features/jo
 import { JOB_REQUEST_STATUSES, type JobRequestStatus } from '@/features/job-requests/types'
 import { jobRequestStatusLabel } from '@/features/job-requests/utils'
 import { ApplicantRow } from '@/features/job-requests/components/ApplicantRow'
+import { SectionHeader } from '@/components/layout/SectionHeader'
 
 const ALL = 'all'
 const DEFAULT_LIMIT = 20
@@ -152,11 +153,6 @@ export default function JobRequestsPage() {
 
         {statistics ? (
           <section className="space-y-5">
-            <div>
-              <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">Business Snapshot</span>
-              <h2 className="mt-1.5 text-[15px] font-semibold tracking-[-0.015em] text-foreground">Core Metrics</h2>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Key recruitment metrics across the application workflow.</p>
-            </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               <StatCard index="01" label="Total Applications" value={statistics.total} icon={FileText} />
@@ -171,17 +167,13 @@ export default function JobRequestsPage() {
 
         <section>
           <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">Recruitment Management</span>
-              <h2 className="mt-1.5 text-[15px] font-semibold tracking-[-0.015em] text-foreground">Applicant Pipeline</h2>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Search, filter and review incoming job applications.</p>
-            </div>
 
-            {data ? (
-              <span className="hidden text-[11px] font-medium text-muted-foreground/60 tabular-nums sm:block">
-                {data.pagination.total} {data.pagination.total === 1 ? 'application' : 'applications'}
-              </span>
-            ) : null}
+          <SectionHeader
+            eyebrow="Recruitment Management"
+            title="Applicant Pipeline"
+            description="Search, filter and review incoming job applications."
+
+          />
           </div>
 
           <div className="rounded-[22px] border border-border/70 bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.025)] sm:p-5">

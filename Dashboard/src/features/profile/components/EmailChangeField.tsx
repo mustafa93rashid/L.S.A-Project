@@ -20,6 +20,8 @@ import {
   type VerifyEmailChangeInput,
 } from '@/features/profile/schema'
 import type { ProfileUser } from '@/features/profile/types'
+import { Mail } from 'lucide-react'
+
 
 type Phase = 'idle' | 'request' | 'verify'
 
@@ -139,6 +141,8 @@ export function EmailChangeField({ profile }: EmailChangeFieldProps) {
     <FormSection
       title="Email Address"
       description="Manage the email address used to sign in."
+        icon={Mail}
+
     >
       {phase === 'idle' ? (
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">

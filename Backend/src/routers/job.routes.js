@@ -21,15 +21,15 @@ router.get("/public", ...jobQueryValidation, asyncHandler(jobController.getPubli
 
 // ==================== Dashboard Routes ====================
 
-router.post("/", auth, role(["superadmin", "hrManager"]), ...createJobValidation, asyncHandler(jobController.createJob));
+router.post("/", auth, role(["superadmin", "manager", "hrManager"]), ...createJobValidation, asyncHandler(jobController.createJob));
 
-router.get("/", auth, role(["superadmin", "hrManager"]), ...jobQueryValidation, asyncHandler(jobController.getAllJobs));
+router.get("/", auth, role(["superadmin", "manager", "hrManager"]), ...jobQueryValidation, asyncHandler(jobController.getAllJobs));
 
 router.get("/statistics", auth, role(["superadmin", "manager", "hrManager"]), asyncHandler(jobController.getJobStatistics));
 
-router.get("/:id", auth, role(["superadmin", "hrManager"]), ...jobIdValidation, asyncHandler(jobController.getJobById));
+router.get("/:id", auth, role(["superadmin","manager", "hrManager"]), ...jobIdValidation, asyncHandler(jobController.getJobById));
 
-router.put("/:id", auth, role(["superadmin", "hrManager"]), ...jobIdValidation, ...updateJobValidation, asyncHandler(jobController.updateJob));
+router.put("/:id", auth, role(["superadmin", "manager", "hrManager"]), ...jobIdValidation, ...updateJobValidation, asyncHandler(jobController.updateJob));
 
 router.delete("/:id", auth, role(["superadmin"]), ...jobIdValidation, asyncHandler(jobController.deleteJob));
 

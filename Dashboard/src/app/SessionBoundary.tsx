@@ -33,7 +33,13 @@ export function SessionBoundary({ children }: { children: ReactNode }) {
     }
   }, [query.status, query.data, setUser, clearSession])
 
-  const isBootstrapping = sessionStatus === 'idle' && query.status === 'pending'
+  // Deliberately keyed only on `sessionStatus`, not `query.status`: the
+  // query flips to 'success'/'error' one render before the effect above
+  // has a chance to call setUser/clearSession, so gating on query.status
+  // let RequireAuth see a transient `status: 'idle'` and bounce to
+  // /login (which then bounces an already-authenticated user back to
+  // '/') on every hard refresh of a guarded route.
+  const isBootstrapping = sessionStatus === 'idle'
 
   if (isBootstrapping) {
     return <FullPageLoader />

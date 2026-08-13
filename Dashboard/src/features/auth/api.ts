@@ -78,10 +78,17 @@ export async function verifyPasswordChange(
   return response.data.message ?? 'Password changed successfully. Please sign in again.'
 }
 
-export async function activateAccount(payload: ActivateAccountPayload): Promise<string> {
-  const response = await apiClient.post<ApiEnvelope<never>>(
-    '/users/activate-account',
-    payload,
+export async function activateAccount(
+  payload: ActivateAccountPayload,
+): Promise<string> {
+  const response =
+    await apiClient.post<ApiEnvelope<never>>(
+      '/users/activate-account',
+      payload,
+    )
+
+  return (
+    response.data.message ??
+    'Account activated successfully.'
   )
-  return response.data.message ?? 'Account activated successfully.'
 }

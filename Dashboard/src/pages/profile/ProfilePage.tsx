@@ -9,11 +9,7 @@ import { EmailChangeField } from '@/features/profile/components/EmailChangeField
 import { SecurityCard } from '@/features/profile/components/SecurityCard'
 import { useProfileQuery } from '@/features/profile/queries'
 
-/**
- * Account Settings page — a thin orchestrator only. Each section owns its
- * own data, form state, and mutations; this component's only job is
- * fetching the profile once and laying the sections out.
- */
+
 export default function ProfilePage() {
   const { data: profile, isLoading, isError, refetch } = useProfileQuery()
 
@@ -21,22 +17,31 @@ export default function ProfilePage() {
   if (isError || !profile) return <ErrorState onRetry={() => refetch()} />
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="Account Settings"
-        description="Manage your profile, account details, and password."
-      />
+    <PageContainer className="max-w-7xl">
+      <div className="space-y-7">
 
-      <ProfileHeader profile={profile} />
+        <PageHeader
+          title="Account Settings"
+          description="Manage your profile, account information, email address, and security."
+        />
 
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <PersonalInfoCard profile={profile} />
-        <AccountInfoCard profile={profile} />
+
+        <ProfileHeader profile={profile} />
+
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 xl:items-start">
+          <PersonalInfoCard profile={profile} />
+
+          <AccountInfoCard profile={profile} />
+        </div>
+
+
+        <EmailChangeField profile={profile} />
+
+
+        <SecurityCard />
+
       </div>
-
-      <EmailChangeField profile={profile} />
-
-      <SecurityCard />
     </PageContainer>
   )
 }

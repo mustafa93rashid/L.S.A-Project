@@ -509,7 +509,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'activate-account',
+        path: 'activate-account/:token',
         element: (
           <RequireGuest>
             <ActivateAccountPage />

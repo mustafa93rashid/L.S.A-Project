@@ -37,9 +37,11 @@ router.post("/activate-account", [...activateAccountValidation], asyncHandler(us
 
 // ==================== User Management Routes ====================
 
-router.get("/", [auth, role(["superadmin"])], asyncHandler(userController.getAllUsers));
+router.get("/", [auth, role(["superadmin", "manager"])], asyncHandler(userController.getAllUsers));
 
 router.post("/", [auth, role(["superadmin"]), ...createUserValidation], asyncHandler(userController.createUser));
+
+router.get("/activate-account/token", asyncHandler(userController.activateAccount));
 
 router.get("/:id", [auth, role(["superadmin"]), ...userIdValidation], asyncHandler(userController.getUserById));
 
