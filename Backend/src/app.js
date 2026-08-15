@@ -100,6 +100,9 @@ app.use("/api/v1/contact-messages", require("./routers/contactMessage.routes"));
 // Notification routes
 app.use("/api/v1/notifications", require("./routers/notification.routes"));
 
+// Company Profile routes
+app.use("/api/v1/company-profile", require("./routers/companyProfile.routes"));
+
 //=========================================================================
 // Error Handling Middleware
 //=========================================================================

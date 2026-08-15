@@ -8,6 +8,8 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
 
+const MAX_COMPANY_PROFILE_SIZE = 20 * 1024 * 1024;
+
 const DEFAULT_IMAGE_FILE_LIMIT = 10;
 
 const DEFAULT_DOCUMENT_FILE_LIMIT = 5;
@@ -21,6 +23,8 @@ const DOCUMENT_MIME_TYPES = [
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
+
+const PDF_MIME_TYPES = ["application/pdf"];
 
 // ==================== Multer Memory Storage ====================
 
@@ -69,6 +73,22 @@ const documentFileFilter = (req, file, callback) => {
   );
 };
 
+// ==================== PDF File Filter ====================
+
+const pdfFileFilter = (req, file, callback) => {
+  if (PDF_MIME_TYPES.includes(file.mimetype)) {
+    return callback(null, true);
+  }
+
+  return callback(
+    createUploadError(
+      "Only PDF files are allowed.",
+      "INVALID_PDF_TYPE",
+    ),
+    false,
+  );
+};
+
 // ==================== Create Image Upload ====================
 
 const createImageUpload = (filesLimit = DEFAULT_IMAGE_FILE_LIMIT) => {
@@ -95,6 +115,19 @@ const createDocumentUpload = (filesLimit = DEFAULT_DOCUMENT_FILE_LIMIT) => {
   });
 };
 
+// ==================== Create Company Profile Upload ====================
+
+const createCompanyProfileUpload = () => {
+  return multer({
+    storage: memoryStorage,
+    fileFilter: pdfFileFilter,
+    limits: {
+      fileSize: MAX_COMPANY_PROFILE_SIZE,
+      files: 1,
+    },
+  });
+};
+
 // ==================== Image Upload Configurations ====================
 
 const imageUpload = createImageUpload(DEFAULT_IMAGE_FILE_LIMIT);
@@ -106,6 +139,8 @@ const projectImageUpload = createImageUpload(PROJECT_IMAGE_FILE_LIMIT);
 const documentUpload = createDocumentUpload(DEFAULT_DOCUMENT_FILE_LIMIT);
 
 const singleDocumentUpload = createDocumentUpload(1);
+
+const companyProfileUpload = createCompanyProfileUpload();
 
 // ==================== Upload Single Image ====================
 
@@ -239,25 +274,35 @@ const uploadCertificate = () => {
   return singleDocumentUpload.single("certificate");
 };
 
+// ==================== Company Profile Upload ====================
+
+const uploadCompanyProfile = () => {
+  return companyProfileUpload.single("file");
+};
+
 // ==================== Exports ====================
 
 module.exports = {
   MAX_IMAGE_SIZE,
   MAX_DOCUMENT_SIZE,
+  MAX_COMPANY_PROFILE_SIZE,
 
   DEFAULT_IMAGE_FILE_LIMIT,
   DEFAULT_DOCUMENT_FILE_LIMIT,
   PROJECT_IMAGE_FILE_LIMIT,
 
   DOCUMENT_MIME_TYPES,
+  PDF_MIME_TYPES,
 
   createUploadError,
 
   imageFileFilter,
   documentFileFilter,
+  pdfFileFilter,
 
   createImageUpload,
   createDocumentUpload,
+  createCompanyProfileUpload,
 
   uploadSingle,
   uploadArray,
@@ -278,4 +323,5 @@ module.exports = {
   uploadResume,
   uploadJobRequestCv,
   uploadCertificate,
+  uploadCompanyProfile,
 };

@@ -30,6 +30,8 @@ const CLOUDINARY_FOLDERS = Object.freeze({
   RESUMES: "resumes",
 
   CERTIFICATES: "certificates",
+
+  COMPANY_PROFILE: "company-profile",
 });
 
 const ALLOWED_FOLDERS = Object.freeze(Object.values(CLOUDINARY_FOLDERS));

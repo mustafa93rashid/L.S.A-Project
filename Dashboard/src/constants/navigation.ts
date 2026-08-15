@@ -121,6 +121,13 @@ export const NAV_ITEMS: NavItem[] = [
     module: MODULES.PROJECTS,
     group: 'Content',
   },
+    {
+  label: 'Company Profile',
+  path: '/company-profile',
+  icon: FileText,
+  module: MODULES.COMPANY_PROFILE,
+  group: 'Content',
+},
   {
     label: 'Users',
     path: '/users',
@@ -128,4 +135,5 @@ export const NAV_ITEMS: NavItem[] = [
     module: MODULES.USERS,
     group: 'Administration',
   },
+
 ]
