@@ -18,7 +18,6 @@ export default function ServiceCreatePage() {
       />
       <ServiceForm
         onSuccess={() => navigate(LIST_PATH)}
-        onCancel={() => navigate(LIST_PATH)}
       />
     </PageContainer>
   )

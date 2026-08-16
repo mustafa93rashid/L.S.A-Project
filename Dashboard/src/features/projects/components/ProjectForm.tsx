@@ -1,44 +1,42 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
-  AlertCircle,
   BriefcaseBusiness,
   CalendarDays,
-  CheckCircle2,
-  EyeOff,
-  FileBadge2,
+  FileCheck2,
   FolderKanban,
+  GalleryHorizontalEnd,
   Hash,
   ImagePlus,
-  Images,
   Link2,
   MapPin,
+  PanelsTopLeft,
   Settings2,
   Sparkles,
   Tag,
-  Upload,
   Workflow,
-  X,
 } from 'lucide-react'
 
 import { ConfirmDialog } from '@/components/overlays/ConfirmDialog'
+import { FieldError } from '@/components/forms/FieldError'
+import { FormErrorAlert } from '@/components/forms/FormErrorAlert'
 import { FormSection } from '@/components/forms/FormSection'
-import { FormActions } from '@/components/forms/FormActions'
-import { SectionNav } from '@/components/forms/SectionNav'
+import { FormStepper, type FormStep } from '@/components/forms/FormStepper'
+import { FormStepNavigation } from '@/components/forms/FormStepNavigation'
+import { ImageUploadField } from '@/components/forms/ImageUploadField'
 import { StepsEditor } from '@/components/forms/StepsEditor'
+import { VisibilityToggle } from '@/components/forms/VisibilityToggle'
 
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Textarea } from '@/components/ui/textarea'
 
 import { applyServerErrors } from '@/lib/form-errors'
 import { buildFormData } from '@/lib/form-data'
-import { cloudinaryThumbnail } from '@/lib/cloudinary'
-import { validateImageFile } from '@/lib/file-validation'
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
 
 import { useServicesQuery } from '@/features/services/queries'
@@ -46,26 +44,43 @@ import {
   useCreateProjectMutation,
   useUpdateProjectMutation,
 } from '@/features/projects/queries'
-
 import {
   projectSchema,
   type ProjectInput,
 } from '@/features/projects/schema'
-
 import type { Project } from '@/features/projects/types'
-
 import {
   GalleryManager,
   type NewGalleryFile,
 } from '@/features/projects/components/GalleryManager'
 
-
 interface ProjectFormProps {
   project?: Project | null
   onSuccess: () => void
-  onCancel: () => void
+  onCancel?: () => void
 }
 
+interface StepFieldError {
+  title?: string
+  description?: string
+  icon?: string
+}
+
+// ==================== Steps ====================
+
+const STEPS: FormStep[] = [
+  { key: 'general', label: 'General', icon: FolderKanban },
+  { key: 'services', label: 'Services', icon: Workflow },
+  { key: 'card', label: 'Card', icon: PanelsTopLeft },
+  { key: 'hero', label: 'Hero', icon: ImagePlus },
+  { key: 'details', label: 'Details', icon: BriefcaseBusiness },
+  { key: 'scope', label: 'Scope', icon: FileCheck2 },
+  { key: 'gallery', label: 'Gallery', icon: GalleryHorizontalEnd },
+  { key: 'certificates', label: 'Certificates', icon: FileCheck2 },
+  { key: 'settings', label: 'Settings', icon: Settings2 },
+]
+
+// ==================== Default Values ====================
 
 const emptyDefaults: ProjectInput = {
   title: '',
@@ -91,511 +106,401 @@ const emptyDefaults: ProjectInput = {
   isActive: true,
 }
 
+// ==================== Upload Limits ====================
 
 const GALLERY_MAX = 20
 const CERTIFICATE_MAX = 10
 
+// ==================== Array Error ====================
 
-const SECTIONS = [
-  {
-    id: 'proj-section-general',
-    label: 'General',
-  },
-  {
-    id: 'proj-section-services',
-    label: 'Related Services',
-  },
-  {
-    id: 'proj-section-card',
-    label: 'Card Image',
-  },
-  {
-    id: 'proj-section-hero',
-    label: 'Hero Section',
-  },
-  {
-    id: 'proj-section-details',
-    label: 'Project Details',
-  },
-  {
-    id: 'proj-section-scope',
-    label: 'Detailed Scope',
-  },
-  {
-    id: 'proj-section-gallery',
-    label: 'Gallery',
-  },
-  {
-    id: 'proj-section-certificates',
-    label: 'Certificates',
-  },
-  {
-    id: 'proj-section-settings',
-    label: 'Settings',
-  },
-]
+function getArrayErrorMessage(error: unknown): string | undefined {
+  if (!error || typeof error !== 'object') return undefined
 
+  const candidate = error as {
+    message?: unknown
+    root?: {
+      message?: unknown
+    }
+  }
 
-function FieldError({
-  message,
-}: {
-  message?: string
-}) {
-  if (!message) return null
+  if (typeof candidate.message === 'string') return candidate.message
+  if (typeof candidate.root?.message === 'string') return candidate.root.message
 
-  return (
-    <p className="flex items-center gap-1.5 text-[10px] font-medium text-destructive">
-      <AlertCircle
-        className="size-3 shrink-0"
-        strokeWidth={1.8}
-      />
-
-      {message}
-    </p>
-  )
+  return undefined
 }
 
+// ==================== Step Item Errors ====================
 
-export function ProjectForm({
-  project,
-  onSuccess,
-  onCancel,
-}: ProjectFormProps) {
+function getStepItemErrors(error: unknown): StepFieldError[] {
+  if (!Array.isArray(error)) return []
+
+  return error.map((item) => {
+    if (!item || typeof item !== 'object') return {}
+
+    const candidate = item as {
+      title?: { message?: unknown }
+      description?: { message?: unknown }
+      icon?: { message?: unknown }
+    }
+
+    return {
+      title:
+        typeof candidate.title?.message === 'string'
+          ? candidate.title.message
+          : undefined,
+      description:
+        typeof candidate.description?.message === 'string'
+          ? candidate.description.message
+          : undefined,
+      icon:
+        typeof candidate.icon?.message === 'string'
+          ? candidate.icon.message
+          : undefined,
+    }
+  })
+}
+
+// ==================== Project Form ====================
+
+export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   const isEditing = Boolean(project)
 
-  const [formError, setFormError] =
-    useState<string | null>(null)
+  // ==================== Step State ====================
 
-  const [cardImageFile, setCardImageFile] =
-    useState<File | null>(null)
+  const [currentStep, setCurrentStep] = useState(0)
+  const [completedStep, setCompletedStep] = useState(-1)
 
-  const [heroImageFile, setHeroImageFile] =
-    useState<File | null>(null)
+  // ==================== Error State ====================
 
-  const [
-    galleryNewFiles,
-    setGalleryNewFiles,
-  ] = useState<NewGalleryFile[]>([])
+  const [formError, setFormError] = useState<string | null>(null)
+  const [cardImageError, setCardImageError] = useState<string | null>(null)
+  const [heroImageError, setHeroImageError] = useState<string | null>(null)
 
-  const [
-    galleryRemovedPublicIds,
-    setGalleryRemovedPublicIds,
-  ] = useState<string[]>([])
+  // ==================== Image State ====================
 
-  const [
-    certificateNewFiles,
-    setCertificateNewFiles,
-  ] = useState<NewGalleryFile[]>([])
+  const [cardImageFile, setCardImageFile] = useState<File | null>(null)
+  const [heroImageFile, setHeroImageFile] = useState<File | null>(null)
 
-  const [
-    certificateRemovedPublicIds,
-    setCertificateRemovedPublicIds,
-  ] = useState<string[]>([])
+  // ==================== Gallery State ====================
 
+  const [galleryNewFiles, setGalleryNewFiles] = useState<NewGalleryFile[]>([])
+  const [galleryRemovedPublicIds, setGalleryRemovedPublicIds] = useState<string[]>(
+    [],
+  )
 
-  const { data: services } =
-    useServicesQuery()
+  // ==================== Certificate State ====================
 
-  const createMutation =
-    useCreateProjectMutation()
+  const [certificateNewFiles, setCertificateNewFiles] = useState<
+    NewGalleryFile[]
+  >([])
 
-  const updateMutation =
-    useUpdateProjectMutation()
+  const [certificateRemovedPublicIds, setCertificateRemovedPublicIds] = useState<
+    string[]
+  >([])
 
-  const isSubmitting =
-    createMutation.isPending ||
-    updateMutation.isPending
+  // ==================== Queries ====================
 
+  const { data: services } = useServicesQuery()
+
+  // ==================== Mutations ====================
+
+  const createMutation = useCreateProjectMutation()
+  const updateMutation = useUpdateProjectMutation()
+  const isSubmitting = createMutation.isPending || updateMutation.isPending
+
+  // ==================== Form ====================
 
   const form = useForm<ProjectInput>({
     resolver: zodResolver(projectSchema),
-
     defaultValues: project
       ? {
           title: project.title,
           slug: project.slug,
-          categoryLabel:
-            project.categoryLabel,
-          shortDescription:
-            project.shortDescription,
-          description:
-            project.description,
-
-          services:
-            project.services.map(
-              (service) => service._id,
-            ),
-
-          heroTitle:
-            project.hero.title,
-
-          heroDescription:
-            project.hero.description,
-
-          cardImageAlt:
-            project.cardImage.alt,
-
-          heroImageAlt:
-            project.hero.image.alt,
-
-          client:
-            project.projectDetails
-              .client ?? '',
-
-          location:
-            project.projectDetails
-              .location ?? '',
-
-          completionDate:
-            project.projectDetails
-              .completionDate
-              ? project.projectDetails.completionDate.slice(
-                  0,
-                  10,
-                )
-              : '',
-
-          duration:
-            project.projectDetails
-              .duration ?? '',
-
-          status:
-            project.projectDetails
-              .status ?? '',
-
-          detailedScopeTitle:
-            project.detailedScope
-              .title,
-
-          detailedScopeDescription:
-            project.detailedScope
-              .description,
-
-          detailedScopeItems:
-            project.detailedScope
-              .items,
-
-          displayOrder:
-            project.displayOrder,
-
-          isFeatured:
-            project.isFeatured,
-
-          isActive:
-            project.isActive,
+          categoryLabel: project.categoryLabel,
+          shortDescription: project.shortDescription,
+          description: project.description,
+          services: project.services.map((service) => service._id),
+          heroTitle: project.hero.title,
+          heroDescription: project.hero.description,
+          cardImageAlt: project.cardImage.alt,
+          heroImageAlt: project.hero.image.alt,
+          client: project.projectDetails.client ?? '',
+          location: project.projectDetails.location ?? '',
+          completionDate: project.projectDetails.completionDate
+            ? project.projectDetails.completionDate.slice(0, 10)
+            : '',
+          duration: project.projectDetails.duration ?? '',
+          status: project.projectDetails.status ?? '',
+          detailedScopeTitle: project.detailedScope.title,
+          detailedScopeDescription: project.detailedScope.description,
+          detailedScopeItems: project.detailedScope.items,
+          displayOrder: project.displayOrder,
+          isFeatured: project.isFeatured,
+          isActive: project.isActive,
         }
       : emptyDefaults,
   })
 
+  const selectedServiceIds = form.watch('services') ?? []
+  const isFeatured = form.watch('isFeatured') ?? false
+  const isActive = form.watch('isActive') ?? true
 
-  const selectedServiceIds =
-    form.watch('services') ?? []
+  // ==================== Unsaved Changes ====================
 
-  const isFeatured =
-    form.watch('isFeatured') ?? false
+  const guard = useUnsavedChangesGuard(
+    form.formState.isDirty ||
+      cardImageFile !== null ||
+      heroImageFile !== null ||
+      galleryNewFiles.length > 0 ||
+      galleryRemovedPublicIds.length > 0 ||
+      certificateNewFiles.length > 0 ||
+      certificateRemovedPublicIds.length > 0,
+  )
 
-  const isActive =
-    form.watch('isActive') ?? true
+  // ==================== Scroll To Top ====================
 
+  const scrollFormToTop = () => {
+    const main = document.querySelector('main')
 
-  const guard =
-    useUnsavedChangesGuard(
-      form.formState.isDirty ||
-        cardImageFile !== null ||
-        heroImageFile !== null ||
-        galleryNewFiles.length > 0 ||
-        galleryRemovedPublicIds.length >
-          0 ||
-        certificateNewFiles.length >
-          0 ||
-        certificateRemovedPublicIds
-          .length > 0,
-    )
+    if (main) {
+      main.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      })
 
-
-  const cardImagePreview =
-    useMemo(() => {
-      if (cardImageFile) {
-        return URL.createObjectURL(
-          cardImageFile,
-        )
-      }
-
-      if (project?.cardImage?.url) {
-        return cloudinaryThumbnail(
-          project.cardImage.url,
-          960,
-        )
-      }
-
-      return null
-    }, [
-      cardImageFile,
-      project?.cardImage?.url,
-    ])
-
-
-  const heroImagePreview =
-    useMemo(() => {
-      if (heroImageFile) {
-        return URL.createObjectURL(
-          heroImageFile,
-        )
-      }
-
-      if (project?.hero?.image?.url) {
-        return cloudinaryThumbnail(
-          project.hero.image.url,
-          1200,
-        )
-      }
-
-      return null
-    }, [
-      heroImageFile,
-      project?.hero?.image?.url,
-    ])
-
-
-  useEffect(() => {
-    if (
-      !cardImageFile ||
-      !cardImagePreview
-    ) {
       return
     }
 
-    return () => {
-      URL.revokeObjectURL(
-        cardImagePreview,
-      )
-    }
-  }, [
-    cardImageFile,
-    cardImagePreview,
-  ])
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    })
+  }
 
+  // ==================== Validate Current Step ====================
 
-  useEffect(() => {
-    if (
-      !heroImageFile ||
-      !heroImagePreview
-    ) {
-      return
-    }
+  const validateCurrentStep = async (): Promise<boolean> => {
+    setFormError(null)
 
-    return () => {
-      URL.revokeObjectURL(
-        heroImagePreview,
-      )
-    }
-  }, [
-    heroImageFile,
-    heroImagePreview,
-  ])
+    switch (currentStep) {
+      case 0:
+        return form.trigger([
+          'title',
+          'slug',
+          'categoryLabel',
+          'shortDescription',
+          'description',
+        ])
 
+      case 1:
+        return form.trigger(['services'])
 
-  const handleImageChange =
-    (
-      setFile: (
-        file: File | null,
-      ) => void,
-    ) =>
-    (
-      event: React.ChangeEvent<HTMLInputElement>,
-    ) => {
-      const file =
-        event.target.files?.[0] ??
-        null
+      case 2: {
+        const valid = await form.trigger(['cardImageAlt'])
 
-      if (!file) {
-        setFile(null)
-        return
-      }
+        const hasImage =
+          Boolean(cardImageFile) || Boolean(project?.cardImage?.url)
 
-      const validationError =
-        validateImageFile(file)
-
-      if (validationError) {
-        setFormError(
-          validationError,
+        setCardImageError(
+          hasImage ? null : 'Project card image is required.',
         )
 
-        setFile(null)
+        return valid && hasImage
+      }
 
-        event.target.value = ''
+      case 3: {
+        const valid = await form.trigger([
+          'heroTitle',
+          'heroDescription',
+          'heroImageAlt',
+        ])
 
+        const hasImage =
+          Boolean(heroImageFile) || Boolean(project?.hero?.image?.url)
+
+        setHeroImageError(
+          hasImage ? null : 'Project hero image is required.',
+        )
+
+        return valid && hasImage
+      }
+
+      case 4:
+        return form.trigger([
+          'client',
+          'location',
+          'completionDate',
+          'duration',
+          'status',
+        ])
+
+      case 5:
+        return form.trigger([
+          'detailedScopeTitle',
+          'detailedScopeDescription',
+          'detailedScopeItems',
+        ])
+
+      case 6:
+      case 7:
+        return true
+
+      case 8:
+        return form.trigger([
+          'displayOrder',
+          'isFeatured',
+          'isActive',
+        ])
+
+      default:
+        return true
+    }
+  }
+
+  // ==================== Next Step ====================
+
+  const handleNext = async () => {
+    const valid = await validateCurrentStep()
+
+    if (!valid) return
+
+    setCompletedStep((current) => Math.max(current, currentStep))
+    setCurrentStep((current) => Math.min(current + 1, STEPS.length - 1))
+
+    scrollFormToTop()
+  }
+
+  // ==================== Previous Step ====================
+
+  const handlePrevious = () => {
+    setCurrentStep((current) => Math.max(current - 1, 0))
+    setFormError(null)
+    scrollFormToTop()
+  }
+
+  // ==================== Step Click ====================
+
+  const handleStepClick = (index: number) => {
+    if (index > completedStep + 1) return
+
+    setCurrentStep(index)
+    setFormError(null)
+    scrollFormToTop()
+  }
+
+  // ==================== Submit ====================
+
+  const onSubmit = form.handleSubmit(
+    (values) => {
+      const needsCardImage =
+        !cardImageFile &&
+        !project?.cardImage?.url
+
+      const needsHeroImage =
+        !heroImageFile &&
+        !project?.hero?.image?.url
+
+      if (needsCardImage) {
+        setCardImageError('Project card image is required.')
+      }
+
+      if (needsHeroImage) {
+        setHeroImageError('Project hero image is required.')
+      }
+
+      if (needsCardImage || needsHeroImage) {
+        setCurrentStep(needsCardImage ? 2 : 3)
+        scrollFormToTop()
         return
       }
 
+      setCardImageError(null)
+      setHeroImageError(null)
       setFormError(null)
-      setFile(file)
-    }
 
-
-  const onSubmit =
-    form.handleSubmit((values) => {
-      if (
-        !isEditing &&
-        (!cardImageFile ||
-          !heroImageFile)
-      ) {
-        setFormError(
-          'Both the card image and hero image are required.',
-        )
-
-        return
-      }
-
-      setFormError(null)
-
-
-      const formData =
-        buildFormData(
-          {
-            title: values.title,
-            slug: values.slug,
-
-            categoryLabel:
-              values.categoryLabel,
-
-            shortDescription:
-              values.shortDescription,
-
-            description:
-              values.description,
-
-            services:
-              values.services,
-
-            heroTitle:
-              values.heroTitle,
-
-            heroDescription:
-              values.heroDescription,
-
-            cardImageAlt:
-              values.cardImageAlt,
-
-            heroImageAlt:
-              values.heroImageAlt,
-
-            projectDetails: {
-              client:
-                values.client ||
-                null,
-
-              location:
-                values.location ||
-                null,
-
-              completionDate:
-                values.completionDate ||
-                null,
-
-              duration:
-                values.duration ||
-                null,
-
-              status:
-                values.status ||
-                null,
-            },
-
-            detailedScope: {
-              title:
-                values.detailedScopeTitle,
-
-              description:
-                values.detailedScopeDescription,
-
-              items:
-                values.detailedScopeItems,
-            },
-
-            galleryAlt:
-              galleryNewFiles.length >
-              0
-                ? galleryNewFiles.map(
-                    (file) =>
-                      file.alt,
-                  )
-                : undefined,
-
-            certificateAlt:
-              certificateNewFiles.length >
-              0
-                ? certificateNewFiles.map(
-                    (file) =>
-                      file.alt,
-                  )
-                : undefined,
-
-            removeGalleryPublicIds:
-              isEditing
-                ? galleryRemovedPublicIds
-                : undefined,
-
-            removeCertificatePublicIds:
-              isEditing
-                ? certificateRemovedPublicIds
-                : undefined,
-
-            displayOrder:
-              values.displayOrder,
-
-            isFeatured:
-              values.isFeatured,
-
-            isActive:
-              values.isActive,
+      const formData = buildFormData(
+        {
+          title: values.title,
+          slug: values.slug,
+          categoryLabel: values.categoryLabel,
+          shortDescription: values.shortDescription,
+          description: values.description,
+          services: values.services,
+          heroTitle: values.heroTitle,
+          heroDescription: values.heroDescription,
+          cardImageAlt: values.cardImageAlt,
+          heroImageAlt: values.heroImageAlt,
+          projectDetails: {
+            client: values.client || null,
+            location: values.location || null,
+            completionDate: values.completionDate || null,
+            duration: values.duration || null,
+            status: values.status || null,
           },
-          {
-            cardImage:
-              cardImageFile,
-
-            heroImage:
-              heroImageFile,
+          detailedScope: {
+            title: values.detailedScopeTitle,
+            description: values.detailedScopeDescription,
+            items: values.detailedScopeItems,
           },
-        )
-
-
-      galleryNewFiles.forEach(
-        ({ file }) => {
-          formData.append(
-            'gallery',
-            file,
-          )
+          galleryAlt:
+            galleryNewFiles.length > 0
+              ? galleryNewFiles.map((file) => file.alt)
+              : undefined,
+          certificateAlt:
+            certificateNewFiles.length > 0
+              ? certificateNewFiles.map((file) => file.alt)
+              : undefined,
+          removeGalleryPublicIds: isEditing
+            ? galleryRemovedPublicIds
+            : undefined,
+          removeCertificatePublicIds: isEditing
+            ? certificateRemovedPublicIds
+            : undefined,
+          displayOrder: values.displayOrder,
+          isFeatured: values.isFeatured,
+          isActive: values.isActive,
+        },
+        {
+          cardImage: cardImageFile,
+          heroImage: heroImageFile,
         },
       )
 
+      // ==================== Gallery Files ====================
 
-      certificateNewFiles.forEach(
-        ({ file }) => {
-          formData.append(
-            'certificateImages',
-            file,
-          )
-        },
-      )
+      galleryNewFiles.forEach(({ file }) => {
+        formData.append('gallery', file)
+      })
 
+      // ==================== Certificate Files ====================
 
-      const onError = (
-        error: unknown,
-      ) => {
-        setFormError(
-          applyServerErrors(
-            form,
-            error,
-          ),
-        )
+      certificateNewFiles.forEach(({ file }) => {
+        formData.append('certificateImages', file)
+      })
+
+      // ==================== Server Error ====================
+
+      const onError = (error: unknown) => {
+        const generalError = applyServerErrors(form, error, {
+          customFields: {
+            cardImage: (message: string) => {
+              setCardImageError(message)
+              setCurrentStep(2)
+            },
+            heroImage: (message: string) => {
+              setHeroImageError(message)
+              setCurrentStep((current) => (current === 2 ? current : 3))
+            },
+          },
+        })
+
+        setFormError(generalError)
+        scrollFormToTop()
       }
 
+      // ==================== Update ====================
 
-      if (
-        isEditing &&
-        project
-      ) {
+      if (isEditing && project) {
         updateMutation.mutate(
           {
             id: project._id,
@@ -603,14 +508,10 @@ export function ProjectForm({
           },
           {
             onSuccess: () => {
-              toast.success(
-                'Project updated successfully',
-              )
-
+              toast.success('Project updated successfully')
               guard.bypassOnce()
               onSuccess()
             },
-
             onError,
           },
         )
@@ -618,85 +519,129 @@ export function ProjectForm({
         return
       }
 
+      // ==================== Create ====================
 
-      createMutation.mutate(
-        formData,
-        {
-          onSuccess: () => {
-            toast.success(
-              'Project created successfully',
-            )
-
-            guard.bypassOnce()
-            onSuccess()
-          },
-
-          onError,
+      createMutation.mutate(formData, {
+        onSuccess: () => {
+          toast.success('Project created successfully')
+          guard.bypassOnce()
+          onSuccess()
         },
-      )
-    })
+        onError,
+      })
+    },
 
+    // ==================== Client Validation Error ====================
+
+    (errors) => {
+      if (
+        errors.title ||
+        errors.slug ||
+        errors.categoryLabel ||
+        errors.shortDescription ||
+        errors.description
+      ) {
+        setCurrentStep(0)
+        scrollFormToTop()
+        return
+      }
+
+      if (errors.services) {
+        setCurrentStep(1)
+        scrollFormToTop()
+        return
+      }
+
+      if (errors.cardImageAlt) {
+        setCurrentStep(2)
+        scrollFormToTop()
+        return
+      }
+
+      if (
+        errors.heroTitle ||
+        errors.heroDescription ||
+        errors.heroImageAlt
+      ) {
+        setCurrentStep(3)
+        scrollFormToTop()
+        return
+      }
+
+      if (
+        errors.client ||
+        errors.location ||
+        errors.completionDate ||
+        errors.duration ||
+        errors.status
+      ) {
+        setCurrentStep(4)
+        scrollFormToTop()
+        return
+      }
+
+      if (
+        errors.detailedScopeTitle ||
+        errors.detailedScopeDescription ||
+        errors.detailedScopeItems
+      ) {
+        setCurrentStep(5)
+        scrollFormToTop()
+        return
+      }
+
+      if (
+        errors.displayOrder ||
+        errors.isFeatured ||
+        errors.isActive
+      ) {
+        setCurrentStep(8)
+        scrollFormToTop()
+      }
+    },
+  )
 
   return (
     <form
-      onSubmit={onSubmit}
+      onSubmit={(event) => event.preventDefault()}
       noValidate
-      className="space-y-6"
+      className="flex min-w-0 flex-col gap-5 overflow-x-hidden"
     >
+      {/* ==================== Stepper ==================== */}
 
-      {/* ================= Error ================= */}
+      <FormStepper
+        steps={STEPS}
+        currentStep={currentStep}
+        completedStep={completedStep}
+        onStepClick={handleStepClick}
+      />
 
-      {formError ? (
-        <div
-          role="alert"
-          className="flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/[0.045] px-4 py-3.5"
-        >
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
-            <AlertCircle
-              className="size-4"
-              strokeWidth={1.8}
-            />
-          </div>
+      {/* ==================== General Form Error ==================== */}
 
-          <div className="min-w-0">
-            <p className="text-[12px] font-semibold text-destructive">
-              Unable to save project
-            </p>
+      <FormErrorAlert
+        title="Unable to save project"
+        message={formError}
+      />
 
-            <p className="mt-1 text-[11px] leading-5 text-destructive/80">
-              {formError}
-            </p>
-          </div>
-        </div>
-      ) : null}
+      {/* ==================== Step Content ==================== */}
 
+      <div className="min-w-0">
+        {/* ==================== Step 1 - General Information ==================== */}
 
-      <div className="flex items-start gap-7">
-
-        {/* ================= Navigation ================= */}
-
-        <aside className="hidden w-56 shrink-0 lg:block">
-          <SectionNav
-            items={SECTIONS}
-            title="Project Setup"
-          />
-        </aside>
-
-
-        <div className="min-w-0 flex-1 space-y-6">
-
-          {/* ================= General ================= */}
-
+        {currentStep === 0 ? (
           <FormSection
-            id="proj-section-general"
             title="General Information"
-            description="Define the project identity, category, URL and public descriptions."
+            description="Define the project's identity and primary public content."
             icon={FolderKanban}
+            className="min-w-0"
           >
-            <div className="space-y-5">
+            <div className="space-y-6">
+              {/* ==================== Title And Slug ==================== */}
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-3">
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                {/* ==================== Project Title ==================== */}
+
+                <div className="space-y-2">
                   <Label
                     htmlFor="proj-title"
                     className="text-[12px] font-semibold"
@@ -704,35 +649,27 @@ export function ProjectForm({
                     Project title
                   </Label>
 
-                  <span className="rounded-full border border-border/60 bg-muted/20 px-2 py-0.5 text-[8px] font-semibold tracking-[0.08em] text-muted-foreground/60 uppercase">
-                    Required
-                  </span>
+                  <div className="group relative">
+                    <Tag
+                      className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/45 transition-colors group-focus-within:text-foreground"
+                      strokeWidth={1.8}
+                    />
+
+                    <Input
+                      id="proj-title"
+                      placeholder="e.g. Basra Pipeline Upgrade"
+                      className="h-11 rounded-xl pl-10"
+                      aria-invalid={!!form.formState.errors.title}
+                      {...form.register('title')}
+                    />
+                  </div>
+
+                  <FieldError
+                    message={form.formState.errors.title?.message}
+                  />
                 </div>
 
-                <Input
-                  id="proj-title"
-                  placeholder="e.g. Basra Pipeline Upgrade"
-                  className="h-11 rounded-xl"
-                  aria-invalid={
-                    !!form.formState
-                      .errors.title
-                  }
-                  {...form.register(
-                    'title',
-                  )}
-                />
-
-                <FieldError
-                  message={
-                    form.formState
-                      .errors.title
-                      ?.message
-                  }
-                />
-              </div>
-
-
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                {/* ==================== Slug ==================== */}
 
                 <div className="space-y-2">
                   <Label
@@ -750,624 +687,345 @@ export function ProjectForm({
 
                     <Input
                       id="proj-slug"
-                      placeholder="e.g. basra-pipeline-upgrade"
-                      className="h-11 rounded-xl pl-10 font-mono text-[12px]"
-                      aria-invalid={
-                        !!form
-                          .formState
-                          .errors.slug
-                      }
-                      {...form.register(
-                        'slug',
-                      )}
+                      placeholder="basra-pipeline-upgrade"
+                      className="h-11 rounded-xl pl-10 font-mono text-xs"
+                      aria-invalid={!!form.formState.errors.slug}
+                      {...form.register('slug')}
                     />
                   </div>
 
                   <FieldError
-                    message={
-                      form.formState
-                        .errors.slug
-                        ?.message
-                    }
+                    message={form.formState.errors.slug?.message}
                   />
                 </div>
-
-
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="proj-category"
-                    className="text-[12px] font-semibold"
-                  >
-                    Category label
-                  </Label>
-
-                  <div className="group relative">
-                    <Tag
-                      className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/45 transition-colors group-focus-within:text-foreground"
-                      strokeWidth={1.8}
-                    />
-
-                    <Input
-                      id="proj-category"
-                      placeholder="e.g. Pipeline Services"
-                      className="h-11 rounded-xl pl-10"
-                      aria-invalid={
-                        !!form
-                          .formState
-                          .errors
-                          .categoryLabel
-                      }
-                      {...form.register(
-                        'categoryLabel',
-                      )}
-                    />
-                  </div>
-
-                  <FieldError
-                    message={
-                      form.formState
-                        .errors
-                        .categoryLabel
-                        ?.message
-                    }
-                  />
-                </div>
-
               </div>
 
+              {/* ==================== Category ==================== */}
 
               <div className="space-y-2">
                 <Label
-                  htmlFor="proj-shortDescription"
+                  htmlFor="proj-category"
+                  className="text-[12px] font-semibold"
+                >
+                  Category label
+                </Label>
+
+                <Input
+                  id="proj-category"
+                  placeholder="e.g. Pipeline Services"
+                  className="h-11 rounded-xl"
+                  aria-invalid={!!form.formState.errors.categoryLabel}
+                  {...form.register('categoryLabel')}
+                />
+
+                <FieldError
+                  message={form.formState.errors.categoryLabel?.message}
+                />
+              </div>
+
+              {/* ==================== Short Description ==================== */}
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="proj-short-description"
                   className="text-[12px] font-semibold"
                 >
                   Short description
                 </Label>
 
                 <Textarea
-                  id="proj-shortDescription"
+                  id="proj-short-description"
                   rows={3}
-                  placeholder="Short summary used across project cards."
+                  placeholder="Short description displayed in project cards."
                   className="min-h-[100px] resize-y rounded-xl"
-                  aria-invalid={
-                    !!form.formState
-                      .errors
-                      .shortDescription
-                  }
-                  {...form.register(
-                    'shortDescription',
-                  )}
+                  aria-invalid={!!form.formState.errors.shortDescription}
+                  {...form.register('shortDescription')}
                 />
 
                 <FieldError
-                  message={
-                    form.formState
-                      .errors
-                      .shortDescription
-                      ?.message
-                  }
+                  message={form.formState.errors.shortDescription?.message}
                 />
               </div>
 
+              {/* ==================== Full Description ==================== */}
 
               <div className="space-y-2">
                 <Label
                   htmlFor="proj-description"
                   className="text-[12px] font-semibold"
                 >
-                  Description
+                  Full description
                 </Label>
 
                 <Textarea
                   id="proj-description"
                   rows={5}
-                  placeholder="Detailed project overview."
+                  placeholder="Describe the project, objectives, implementation and results."
                   className="min-h-[140px] resize-y rounded-xl"
-                  aria-invalid={
-                    !!form.formState
-                      .errors.description
-                  }
-                  {...form.register(
-                    'description',
-                  )}
+                  aria-invalid={!!form.formState.errors.description}
+                  {...form.register('description')}
                 />
 
                 <FieldError
-                  message={
-                    form.formState
-                      .errors.description
-                      ?.message
-                  }
+                  message={form.formState.errors.description?.message}
                 />
               </div>
-
             </div>
           </FormSection>
+        ) : null}
 
+        {/* ==================== Step 2 - Related Services ==================== */}
 
-          {/* ================= Services ================= */}
-
+        {currentStep === 1 ? (
           <FormSection
-            id="proj-section-services"
             title="Related Services"
-            description="Link this project with services displayed on the project details page."
-            icon={Link2}
+            description="Select the services related to this project."
+            icon={Workflow}
+            className="min-w-0"
           >
-            {(services ?? []).length ===
-            0 ? (
-              <div className="rounded-2xl border border-dashed border-border bg-muted/[0.08] px-5 py-8 text-center">
-                <p className="text-[11px] font-medium text-muted-foreground">
-                  No services exist yet.
-                  Create a service first if
-                  you want to link it here.
-                </p>
+            {(services ?? []).length === 0 ? (
+              <div className="flex min-h-[180px] items-center justify-center rounded-2xl border border-dashed border-border bg-muted/[0.04] px-6 text-center">
+                <div>
+                  <Workflow
+                    className="mx-auto size-5 text-muted-foreground/45"
+                    strokeWidth={1.6}
+                  />
+
+                  <p className="mt-3 text-[11px] font-semibold text-foreground">
+                    No services available
+                  </p>
+
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Create services first if you want to link them to this
+                    project.
+                  </p>
+                </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {(services ?? []).map(
-                  (service) => {
-                    const checked =
-                      selectedServiceIds.includes(
-                        service._id,
-                      )
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {(services ?? []).map((service) => {
+                  const checked = selectedServiceIds.includes(service._id)
 
-                    return (
-                      <label
-                        key={
-                          service._id
-                        }
-                        className={`group flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3.5 transition-all duration-200 ${
-                          checked
-                            ? 'border-primary/25 bg-primary/[0.045]'
-                            : 'border-border/70 bg-muted/[0.06] hover:border-foreground/10 hover:bg-muted/[0.14]'
-                        }`}
-                      >
-                        <Checkbox
-                          checked={
-                            checked
-                          }
-                          onCheckedChange={(
-                            value,
-                          ) => {
-                            form.setValue(
-                              'services',
-                              value
-                                ? [
-                                    ...selectedServiceIds,
-                                    service._id,
-                                  ]
-                                : selectedServiceIds.filter(
-                                    (
-                                      id,
-                                    ) =>
-                                      id !==
-                                      service._id,
-                                  ),
-                              {
-                                shouldDirty:
-                                  true,
-                                shouldValidate:
-                                  true,
-                              },
-                            )
-                          }}
-                        />
-
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[11px] font-semibold text-foreground">
+                  return (
+                    <label
+                      key={service._id}
+                      className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3.5 transition-colors ${
+                        checked
+                          ? 'border-foreground/15 bg-muted/40'
+                          : 'border-border/70 bg-muted/[0.04] hover:bg-muted/20'
+                      }`}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(value) => {
+                          form.setValue(
+                            'services',
+                            value
+                              ? [...selectedServiceIds, service._id]
+                              : selectedServiceIds.filter(
+                                  (id) => id !== service._id,
+                                ),
                             {
-                              service.title
-                            }
-                          </p>
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            },
+                          )
+                        }}
+                      />
 
-                          <p className="mt-1 text-[9px] text-muted-foreground">
-                            Linked service
-                          </p>
-                        </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-[11px] font-semibold text-foreground">
+                          {service.title}
+                        </p>
 
-                        <Link2
-                          className={`size-3.5 shrink-0 transition-colors ${
-                            checked
-                              ? 'text-primary'
-                              : 'text-muted-foreground/30'
-                          }`}
-                          strokeWidth={
-                            1.8
-                          }
-                        />
-                      </label>
-                    )
-                  },
-                )}
+                        <p className="mt-0.5 text-[9px] text-muted-foreground">
+                          Related service
+                        </p>
+                      </div>
+                    </label>
+                  )
+                })}
               </div>
             )}
+
+            <FieldError
+              message={form.formState.errors.services?.message}
+            />
           </FormSection>
+        ) : null}
 
+        {/* ==================== Step 3 - Project Card ==================== */}
 
-          {/* ================= Card Image ================= */}
-
+        {currentStep === 2 ? (
           <FormSection
-            id="proj-section-card"
-            title="Card Image"
-            description="Upload the image displayed in the public Projects collection."
-            icon={ImagePlus}
+            title="Project Card"
+            description="Configure the image displayed in the public projects collection."
+            icon={PanelsTopLeft}
+            className="min-w-0"
           >
-            <div className="space-y-5">
+            <div className="space-y-6">
+              {/* ==================== Card Image ==================== */}
+
+              <ImageUploadField
+                id="proj-card-image"
+                title="Card image"
+                description="Click the image area to upload or replace the project card image."
+                file={cardImageFile}
+                onFileChange={setCardImageFile}
+                error={cardImageError}
+                onErrorChange={setCardImageError}
+                existingUrl={project?.cardImage?.url}
+                existingAlt={project?.cardImage?.alt ?? 'Project card'}
+                placeholderTitle="Add project card image"
+                placeholderDescription="Click to select an image"
+                acceptedFormatsText="JPEG, PNG, GIF or WebP — maximum file size 5 MB."
+                maxWidthClassName="max-w-[420px]"
+                aspectClassName="aspect-[16/8]"
+                thumbnailWidth={900}
+                icon={ImagePlus}
+                required
+              />
+
+              {/* ==================== Card Image Alt ==================== */}
 
               <div className="space-y-2">
                 <Label
-                  htmlFor="proj-cardImageAlt"
+                  htmlFor="proj-card-alt"
                   className="text-[12px] font-semibold"
                 >
-                  Card image alt text
+                  Image alt text
                 </Label>
 
                 <Input
-                  id="proj-cardImageAlt"
+                  id="proj-card-alt"
                   placeholder="Describe the project card image"
                   className="h-11 rounded-xl"
-                  {...form.register(
-                    'cardImageAlt',
-                  )}
+                  aria-invalid={!!form.formState.errors.cardImageAlt}
+                  {...form.register('cardImageAlt')}
                 />
 
-                <p className="text-[10px] leading-4 text-muted-foreground">
-                  Used for accessibility
-                  and search engine image
-                  context.
-                </p>
+                <FieldError
+                  message={form.formState.errors.cardImageAlt?.message}
+                />
               </div>
-
-
-              <div className="flex justify-start">
-
-                <div className="group relative w-full max-w-[440px] overflow-hidden rounded-[20px] border border-border/70 bg-muted/[0.10]">
-
-                  {cardImagePreview ? (
-                    <div className="relative aspect-[16/7] overflow-hidden bg-background">
-
-                      <img
-                        src={
-                          cardImagePreview
-                        }
-                        alt={
-                          cardImageFile
-                            ? 'Selected project card preview'
-                            : project
-                                ?.cardImage
-                                ?.alt ??
-                              'Project card'
-                        }
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]"
-                      />
-
-                      {cardImageFile ? (
-                        <button
-                          type="button"
-                          aria-label="Remove selected card image"
-                          onClick={() =>
-                            setCardImageFile(
-                              null,
-                            )
-                          }
-                          className="absolute right-2.5 top-2.5 flex size-7 items-center justify-center rounded-lg border border-white/20 bg-black/35 text-white/80 backdrop-blur transition-colors hover:bg-black/50 hover:text-white"
-                        >
-                          <X className="size-3.5" />
-                        </button>
-                      ) : null}
-
-                    </div>
-                  ) : (
-                    <div className="flex aspect-[16/7] flex-col items-center justify-center gap-3 px-5 text-center">
-
-                      <div className="flex size-11 items-center justify-center rounded-xl border border-border/70 bg-background text-muted-foreground">
-                        <ImagePlus
-                          className="size-[18px]"
-                          strokeWidth={
-                            1.8
-                          }
-                        />
-                      </div>
-
-                      <div>
-                        <p className="text-[11px] font-semibold text-foreground">
-                          No card image
-                          selected
-                        </p>
-
-                        <p className="mt-1 text-[9px] text-muted-foreground">
-                          Upload a landscape
-                          project image.
-                        </p>
-                      </div>
-
-                    </div>
-                  )}
-
-                </div>
-
-              </div>
-
-
-              <label
-                htmlFor="proj-cardImage"
-                className="group flex cursor-pointer items-center gap-4 rounded-2xl border border-dashed border-border bg-muted/[0.08] px-4 py-4 transition-all hover:border-foreground/15 hover:bg-muted/[0.15]"
-              >
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background text-muted-foreground transition-colors group-hover:text-foreground">
-                  <Upload
-                    className="size-4"
-                    strokeWidth={1.8}
-                  />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[11px] font-semibold text-foreground">
-                    {cardImageFile
-                      ? cardImageFile.name
-                      : isEditing
-                        ? 'Choose replacement card image'
-                        : 'Choose project card image'}
-                  </p>
-
-                  <p className="mt-1 text-[9px] text-muted-foreground">
-                    JPEG, PNG, GIF or
-                    WebP.
-                  </p>
-                </div>
-
-                <span className="hidden rounded-lg border border-border/70 bg-background px-3 py-1.5 text-[9px] font-semibold text-muted-foreground sm:block">
-                  Browse
-                </span>
-              </label>
-
-              <input
-                id="proj-cardImage"
-                type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                onChange={handleImageChange(
-                  setCardImageFile,
-                )}
-                className="sr-only"
-              />
-
             </div>
           </FormSection>
+        ) : null}
 
+        {/* ==================== Step 4 - Hero Section ==================== */}
 
-          {/* ================= Hero ================= */}
-
+        {currentStep === 3 ? (
           <FormSection
-            id="proj-section-hero"
             title="Hero Section"
-            description="Content shown at the top of the project detail page."
+            description="Configure the main section displayed at the top of the project details page."
             icon={ImagePlus}
+            className="min-w-0"
           >
             <div className="space-y-6">
+              {/* ==================== Hero Title ==================== */}
 
               <div className="space-y-2">
                 <Label
-                  htmlFor="proj-heroTitle"
+                  htmlFor="proj-hero-title"
                   className="text-[12px] font-semibold"
                 >
                   Hero title
                 </Label>
 
                 <Input
-                  id="proj-heroTitle"
+                  id="proj-hero-title"
                   className="h-11 rounded-xl"
-                  aria-invalid={
-                    !!form.formState
-                      .errors.heroTitle
-                  }
-                  {...form.register(
-                    'heroTitle',
-                  )}
+                  aria-invalid={!!form.formState.errors.heroTitle}
+                  {...form.register('heroTitle')}
                 />
 
                 <FieldError
-                  message={
-                    form.formState
-                      .errors.heroTitle
-                      ?.message
-                  }
+                  message={form.formState.errors.heroTitle?.message}
                 />
               </div>
 
+              {/* ==================== Hero Description ==================== */}
 
               <div className="space-y-2">
                 <Label
-                  htmlFor="proj-heroDescription"
+                  htmlFor="proj-hero-description"
                   className="text-[12px] font-semibold"
                 >
                   Hero description
                 </Label>
 
                 <Textarea
-                  id="proj-heroDescription"
-                  rows={5}
-                  className="min-h-[140px] resize-y rounded-xl"
-                  aria-invalid={
-                    !!form.formState
-                      .errors
-                      .heroDescription
-                  }
-                  {...form.register(
-                    'heroDescription',
-                  )}
+                  id="proj-hero-description"
+                  rows={4}
+                  className="min-h-[120px] resize-y rounded-xl"
+                  aria-invalid={!!form.formState.errors.heroDescription}
+                  {...form.register('heroDescription')}
                 />
 
                 <FieldError
-                  message={
-                    form.formState
-                      .errors
-                      .heroDescription
-                      ?.message
-                  }
+                  message={form.formState.errors.heroDescription?.message}
                 />
               </div>
 
+              {/* ==================== Hero Image ==================== */}
+
+              <ImageUploadField
+                id="proj-hero-image"
+                title="Hero image"
+                description="Click the image area to upload or replace the project hero image."
+                file={heroImageFile}
+                onFileChange={setHeroImageFile}
+                error={heroImageError}
+                onErrorChange={setHeroImageError}
+                existingUrl={project?.hero?.image?.url}
+                existingAlt={project?.hero?.image?.alt ?? 'Project hero'}
+                placeholderTitle="Add project hero image"
+                placeholderDescription="Click to select an image"
+                acceptedFormatsText="JPEG, PNG, GIF or WebP — maximum file size 5 MB."
+                maxWidthClassName="max-w-[500px]"
+                aspectClassName="aspect-[16/8]"
+                thumbnailWidth={1200}
+                icon={ImagePlus}
+                required
+              />
+
+              {/* ==================== Hero Image Alt ==================== */}
 
               <div className="space-y-2">
                 <Label
-                  htmlFor="proj-heroImageAlt"
+                  htmlFor="proj-hero-alt"
                   className="text-[12px] font-semibold"
                 >
                   Hero image alt text
                 </Label>
 
                 <Input
-                  id="proj-heroImageAlt"
+                  id="proj-hero-alt"
                   placeholder="Describe the project hero image"
                   className="h-11 rounded-xl"
-                  {...form.register(
-                    'heroImageAlt',
-                  )}
-                />
-              </div>
-
-
-              <div className="border-t border-border/60 pt-6">
-
-                <div className="mb-4 flex items-start gap-3">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-muted/30 text-muted-foreground">
-                    <ImagePlus
-                      className="size-4"
-                      strokeWidth={1.8}
-                    />
-                  </div>
-
-                  <div>
-                    <p className="text-[11px] font-semibold text-foreground">
-                      Hero image
-                    </p>
-
-                    <p className="mt-1 text-[9px] leading-4 text-muted-foreground">
-                      {isEditing
-                        ? 'Leave unchanged to keep the current hero image.'
-                        : 'Use a wide high-quality image suitable for the project hero.'}
-                    </p>
-                  </div>
-                </div>
-
-
-                <div className="flex justify-start">
-
-                  <div className="group relative w-full max-w-[560px] overflow-hidden rounded-[20px] border border-border/70 bg-muted/[0.10]">
-
-                    {heroImagePreview ? (
-                      <div className="relative aspect-[16/8] overflow-hidden bg-background">
-
-                        <img
-                          src={
-                            heroImagePreview
-                          }
-                          alt={
-                            heroImageFile
-                              ? 'Selected project hero preview'
-                              : project
-                                  ?.hero
-                                  ?.image
-                                  ?.alt ??
-                                'Project hero'
-                          }
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                        />
-
-                        {heroImageFile ? (
-                          <button
-                            type="button"
-                            aria-label="Remove selected hero image"
-                            onClick={() =>
-                              setHeroImageFile(
-                                null,
-                              )
-                            }
-                            className="absolute right-2.5 top-2.5 flex size-7 items-center justify-center rounded-lg border border-white/20 bg-black/35 text-white/80 backdrop-blur transition-colors hover:bg-black/50 hover:text-white"
-                          >
-                            <X className="size-3.5" />
-                          </button>
-                        ) : null}
-
-                      </div>
-                    ) : (
-                      <div className="flex aspect-[16/8] flex-col items-center justify-center gap-3 px-5 text-center">
-                        <div className="flex size-11 items-center justify-center rounded-xl border border-border/70 bg-background text-muted-foreground">
-                          <ImagePlus
-                            className="size-[18px]"
-                            strokeWidth={
-                              1.8
-                            }
-                          />
-                        </div>
-
-                        <p className="text-[11px] font-semibold text-foreground">
-                          No hero image
-                          selected
-                        </p>
-                      </div>
-                    )}
-
-                  </div>
-
-                </div>
-
-
-                <label
-                  htmlFor="proj-heroImage"
-                  className="group mt-4 flex cursor-pointer items-center gap-4 rounded-2xl border border-dashed border-border bg-muted/[0.08] px-4 py-4 transition-all hover:border-foreground/15 hover:bg-muted/[0.15]"
-                >
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background text-muted-foreground transition-colors group-hover:text-foreground">
-                    <Upload
-                      className="size-4"
-                      strokeWidth={1.8}
-                    />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[11px] font-semibold text-foreground">
-                      {heroImageFile
-                        ? heroImageFile.name
-                        : isEditing
-                          ? 'Choose replacement hero image'
-                          : 'Choose hero image'}
-                    </p>
-
-                    <p className="mt-1 text-[9px] text-muted-foreground">
-                      JPEG, PNG, GIF or
-                      WebP.
-                    </p>
-                  </div>
-
-                  <span className="hidden rounded-lg border border-border/70 bg-background px-3 py-1.5 text-[9px] font-semibold text-muted-foreground sm:block">
-                    Browse
-                  </span>
-                </label>
-
-                <input
-                  id="proj-heroImage"
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp"
-                  onChange={handleImageChange(
-                    setHeroImageFile,
-                  )}
-                  className="sr-only"
+                  aria-invalid={!!form.formState.errors.heroImageAlt}
+                  {...form.register('heroImageAlt')}
                 />
 
+                <FieldError
+                  message={form.formState.errors.heroImageAlt?.message}
+                />
               </div>
-
             </div>
           </FormSection>
+        ) : null}
 
+        {/* ==================== Step 5 - Project Details ==================== */}
 
-          {/* ================= Project Details ================= */}
-
+        {currentStep === 4 ? (
           <FormSection
-            id="proj-section-details"
             title="Project Details"
-            description="Optional project metadata displayed on the detail page."
+            description="Add optional operational and commercial information about the project."
             icon={BriefcaseBusiness}
+            className="min-w-0"
           >
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              {/* ==================== Client ==================== */}
 
               <div className="space-y-2">
                 <Label
@@ -1377,16 +1035,27 @@ export function ProjectForm({
                   Client
                 </Label>
 
-                <Input
-                  id="proj-client"
-                  className="h-11 rounded-xl"
-                  placeholder="Client name"
-                  {...form.register(
-                    'client',
-                  )}
+                <div className="relative">
+                  <BriefcaseBusiness
+                    className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/45"
+                    strokeWidth={1.8}
+                  />
+
+                  <Input
+                    id="proj-client"
+                    placeholder="Client or organization"
+                    className="h-11 rounded-xl pl-10"
+                    aria-invalid={!!form.formState.errors.client}
+                    {...form.register('client')}
+                  />
+                </div>
+
+                <FieldError
+                  message={form.formState.errors.client?.message}
                 />
               </div>
 
+              {/* ==================== Location ==================== */}
 
               <div className="space-y-2">
                 <Label
@@ -1404,19 +1073,23 @@ export function ProjectForm({
 
                   <Input
                     id="proj-location"
+                    placeholder="e.g. Basra, Iraq"
                     className="h-11 rounded-xl pl-10"
-                    placeholder="Project location"
-                    {...form.register(
-                      'location',
-                    )}
+                    aria-invalid={!!form.formState.errors.location}
+                    {...form.register('location')}
                   />
                 </div>
+
+                <FieldError
+                  message={form.formState.errors.location?.message}
+                />
               </div>
 
+              {/* ==================== Completion Date ==================== */}
 
               <div className="space-y-2">
                 <Label
-                  htmlFor="proj-completionDate"
+                  htmlFor="proj-date"
                   className="text-[12px] font-semibold"
                 >
                   Completion date
@@ -1424,21 +1097,25 @@ export function ProjectForm({
 
                 <div className="relative">
                   <CalendarDays
-                    className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/45"
+                    className="pointer-events-none absolute left-3.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground/45"
                     strokeWidth={1.8}
                   />
 
                   <Input
-                    id="proj-completionDate"
+                    id="proj-date"
                     type="date"
                     className="h-11 rounded-xl pl-10"
-                    {...form.register(
-                      'completionDate',
-                    )}
+                    aria-invalid={!!form.formState.errors.completionDate}
+                    {...form.register('completionDate')}
                   />
                 </div>
+
+                <FieldError
+                  message={form.formState.errors.completionDate?.message}
+                />
               </div>
 
+              {/* ==================== Duration ==================== */}
 
               <div className="space-y-2">
                 <Label
@@ -1450,16 +1127,20 @@ export function ProjectForm({
 
                 <Input
                   id="proj-duration"
-                  className="h-11 rounded-xl"
                   placeholder="e.g. 6 months"
-                  {...form.register(
-                    'duration',
-                  )}
+                  className="h-11 rounded-xl"
+                  aria-invalid={!!form.formState.errors.duration}
+                  {...form.register('duration')}
+                />
+
+                <FieldError
+                  message={form.formState.errors.duration?.message}
                 />
               </div>
 
+              {/* ==================== Project Status ==================== */}
 
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2 lg:col-span-2">
                 <Label
                   htmlFor="proj-status"
                   className="text-[12px] font-semibold"
@@ -1469,254 +1150,164 @@ export function ProjectForm({
 
                 <Input
                   id="proj-status"
-                  className="h-11 rounded-xl"
                   placeholder="e.g. Completed"
-                  {...form.register(
-                    'status',
-                  )}
+                  className="h-11 rounded-xl"
+                  aria-invalid={!!form.formState.errors.status}
+                  {...form.register('status')}
+                />
+
+                <FieldError
+                  message={form.formState.errors.status?.message}
+                />
+              </div>
+            </div>
+          </FormSection>
+        ) : null}
+
+        {/* ==================== Step 6 - Detailed Scope ==================== */}
+
+        {currentStep === 5 ? (
+          <FormSection
+            title="Detailed Scope"
+            description="Describe the technical scope and key project activities."
+            icon={FileCheck2}
+            className="min-w-0"
+          >
+            <div className="space-y-6">
+              {/* ==================== Scope Title ==================== */}
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="proj-scope-title"
+                  className="text-[12px] font-semibold"
+                >
+                  Section title
+                </Label>
+
+                <Input
+                  id="proj-scope-title"
+                  className="h-11 rounded-xl"
+                  aria-invalid={!!form.formState.errors.detailedScopeTitle}
+                  {...form.register('detailedScopeTitle')}
+                />
+
+                <FieldError
+                  message={form.formState.errors.detailedScopeTitle?.message}
                 />
               </div>
 
-            </div>
-          </FormSection>
+              {/* ==================== Scope Description ==================== */}
 
+              <div className="space-y-2">
+                <Label
+                  htmlFor="proj-scope-description"
+                  className="text-[12px] font-semibold"
+                >
+                  Description
+                </Label>
 
-          {/* ================= Scope ================= */}
+                <Textarea
+                  id="proj-scope-description"
+                  rows={4}
+                  className="min-h-[110px] resize-y rounded-xl"
+                  aria-invalid={
+                    !!form.formState.errors.detailedScopeDescription
+                  }
+                  {...form.register('detailedScopeDescription')}
+                />
 
-          <FormSection
-            id="proj-section-scope"
-            title="Detailed Scope"
-            description="Describe the technical and operational work delivered in this project."
-            icon={Workflow}
-          >
-            <div className="space-y-6">
-
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="proj-scopeTitle"
-                    className="text-[12px] font-semibold"
-                  >
-                    Section title
-                  </Label>
-
-                  <Input
-                    id="proj-scopeTitle"
-                    className="h-11 rounded-xl"
-                    aria-invalid={
-                      !!form
-                        .formState
-                        .errors
-                        .detailedScopeTitle
-                    }
-                    {...form.register(
-                      'detailedScopeTitle',
-                    )}
-                  />
-
-                  <FieldError
-                    message={
-                      form.formState
-                        .errors
-                        .detailedScopeTitle
-                        ?.message
-                    }
-                  />
-                </div>
-
-
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="proj-scopeDescription"
-                    className="text-[12px] font-semibold"
-                  >
-                    Description
-                  </Label>
-
-                  <Textarea
-                    id="proj-scopeDescription"
-                    rows={3}
-                    className="min-h-[90px] resize-y rounded-xl"
-                    aria-invalid={
-                      !!form
-                        .formState
-                        .errors
-                        .detailedScopeDescription
-                    }
-                    {...form.register(
-                      'detailedScopeDescription',
-                    )}
-                  />
-
-                  <FieldError
-                    message={
-                      form.formState
-                        .errors
-                        .detailedScopeDescription
-                        ?.message
-                    }
-                  />
-                </div>
-
+                <FieldError
+                  message={
+                    form.formState.errors.detailedScopeDescription?.message
+                  }
+                />
               </div>
 
+              {/* ==================== Scope Items ==================== */}
 
-              <div className="rounded-2xl border border-border/70 bg-muted/[0.06] p-4">
-
-                <div className="mb-4 flex items-start gap-3">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background text-muted-foreground">
-                    <Workflow
-                      className="size-4"
-                      strokeWidth={1.8}
-                    />
-                  </div>
-
-                  <div>
-                    <p className="text-[11px] font-semibold text-foreground">
-                      Scope items
-                    </p>
-
-                    <p className="mt-1 text-[9px] leading-4 text-muted-foreground">
-                      Add the main
-                      technical work and
-                      project deliverables.
-                    </p>
-                  </div>
-                </div>
-
+              <div className="rounded-2xl border border-border/70 bg-muted/[0.05] p-4">
                 <StepsEditor
                   label="Scope items"
                   itemLabel="Item"
-                  values={
-                    form.watch(
-                      'detailedScopeItems',
-                    ) ?? []
+                  values={form.watch('detailedScopeItems') ?? []}
+                  onChange={(items) =>
+                    form.setValue('detailedScopeItems', items, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
                   }
-                  onChange={(
-                    items,
-                  ) =>
-                    form.setValue(
-                      'detailedScopeItems',
-                      items,
-                      {
-                        shouldDirty:
-                          true,
-                        shouldValidate:
-                          true,
-                      },
-                    )
-                  }
-                  error={
-                    form.formState
-                      .errors
-                      .detailedScopeItems
-                      ?.message
-                  }
+                  error={getArrayErrorMessage(
+                    form.formState.errors.detailedScopeItems,
+                  )}
+                  itemErrors={getStepItemErrors(
+                    form.formState.errors.detailedScopeItems,
+                  )}
                 />
-
               </div>
-
             </div>
           </FormSection>
+        ) : null}
 
+        {/* ==================== Step 7 - Gallery ==================== */}
 
-          {/* ================= Gallery ================= */}
-
+        {currentStep === 6 ? (
           <FormSection
-            id="proj-section-gallery"
-            title="Gallery"
-            description="Additional project images displayed on the public project page."
-            icon={Images}
+            title="Project Gallery"
+            description={`Upload additional project photographs. Maximum ${GALLERY_MAX} images.`}
+            icon={GalleryHorizontalEnd}
+            className="min-w-0"
           >
-            <div className="rounded-2xl border border-border/70 bg-muted/[0.06] p-4">
-
-              <GalleryManager
-                id="proj-gallery"
-                label="Gallery images"
-                existingImages={
-                  project?.gallery ?? []
-                }
-                removedPublicIds={
-                  galleryRemovedPublicIds
-                }
-                onRemovedPublicIdsChange={
-                  setGalleryRemovedPublicIds
-                }
-                newFiles={
-                  galleryNewFiles
-                }
-                onNewFilesChange={
-                  setGalleryNewFiles
-                }
-                maxFiles={
-                  GALLERY_MAX
-                }
-                onError={
-                  setFormError
-                }
-              />
-
-            </div>
+            <GalleryManager
+              id="proj-gallery"
+              label="Gallery images"
+              existingImages={project?.gallery ?? []}
+              removedPublicIds={galleryRemovedPublicIds}
+              onRemovedPublicIdsChange={setGalleryRemovedPublicIds}
+              newFiles={galleryNewFiles}
+              onNewFilesChange={setGalleryNewFiles}
+              maxFiles={GALLERY_MAX}
+              onError={setFormError}
+            />
           </FormSection>
+        ) : null}
 
+        {/* ==================== Step 8 - Certificates ==================== */}
 
-          {/* ================= Certificates ================= */}
-
+        {currentStep === 7 ? (
           <FormSection
-            id="proj-section-certificates"
             title="Certificates"
-            description="Compliance, inspection or safety certificates related to this project."
-            icon={FileBadge2}
+            description={`Upload compliance and safety certificate images. Maximum ${CERTIFICATE_MAX} files.`}
+            icon={FileCheck2}
+            className="min-w-0"
           >
-            <div className="rounded-2xl border border-border/70 bg-muted/[0.06] p-4">
-
-              <GalleryManager
-                id="proj-certificates"
-                label="Certificate images"
-                existingImages={
-                  project?.certificates ??
-                  []
-                }
-                removedPublicIds={
-                  certificateRemovedPublicIds
-                }
-                onRemovedPublicIdsChange={
-                  setCertificateRemovedPublicIds
-                }
-                newFiles={
-                  certificateNewFiles
-                }
-                onNewFilesChange={
-                  setCertificateNewFiles
-                }
-                maxFiles={
-                  CERTIFICATE_MAX
-                }
-                onError={
-                  setFormError
-                }
-              />
-
-            </div>
+            <GalleryManager
+              id="proj-certificates"
+              label="Certificate images"
+              existingImages={project?.certificates ?? []}
+              removedPublicIds={certificateRemovedPublicIds}
+              onRemovedPublicIdsChange={setCertificateRemovedPublicIds}
+              newFiles={certificateNewFiles}
+              onNewFilesChange={setCertificateNewFiles}
+              maxFiles={CERTIFICATE_MAX}
+              onError={setFormError}
+            />
           </FormSection>
+        ) : null}
 
+        {/* ==================== Step 9 - Project Settings ==================== */}
 
-          {/* ================= Settings ================= */}
-
+        {currentStep === 8 ? (
           <FormSection
-            id="proj-section-settings"
-            title="Display Settings"
-            description="Control ordering, featured state and public visibility."
+            title="Project Settings"
+            description="Control ordering, featured placement and public visibility."
             icon={Settings2}
+            className="min-w-0"
           >
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="space-y-5">
+              {/* ==================== Display Order ==================== */}
 
-              {/* Order */}
-
-              <div className="rounded-2xl border border-border/70 bg-muted/[0.08] p-4">
+              <div className="rounded-2xl border border-border/70 bg-muted/[0.06] p-4">
                 <div className="flex items-start gap-3">
-
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background text-muted-foreground">
                     <Hash
                       className="size-4"
@@ -1733,12 +1324,10 @@ export function ProjectForm({
                     </Label>
 
                     <p className="mt-1 text-[9px] leading-4 text-muted-foreground">
-                      Lower values appear
-                      earlier in the
-                      projects collection.
+                      Lower values appear earlier in the public projects
+                      collection.
                     </p>
                   </div>
-
                 </div>
 
                 <Input
@@ -1746,43 +1335,29 @@ export function ProjectForm({
                   type="number"
                   min={0}
                   max={999}
-                  className="mt-4 h-11 rounded-xl text-center text-base font-semibold tabular-nums"
-                  aria-invalid={
-                    !!form.formState
-                      .errors.displayOrder
-                  }
-                  {...form.register(
-                    'displayOrder',
-                    {
-                      valueAsNumber:
-                        true,
-                    },
-                  )}
+                  className="mt-4 h-11 rounded-xl bg-background text-center text-base font-semibold tabular-nums"
+                  aria-invalid={!!form.formState.errors.displayOrder}
+                  {...form.register('displayOrder', {
+                    valueAsNumber: true,
+                  })}
                 />
 
                 <FieldError
-                  message={
-                    form.formState
-                      .errors
-                      .displayOrder
-                      ?.message
-                  }
+                  message={form.formState.errors.displayOrder?.message}
                 />
               </div>
 
-
-              {/* Featured */}
+              {/* ==================== Featured Project ==================== */}
 
               <div
                 className={`rounded-2xl border p-4 transition-colors ${
                   isFeatured
                     ? 'border-info/20 bg-info/[0.035]'
-                    : 'border-border/70 bg-muted/[0.08]'
+                    : 'border-border/70 bg-muted/[0.06]'
                 }`}
               >
-                <div className="flex h-full flex-col justify-between gap-5">
-
-                  <div className="flex items-start gap-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex min-w-0 items-start gap-3">
                     <div
                       className={`flex size-9 shrink-0 items-center justify-center rounded-xl border ${
                         isFeatured
@@ -1792,13 +1367,11 @@ export function ProjectForm({
                     >
                       <Sparkles
                         className="size-4"
-                        strokeWidth={
-                          1.8
-                        }
+                        strokeWidth={1.8}
                       />
                     </div>
 
-                    <div>
+                    <div className="min-w-0">
                       <Label
                         htmlFor="proj-featured"
                         className="cursor-pointer text-[12px] font-semibold"
@@ -1807,186 +1380,73 @@ export function ProjectForm({
                       </Label>
 
                       <p className="mt-1 text-[9px] leading-4 text-muted-foreground">
-                        Highlight this
-                        project as a
-                        featured case
-                        study.
+                        {isFeatured
+                          ? 'This project can appear in featured project areas.'
+                          : 'Enable to feature this project in highlighted areas.'}
                       </p>
                     </div>
                   </div>
 
-
-                  <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background/70 px-3 py-2.5">
-
-                    <span className="text-[10px] font-semibold text-foreground">
-                      {isFeatured
-                        ? 'Featured'
-                        : 'Standard'}
-                    </span>
-
-                    <Switch
-                      id="proj-featured"
-                      checked={
-                        isFeatured
-                      }
-                      onCheckedChange={(
-                        checked,
-                      ) =>
-                        form.setValue(
-                          'isFeatured',
-                          checked,
-                          {
-                            shouldDirty:
-                              true,
-                            shouldValidate:
-                              true,
-                          },
-                        )
-                      }
-                    />
-
-                  </div>
-
+                  <Switch
+                    id="proj-featured"
+                    checked={isFeatured}
+                    onCheckedChange={(checked) =>
+                      form.setValue('isFeatured', checked, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                  />
                 </div>
               </div>
 
+              {/* ==================== Public Visibility ==================== */}
 
-              {/* Visibility */}
-
-              <div
-                className={`rounded-2xl border p-4 transition-colors ${
-                  isActive
-                    ? 'border-success/20 bg-success/[0.035]'
-                    : 'border-border/70 bg-muted/[0.08]'
-                }`}
-              >
-                <div className="flex h-full flex-col justify-between gap-5">
-
-                  <div className="flex items-start gap-3">
-
-                    <div
-                      className={`flex size-9 shrink-0 items-center justify-center rounded-xl border ${
-                        isActive
-                          ? 'border-success/15 bg-success-subtle text-success'
-                          : 'border-border/70 bg-background text-muted-foreground'
-                      }`}
-                    >
-                      {isActive ? (
-                        <CheckCircle2
-                          className="size-4"
-                          strokeWidth={
-                            1.8
-                          }
-                        />
-                      ) : (
-                        <EyeOff
-                          className="size-4"
-                          strokeWidth={
-                            1.8
-                          }
-                        />
-                      )}
-                    </div>
-
-                    <div>
-                      <Label
-                        htmlFor="proj-active"
-                        className="cursor-pointer text-[12px] font-semibold"
-                      >
-                        Public visibility
-                      </Label>
-
-                      <p className="mt-1 text-[9px] leading-4 text-muted-foreground">
-                        {isActive
-                          ? 'This project is visible on the public website.'
-                          : 'This project is hidden from the public website.'}
-                      </p>
-                    </div>
-
-                  </div>
-
-
-                  <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background/70 px-3 py-2.5">
-
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`size-2 rounded-full ${
-                          isActive
-                            ? 'bg-success'
-                            : 'bg-muted-foreground/35'
-                        }`}
-                      />
-
-                      <span className="text-[10px] font-semibold text-foreground">
-                        {isActive
-                          ? 'Visible'
-                          : 'Hidden'}
-                      </span>
-                    </div>
-
-                    <Switch
-                      id="proj-active"
-                      checked={isActive}
-                      onCheckedChange={(
-                        checked,
-                      ) =>
-                        form.setValue(
-                          'isActive',
-                          checked,
-                          {
-                            shouldDirty:
-                              true,
-                            shouldValidate:
-                              true,
-                          },
-                        )
-                      }
-                    />
-
-                  </div>
-
-                </div>
-              </div>
-
+              <VisibilityToggle
+                id="proj-active"
+                checked={isActive}
+                onCheckedChange={(checked) =>
+                  form.setValue('isActive', checked, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+                }
+                title="Public visibility"
+                activeDescription="This project is visible on the public website."
+                inactiveDescription="This project is hidden from the public website."
+                activeLabel="Visible"
+                inactiveLabel="Hidden"
+              />
             </div>
           </FormSection>
-
-
-          {/* ================= Actions ================= */}
-
-          <FormActions
-            onCancel={onCancel}
-            submitLabel={
-              isEditing
-                ? 'Save changes'
-                : 'Create project'
-            }
-            isSubmitting={
-              isSubmitting
-            }
-            sticky
-          />
-
-        </div>
+        ) : null}
       </div>
 
+      {/* ==================== Actions ==================== */}
+
+      <FormStepNavigation
+        currentStep={currentStep}
+        totalSteps={STEPS.length}
+        onPrevious={handlePrevious}
+        onNext={handleNext}
+        onSubmit={onSubmit}
+        isSubmitting={isSubmitting}
+        submitLabel={isEditing ? 'Save changes' : 'Create project'}
+      />
+
+      {/* ==================== Confirm Dialog ==================== */}
 
       <ConfirmDialog
         open={guard.isBlocked}
         onOpenChange={(open) => {
-          if (!open) {
-            guard.cancelLeave()
-          }
+          if (!open) guard.cancelLeave()
         }}
         title="Discard changes?"
         description="You have unsaved changes. Are you sure you want to discard them?"
         confirmLabel="Discard"
         variant="destructive"
-        onConfirm={
-          guard.confirmLeave
-        }
+        onConfirm={guard.confirmLeave}
       />
-
     </form>
   )
 }
