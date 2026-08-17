@@ -4,7 +4,6 @@ import {
   Building2,
   CalendarDays,
   CheckCircle2,
-  Clock3,
   Mail,
   MapPin,
   Phone,

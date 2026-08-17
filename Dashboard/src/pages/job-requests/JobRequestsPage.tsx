@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { CheckCircle2, CircleDot, FileCheck2, FileText, Filter, Search, UserCheck, UserRoundCheck, UserX, X } from 'lucide-react'
+import {CircleDot, FileCheck2, FileText, Filter, Search, UserCheck, UserRoundCheck, UserX, X } from 'lucide-react'
 
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeader } from '@/components/layout/PageHeader'

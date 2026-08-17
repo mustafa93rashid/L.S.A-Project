@@ -6,7 +6,6 @@ import {
   Clock3,
   MoreHorizontal,
   Phone,
-  RotateCcw,
   ShieldCheck,
   UserCog,
   UserRoundCheck,

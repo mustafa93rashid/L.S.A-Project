@@ -36,7 +36,6 @@ export default function ServiceEditPage() {
         <ServiceForm
           service={service}
           onSuccess={() => navigate(LIST_PATH)}
-          onCancel={() => navigate(LIST_PATH)}
         />
       )}
     </PageContainer>
