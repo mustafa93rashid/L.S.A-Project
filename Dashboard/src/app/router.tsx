@@ -124,6 +124,14 @@ const ProjectEditPage = lazy(() => import('@/pages/projects/ProjectEditPage'))
 
 const CompanyProfilePage = lazy(() => import('@/pages/company-profile/CompanyProfilePage'))
 
+// =====================================================
+// Backup & Recovery
+// =====================================================
+
+const BackupRecoveryPage = lazy(
+  () => import('@/pages/backups/BackupRecoveryPage'),
+)
+
 
 // =====================================================
 // Suspense Wrapper
@@ -132,6 +140,7 @@ const CompanyProfilePage = lazy(() => import('@/pages/company-profile/CompanyPro
 function SuspendedOutlet({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>
 }
+
 
 
 // =====================================================
@@ -667,6 +676,22 @@ export const router = createBrowserRouter([
             ),
             handle: { crumb: 'Users' },
           },
+
+// =============================================
+// Backup & Recovery
+// =============================================
+
+{
+  path: 'backups',
+  element: (
+    <RequireRole roles={MODULE_ROLES[MODULES.BACKUPS]}>
+      <SuspendedOutlet>
+        <BackupRecoveryPage />
+      </SuspendedOutlet>
+    </RequireRole>
+  ),
+  handle: { crumb: 'Backup & Recovery' },
+},
 
 
           // =============================================

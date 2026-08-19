@@ -1,5 +1,6 @@
 import {
   Briefcase,
+  DatabaseBackup,
   FileText,
   FolderKanban,
   Handshake,
@@ -135,4 +136,11 @@ export const NAV_ITEMS: NavItem[] = [
     module: MODULES.USERS,
     group: 'Administration',
   },
+  {
+  label: 'Backup & Recovery',
+  path: '/backups',
+  icon: DatabaseBackup,
+  module: MODULES.BACKUPS,
+  group: 'Administration',
+},
 ]

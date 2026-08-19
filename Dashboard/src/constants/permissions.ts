@@ -21,6 +21,7 @@ export const MODULES = {
   JOB_REQUESTS: 'jobRequests',
   CONTACT_MESSAGES: 'contactMessages',
   COMPANY_PROFILE: 'companyProfile',
+    BACKUPS: 'backups',
 } as const
 
 export type ModuleKey = (typeof MODULES)[keyof typeof MODULES]
@@ -40,6 +41,7 @@ export const MODULE_ROLES: Record<ModuleKey, Role[]> = {
   [MODULES.JOB_REQUESTS]: [ROLES.SUPERADMIN, ROLES.MANAGER, ROLES.HR_MANAGER],
   [MODULES.CONTACT_MESSAGES]: [ROLES.SUPERADMIN, ROLES.MANAGER, ROLES.CONTENT_MANAGER],
   [MODULES.COMPANY_PROFILE]: [ROLES.SUPERADMIN, ROLES.MANAGER, ROLES.CONTENT_MANAGER],
+  [MODULES.BACKUPS]: [ROLES.SUPERADMIN, ROLES.MANAGER],
 }
 
 export function hasModuleAccess(role: Role | undefined, moduleKey: ModuleKey): boolean {

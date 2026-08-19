@@ -103,6 +103,9 @@ app.use("/api/v1/notifications", require("./routers/notification.routes"));
 // Company Profile routes
 app.use("/api/v1/company-profile", require("./routers/companyProfile.routes"));
 
+// Backup routes
+app.use("/api/v1/backups", require("./routers/backup.routes"));
+
 //=========================================================================
 // Error Handling Middleware
 //=========================================================================
