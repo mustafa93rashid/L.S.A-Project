@@ -10,6 +10,9 @@ const cloudinary = require("cloudinary").v2;
 
 const SUPPORTED_BACKUP_VERSION = 1;
 
+const CLOUDINARY_BACKUP_FOLDER = "lsa";
+const CLOUDINARY_BACKUP_PREFIX = `${CLOUDINARY_BACKUP_FOLDER}/`;
+
 const REQUIRED_BACKUP_FILES = [
   "backup-info.json",
   "database/mongodb.archive.gz",
@@ -34,11 +37,11 @@ const createServiceError = (
 // ==================== Validate Configuration ====================
 
 const validateRestoreConfiguration = () => {
-  if (!process.env.MONGODB_URI) {
+  if (!process.env.MONGODB_URL) {
     throw createServiceError(
       "MongoDB connection string is not configured",
       500,
-      "RESTORE_MONGODB_URI_MISSING",
+      "RESTORE_MONGODB_URL_MISSING",
     );
   }
 
@@ -81,7 +84,9 @@ const configureCloudinary = () => {
 // ==================== Remove Directory Safely ====================
 
 const removeDirectorySafely = async (directoryPath) => {
-  if (!directoryPath) return;
+  if (!directoryPath) {
+    return;
+  }
 
   try {
     await fsPromises.rm(directoryPath, {
@@ -90,7 +95,7 @@ const removeDirectorySafely = async (directoryPath) => {
     });
   } catch (error) {
     console.error(
-      "Failed to remove temporary restore directory:",
+      "[Restore] Failed to remove temporary restore directory:",
       error,
     );
   }
@@ -99,14 +104,16 @@ const removeDirectorySafely = async (directoryPath) => {
 // ==================== Remove File Safely ====================
 
 const removeFileSafely = async (filePath) => {
-  if (!filePath) return;
+  if (!filePath) {
+    return;
+  }
 
   try {
     await fsPromises.unlink(filePath);
   } catch (error) {
     if (error.code !== "ENOENT") {
       console.error(
-        "Failed to remove temporary restore file:",
+        "[Restore] Failed to remove temporary restore file:",
         error,
       );
     }
@@ -115,7 +122,10 @@ const removeFileSafely = async (filePath) => {
 
 // ==================== Check Path Inside Directory ====================
 
-const isPathInsideDirectory = (parentDirectory, childPath) => {
+const isPathInsideDirectory = (
+  parentDirectory,
+  childPath,
+) => {
   const relativePath = path.relative(
     parentDirectory,
     childPath,
@@ -130,7 +140,10 @@ const isPathInsideDirectory = (parentDirectory, childPath) => {
 
 // ==================== Read JSON File ====================
 
-const readJsonFile = async (filePath, errorCode) => {
+const readJsonFile = async (
+  filePath,
+  errorCode,
+) => {
   try {
     const content = await fsPromises.readFile(
       filePath,
@@ -147,9 +160,27 @@ const readJsonFile = async (filePath, errorCode) => {
   }
 };
 
+// ==================== Validate Cloudinary Public ID ====================
+
+const isCloudinaryAssetInsideLSAFolder = (
+  asset,
+) => {
+  const publicId = asset?.publicId;
+
+  if (typeof publicId !== "string") {
+    return false;
+  }
+
+  return publicId.startsWith(
+    CLOUDINARY_BACKUP_PREFIX,
+  );
+};
+
 // ==================== Extract Backup Archive ====================
 
-const extractBackupArchive = async (zipFilePath) => {
+const extractBackupArchive = async (
+  zipFilePath,
+) => {
   if (!zipFilePath) {
     throw createServiceError(
       "Backup ZIP file is required",
@@ -170,29 +201,53 @@ const extractBackupArchive = async (zipFilePath) => {
     );
   }
 
-  const restoreDirectory = await fsPromises.mkdtemp(
-    path.join(
-      os.tmpdir(),
-      "lsa-restore-",
-    ),
-  );
+  if (fileStats.size === 0) {
+    throw createServiceError(
+      "Backup ZIP file is empty",
+      400,
+      "RESTORE_FILE_EMPTY",
+    );
+  }
 
-  try {
-    const archive = await unzipper.Open.file(
-      zipFilePath,
+  const restoreDirectory =
+    await fsPromises.mkdtemp(
+      path.join(
+        os.tmpdir(),
+        "lsa-restore-",
+      ),
     );
 
-    for (const entry of archive.files) {
-      const normalizedPath = entry.path
-        .replace(/\\/g, "/")
-        .replace(/^\/+/, "");
-
-      if (!normalizedPath) continue;
-
-      const destinationPath = path.resolve(
-        restoreDirectory,
-        normalizedPath,
+  try {
+    const archive =
+      await unzipper.Open.file(
+        zipFilePath,
       );
+
+    if (!archive.files.length) {
+      throw createServiceError(
+        "Backup ZIP archive is empty",
+        400,
+        "RESTORE_EMPTY_ARCHIVE",
+      );
+    }
+
+    for (
+      const entry of archive.files
+    ) {
+      const normalizedPath =
+        entry.path
+          .replace(/\\/g, "/")
+          .replace(/^\/+/, "");
+
+      if (!normalizedPath) {
+        continue;
+      }
+
+      const destinationPath =
+        path.resolve(
+          restoreDirectory,
+          normalizedPath,
+        );
 
       if (
         !isPathInsideDirectory(
@@ -207,7 +262,9 @@ const extractBackupArchive = async (zipFilePath) => {
         );
       }
 
-      if (entry.type === "Directory") {
+      if (
+        entry.type === "Directory"
+      ) {
         await fsPromises.mkdir(
           destinationPath,
           {
@@ -219,7 +276,9 @@ const extractBackupArchive = async (zipFilePath) => {
       }
 
       await fsPromises.mkdir(
-        path.dirname(destinationPath),
+        path.dirname(
+          destinationPath,
+        ),
         {
           recursive: true,
         },
@@ -227,16 +286,28 @@ const extractBackupArchive = async (zipFilePath) => {
 
       await new Promise(
         (resolve, reject) => {
-          const input = entry.stream();
+          const input =
+            entry.stream();
 
           const output =
             fs.createWriteStream(
               destinationPath,
             );
 
-          input.on("error", reject);
-          output.on("error", reject);
-          output.on("finish", resolve);
+          input.on(
+            "error",
+            reject,
+          );
+
+          output.on(
+            "error",
+            reject,
+          );
+
+          output.on(
+            "finish",
+            resolve,
+          );
 
           input.pipe(output);
         },
@@ -253,101 +324,145 @@ const extractBackupArchive = async (zipFilePath) => {
   }
 };
 
-// ==================== Validate Required Files ====================
+// ==================== Validate Required Backup Files ====================
 
-const validateRequiredBackupFiles = async (
-  restoreDirectory,
-) => {
-  for (const relativePath of REQUIRED_BACKUP_FILES) {
-    const filePath = path.join(
-      restoreDirectory,
-      relativePath,
-    );
+const validateRequiredBackupFiles =
+  async (
+    restoreDirectory,
+  ) => {
+    for (
+      const relativePath of
+      REQUIRED_BACKUP_FILES
+    ) {
+      const filePath =
+        path.join(
+          restoreDirectory,
+          relativePath,
+        );
 
-    const stats = await fsPromises
-      .stat(filePath)
-      .catch(() => null);
+      const stats =
+        await fsPromises
+          .stat(filePath)
+          .catch(() => null);
 
-    if (!stats?.isFile()) {
-      throw createServiceError(
-        `Backup is missing required file: ${relativePath}`,
-        400,
-        "RESTORE_BACKUP_FILE_MISSING",
-      );
+      if (!stats?.isFile()) {
+        throw createServiceError(
+          `Backup is missing required file: ${relativePath}`,
+          400,
+          "RESTORE_BACKUP_FILE_MISSING",
+        );
+      }
+
+      if (stats.size === 0) {
+        throw createServiceError(
+          `Backup file is empty: ${relativePath}`,
+          400,
+          "RESTORE_BACKUP_FILE_EMPTY",
+        );
+      }
     }
-  }
-};
+  };
 
 // ==================== Validate Backup Information ====================
 
-const validateBackupInformation = async (
-  restoreDirectory,
-) => {
-  const filePath = path.join(
+const validateBackupInformation =
+  async (
     restoreDirectory,
-    "backup-info.json",
-  );
+  ) => {
+    const filePath =
+      path.join(
+        restoreDirectory,
+        "backup-info.json",
+      );
 
-  const backupInfo = await readJsonFile(
-    filePath,
-    "RESTORE_INVALID_BACKUP_INFO",
-  );
+    const backupInfo =
+      await readJsonFile(
+        filePath,
+        "RESTORE_INVALID_BACKUP_INFO",
+      );
 
-  if (
-    backupInfo.version !==
-    SUPPORTED_BACKUP_VERSION
-  ) {
-    throw createServiceError(
-      `Unsupported backup version: ${backupInfo.version}`,
-      400,
-      "RESTORE_UNSUPPORTED_BACKUP_VERSION",
-    );
-  }
+    if (
+      backupInfo.version !==
+      SUPPORTED_BACKUP_VERSION
+    ) {
+      throw createServiceError(
+        `Unsupported backup version: ${backupInfo.version}`,
+        400,
+        "RESTORE_UNSUPPORTED_BACKUP_VERSION",
+      );
+    }
 
-  if (
-    backupInfo.application &&
-    backupInfo.application !== "LSA"
-  ) {
-    throw createServiceError(
-      "This backup does not belong to the LSA application",
-      400,
-      "RESTORE_INVALID_APPLICATION",
-    );
-  }
+    if (
+      backupInfo.application &&
+      backupInfo.application !==
+        "LSA"
+    ) {
+      throw createServiceError(
+        "This backup does not belong to the LSA application",
+        400,
+        "RESTORE_INVALID_APPLICATION",
+      );
+    }
 
-  if (!backupInfo.database?.included) {
-    throw createServiceError(
-      "Backup does not contain MongoDB data",
-      400,
-      "RESTORE_DATABASE_NOT_INCLUDED",
-    );
-  }
+    if (
+      !backupInfo.database?.included
+    ) {
+      throw createServiceError(
+        "Backup does not contain MongoDB data",
+        400,
+        "RESTORE_DATABASE_NOT_INCLUDED",
+      );
+    }
 
-  if (!backupInfo.cloudinary?.included) {
-    throw createServiceError(
-      "Backup does not contain Cloudinary assets",
-      400,
-      "RESTORE_CLOUDINARY_NOT_INCLUDED",
-    );
-  }
+    if (
+      !backupInfo.cloudinary?.included
+    ) {
+      throw createServiceError(
+        "Backup does not contain Cloudinary assets",
+        400,
+        "RESTORE_CLOUDINARY_NOT_INCLUDED",
+      );
+    }
 
-  return backupInfo;
-};
+    /*
+     * إذا كان ملف الباكب الجديد يحتوي على
+     * cloudinary.folder
+     * نتأكد أنه lsa.
+     *
+     * تركنا الشرط اختياريًا حتى لا نكسر
+     * الباكبات القديمة Version 1.
+     */
+    if (
+      backupInfo.cloudinary.folder &&
+      backupInfo.cloudinary.folder !==
+        CLOUDINARY_BACKUP_FOLDER
+    ) {
+      throw createServiceError(
+        `Cloudinary backup folder must be "${CLOUDINARY_BACKUP_FOLDER}"`,
+        400,
+        "RESTORE_INVALID_CLOUDINARY_FOLDER",
+      );
+    }
+
+    return backupInfo;
+  };
 
 // ==================== Validate MongoDB Archive ====================
 
 const validateMongoArchive = async (
   restoreDirectory,
 ) => {
-  const archivePath = path.join(
-    restoreDirectory,
-    "database",
-    "mongodb.archive.gz",
-  );
+  const archivePath =
+    path.join(
+      restoreDirectory,
+      "database",
+      "mongodb.archive.gz",
+    );
 
-  const stats = await fsPromises
-    .stat(archivePath)
-    .catch(() => null);
+  const stats =
+    await fsPromises
+      .stat(archivePath)
+      .catch(() => null);
 
   if (
     !stats?.isFile() ||
@@ -365,139 +480,195 @@ const validateMongoArchive = async (
 
 // ==================== Validate Cloudinary Manifest ====================
 
-const validateCloudinaryManifest = async (
-  restoreDirectory,
-) => {
-  const manifestPath = path.join(
+const validateCloudinaryManifest =
+  async (
     restoreDirectory,
-    "cloudinary",
-    "manifest.json",
-  );
-
-  const manifest = await readJsonFile(
-    manifestPath,
-    "RESTORE_INVALID_CLOUDINARY_MANIFEST",
-  );
-
-  if (!Array.isArray(manifest.resources)) {
-    throw createServiceError(
-      "Cloudinary manifest resources are invalid",
-      400,
-      "RESTORE_INVALID_CLOUDINARY_RESOURCES",
-    );
-  }
-
-  const assetsDirectory = path.resolve(
-    restoreDirectory,
-    "cloudinary",
-    "assets",
-  );
-
-  for (const asset of manifest.resources) {
-    if (!asset.publicId) {
-      throw createServiceError(
-        "Cloudinary manifest contains an asset without publicId",
-        400,
-        "RESTORE_CLOUDINARY_PUBLIC_ID_MISSING",
+  ) => {
+    const manifestPath =
+      path.join(
+        restoreDirectory,
+        "cloudinary",
+        "manifest.json",
       );
-    }
 
-    if (!asset.backupFile) {
-      throw createServiceError(
-        `Backup file reference is missing for ${asset.publicId}`,
-        400,
-        "RESTORE_CLOUDINARY_FILE_REFERENCE_MISSING",
+    const manifest =
+      await readJsonFile(
+        manifestPath,
+        "RESTORE_INVALID_CLOUDINARY_MANIFEST",
       );
-    }
-
-    const assetPath = path.resolve(
-      assetsDirectory,
-      asset.backupFile,
-    );
 
     if (
-      !isPathInsideDirectory(
-        assetsDirectory,
-        assetPath,
+      !Array.isArray(
+        manifest.resources,
       )
     ) {
       throw createServiceError(
-        `Unsafe asset path detected for ${asset.publicId}`,
+        "Cloudinary manifest resources are invalid",
         400,
-        "RESTORE_UNSAFE_CLOUDINARY_PATH",
+        "RESTORE_INVALID_CLOUDINARY_RESOURCES",
       );
     }
 
-    const stats = await fsPromises
-      .stat(assetPath)
-      .catch(() => null);
-
-    if (!stats?.isFile()) {
+    /*
+     * الباكب الجديد يحتوي على backupFolder.
+     */
+    if (
+      manifest.backupFolder &&
+      manifest.backupFolder !==
+        CLOUDINARY_BACKUP_FOLDER
+    ) {
       throw createServiceError(
-        `Backup file is missing for ${asset.publicId}`,
+        `Cloudinary manifest folder must be "${CLOUDINARY_BACKUP_FOLDER}"`,
         400,
-        "RESTORE_CLOUDINARY_ASSET_MISSING",
+        "RESTORE_INVALID_CLOUDINARY_MANIFEST_FOLDER",
       );
     }
-  }
 
-  return manifest;
-};
+    const assetsDirectory =
+      path.resolve(
+        restoreDirectory,
+        "cloudinary",
+        "assets",
+      );
+
+    for (
+      const asset of
+      manifest.resources
+    ) {
+      if (!asset.publicId) {
+        throw createServiceError(
+          "Cloudinary manifest contains an asset without publicId",
+          400,
+          "RESTORE_CLOUDINARY_PUBLIC_ID_MISSING",
+        );
+      }
+
+      /*
+       * أهم حماية:
+       *
+       * لا نسمح للـ Restore برفع أي Asset
+       * لا يبدأ بـ lsa/
+       */
+      if (
+        !isCloudinaryAssetInsideLSAFolder(
+          asset,
+        )
+      ) {
+        throw createServiceError(
+          `Cloudinary asset is outside "${CLOUDINARY_BACKUP_FOLDER}" folder: ${asset.publicId}`,
+          400,
+          "RESTORE_CLOUDINARY_ASSET_OUTSIDE_LSA_FOLDER",
+        );
+      }
+
+      if (!asset.backupFile) {
+        throw createServiceError(
+          `Backup file reference is missing for ${asset.publicId}`,
+          400,
+          "RESTORE_CLOUDINARY_FILE_REFERENCE_MISSING",
+        );
+      }
+
+      const assetPath =
+        path.resolve(
+          assetsDirectory,
+          asset.backupFile,
+        );
+
+      if (
+        !isPathInsideDirectory(
+          assetsDirectory,
+          assetPath,
+        )
+      ) {
+        throw createServiceError(
+          `Unsafe asset path detected for ${asset.publicId}`,
+          400,
+          "RESTORE_UNSAFE_CLOUDINARY_PATH",
+        );
+      }
+
+      const stats =
+        await fsPromises
+          .stat(assetPath)
+          .catch(() => null);
+
+      if (!stats?.isFile()) {
+        throw createServiceError(
+          `Backup file is missing for ${asset.publicId}`,
+          400,
+          "RESTORE_CLOUDINARY_ASSET_MISSING",
+        );
+      }
+
+      if (stats.size === 0) {
+        throw createServiceError(
+          `Backup file is empty for ${asset.publicId}`,
+          400,
+          "RESTORE_CLOUDINARY_ASSET_EMPTY",
+        );
+      }
+    }
+
+    return manifest;
+  };
 
 // ==================== Validate Backup Package ====================
 
-const validateBackupPackage = async (
-  zipFilePath,
-) => {
-  let restoreDirectory = null;
+const validateBackupPackage =
+  async (
+    zipFilePath,
+  ) => {
+    let restoreDirectory =
+      null;
 
-  try {
-    restoreDirectory =
-      await extractBackupArchive(
-        zipFilePath,
-      );
+    try {
+      restoreDirectory =
+        await extractBackupArchive(
+          zipFilePath,
+        );
 
-    await validateRequiredBackupFiles(
-      restoreDirectory,
-    );
-
-    const backupInfo =
-      await validateBackupInformation(
+      await validateRequiredBackupFiles(
         restoreDirectory,
       );
 
-    const databaseArchivePath =
-      await validateMongoArchive(
-        restoreDirectory,
-      );
+      const backupInfo =
+        await validateBackupInformation(
+          restoreDirectory,
+        );
 
-    const cloudinaryManifest =
-      await validateCloudinaryManifest(
-        restoreDirectory,
-      );
+      const databaseArchivePath =
+        await validateMongoArchive(
+          restoreDirectory,
+        );
 
-    return {
-      restoreDirectory,
-      backupInfo,
-      databaseArchivePath,
-      cloudinaryManifest,
-    };
-  } catch (error) {
-    if (restoreDirectory) {
-      await removeDirectorySafely(
+      const cloudinaryManifest =
+        await validateCloudinaryManifest(
+          restoreDirectory,
+        );
+
+      return {
         restoreDirectory,
-      );
+        backupInfo,
+        databaseArchivePath,
+        cloudinaryManifest,
+      };
+    } catch (error) {
+      if (restoreDirectory) {
+        await removeDirectorySafely(
+          restoreDirectory,
+        );
+      }
+
+      throw error;
     }
-
-    throw error;
-  }
-};
+  };
 
 // ==================== Run Command ====================
 
 const runCommand = ({
   command,
-  args,
+  args = [],
   errorMessage,
   errorCode,
 }) => {
@@ -508,6 +679,7 @@ const runCommand = ({
         args,
         {
           windowsHide: true,
+
           stdio: [
             "ignore",
             "pipe",
@@ -523,26 +695,31 @@ const runCommand = ({
       child.stdout.on(
         "data",
         (data) => {
-          stdout += data.toString();
+          stdout +=
+            data.toString();
         },
       );
 
       child.stderr.on(
         "data",
         (data) => {
-          stderr += data.toString();
+          stderr +=
+            data.toString();
         },
       );
 
       child.on(
         "error",
         (error) => {
-          if (settled) return;
+          if (settled) {
+            return;
+          }
 
           settled = true;
 
           if (
-            error.code === "ENOENT"
+            error.code ===
+            "ENOENT"
           ) {
             reject(
               createServiceError(
@@ -562,7 +739,9 @@ const runCommand = ({
       child.on(
         "close",
         (code) => {
-          if (settled) return;
+          if (settled) {
+            return;
+          }
 
           settled = true;
 
@@ -570,7 +749,8 @@ const runCommand = ({
             reject(
               createServiceError(
                 stderr.trim() ||
-                  errorMessage,
+                  errorMessage ||
+                  `${command} failed`,
                 500,
                 errorCode,
               ),
@@ -591,59 +771,117 @@ const runCommand = ({
 
 // ==================== Restore MongoDB ====================
 
-const restoreMongoDatabase = async ({
-  databaseArchivePath,
-  dropExisting = true,
-}) => {
-  const args = [
-    `--uri=${process.env.MONGODB_URI}`,
-    `--archive=${databaseArchivePath}`,
-    "--gzip",
-    "--stopOnError",
-  ];
+const restoreMongoDatabase =
+  async ({
+    databaseArchivePath,
+    dropExisting = true,
+  }) => {
+    console.log(
+      "[Restore] Starting MongoDB restore...",
+    );
 
-  if (dropExisting) {
-    args.push("--drop");
-  }
+    const args = [
+      `--uri=${process.env.MONGODB_URL}`,
+      `--archive=${databaseArchivePath}`,
+      "--gzip",
+      "--stopOnError",
+    ];
 
-  await runCommand({
-    command: "mongorestore",
-    args,
-    errorMessage:
-      "Failed to restore MongoDB database",
-    errorCode:
-      "MONGODB_RESTORE_FAILED",
-  });
+    if (dropExisting) {
+      args.push("--drop");
+    }
 
-  return {
-    restored: true,
+    await runCommand({
+      command:
+        "mongorestore",
+
+      args,
+
+      errorMessage:
+        "Failed to restore MongoDB database",
+
+      errorCode:
+        "MONGODB_RESTORE_FAILED",
+    });
+
+    console.log(
+      "[Restore] MongoDB restore completed successfully",
+    );
+
+    return {
+      restored: true,
+      dropExisting,
+    };
   };
-};
 
 // ==================== Build Cloudinary Upload Options ====================
 
 const buildCloudinaryUploadOptions = (
   asset,
 ) => {
+  if (
+    !isCloudinaryAssetInsideLSAFolder(
+      asset,
+    )
+  ) {
+    throw createServiceError(
+      `Cloudinary asset is outside "${CLOUDINARY_BACKUP_FOLDER}" folder: ${asset.publicId}`,
+      400,
+      "RESTORE_CLOUDINARY_ASSET_OUTSIDE_LSA_FOLDER",
+    );
+  }
+
   const options = {
-    public_id: asset.publicId,
+    /*
+     * نحافظ على نفس public_id:
+     *
+     * lsa/projects/...
+     * lsa/services/...
+     * lsa/equipment/...
+     */
+    public_id:
+      asset.publicId,
+
     resource_type:
-      asset.resourceType || "image",
+      asset.resourceType ||
+      "image",
+
     type:
-      asset.deliveryType || "upload",
+      asset.deliveryType ||
+      "upload",
+
     overwrite: true,
+
+    /*
+     * لا نريد public_id عشوائي.
+     */
+    unique_filename:
+      false,
+
+    use_filename:
+      false,
+
+    /*
+     * مهم عند overwrite.
+     */
+    invalidate:
+      true,
   };
 
   if (
-    Array.isArray(asset.tags) &&
+    Array.isArray(
+      asset.tags,
+    ) &&
     asset.tags.length > 0
   ) {
-    options.tags = asset.tags;
+    options.tags =
+      asset.tags;
   }
 
   if (
     asset.context &&
-    typeof asset.context === "object"
+    typeof asset.context ===
+      "object"
   ) {
     options.context =
       asset.context.custom ||
@@ -652,12 +890,17 @@ const buildCloudinaryUploadOptions = (
 
   if (
     asset.metadata &&
-    typeof asset.metadata === "object"
+    typeof asset.metadata ===
+      "object"
   ) {
     options.metadata =
       asset.metadata;
   }
 
+  /*
+   * display_name لا تدعمه جميع الحالات
+   * بنفس الشكل، لذلك نرسله فقط إذا كان موجودًا.
+   */
   if (asset.displayName) {
     options.display_name =
       asset.displayName;
@@ -666,292 +909,556 @@ const buildCloudinaryUploadOptions = (
   return options;
 };
 
-// ==================== Restore Cloudinary Asset ====================
+// ==================== Restore Single Cloudinary Asset ====================
 
-const restoreCloudinaryAsset = async ({
-  asset,
-  restoreDirectory,
-}) => {
-  const assetsDirectory = path.resolve(
+const restoreCloudinaryAsset =
+  async ({
+    asset,
     restoreDirectory,
-    "cloudinary",
-    "assets",
-  );
+  }) => {
+    /*
+     * حماية ثانية قبل الرفع.
+     */
+    if (
+      !isCloudinaryAssetInsideLSAFolder(
+        asset,
+      )
+    ) {
+      throw createServiceError(
+        `Refusing to restore asset outside "${CLOUDINARY_BACKUP_FOLDER}" folder: ${asset.publicId}`,
+        400,
+        "RESTORE_CLOUDINARY_ASSET_OUTSIDE_LSA_FOLDER",
+      );
+    }
 
-  const assetFilePath = path.resolve(
-    assetsDirectory,
-    asset.backupFile,
-  );
+    const assetsDirectory =
+      path.resolve(
+        restoreDirectory,
+        "cloudinary",
+        "assets",
+      );
 
-  if (
-    !isPathInsideDirectory(
-      assetsDirectory,
-      assetFilePath,
-    )
-  ) {
-    throw createServiceError(
-      `Unsafe asset path detected for ${asset.publicId}`,
-      400,
-      "RESTORE_UNSAFE_CLOUDINARY_PATH",
-    );
-  }
+    const assetFilePath =
+      path.resolve(
+        assetsDirectory,
+        asset.backupFile,
+      );
 
-  const options =
-    buildCloudinaryUploadOptions(
-      asset,
-    );
+    if (
+      !isPathInsideDirectory(
+        assetsDirectory,
+        assetFilePath,
+      )
+    ) {
+      throw createServiceError(
+        `Unsafe asset path detected for ${asset.publicId}`,
+        400,
+        "RESTORE_UNSAFE_CLOUDINARY_PATH",
+      );
+    }
 
-  const result =
-    await cloudinary.uploader.upload(
-      assetFilePath,
-      options,
-    );
+    const fileStats =
+      await fsPromises
+        .stat(assetFilePath)
+        .catch(() => null);
 
-  return {
-    publicId:
-      result.public_id,
+    if (
+      !fileStats?.isFile() ||
+      fileStats.size === 0
+    ) {
+      throw createServiceError(
+        `Backup asset file is missing or empty for ${asset.publicId}`,
+        400,
+        "RESTORE_CLOUDINARY_ASSET_MISSING",
+      );
+    }
 
-    resourceType:
-      result.resource_type,
+    const options =
+      buildCloudinaryUploadOptions(
+        asset,
+      );
 
-    deliveryType:
-      result.type,
+    const result =
+      await cloudinary.uploader.upload(
+        assetFilePath,
+        options,
+      );
 
-    format:
-      result.format || null,
+    /*
+     * حماية أخيرة:
+     * نتأكد أن Cloudinary رجع نفس public_id المتوقع.
+     */
+    if (
+      !result.public_id?.startsWith(
+        CLOUDINARY_BACKUP_PREFIX,
+      )
+    ) {
+      throw createServiceError(
+        `Cloudinary restored asset outside "${CLOUDINARY_BACKUP_FOLDER}" folder`,
+        500,
+        "RESTORE_CLOUDINARY_INVALID_RESULT_PATH",
+      );
+    }
 
-    secureUrl:
-      result.secure_url || null,
+    return {
+      publicId:
+        result.public_id,
 
-    version:
-      result.version || null,
+      resourceType:
+        result.resource_type,
 
-    bytes:
-      result.bytes || null,
+      deliveryType:
+        result.type,
+
+      format:
+        result.format ||
+        null,
+
+      secureUrl:
+        result.secure_url ||
+        null,
+
+      version:
+        result.version ||
+        null,
+
+      bytes:
+        result.bytes ||
+        null,
+    };
   };
-};
 
 // ==================== Restore Cloudinary Assets ====================
 
-const restoreCloudinaryAssets = async ({
-  manifest,
-  restoreDirectory,
-  onProgress,
-}) => {
-  configureCloudinary();
+const restoreCloudinaryAssets =
+  async ({
+    manifest,
+    restoreDirectory,
+    onProgress,
+  }) => {
+    configureCloudinary();
 
-  const resources =
-    manifest.resources || [];
+    const allResources =
+      Array.isArray(
+        manifest.resources,
+      )
+        ? manifest.resources
+        : [];
 
-  const restoredAssets = [];
-  const failedAssets = [];
+    /*
+     * حتى لو تم التلاعب بالـ manifest،
+     * نأخذ lsa فقط.
+     */
+    const resources =
+      allResources.filter(
+        isCloudinaryAssetInsideLSAFolder,
+      );
 
-  for (
-    let index = 0;
-    index < resources.length;
-    index += 1
-  ) {
-    const asset = resources[index];
-
-    try {
-      const result =
-        await restoreCloudinaryAsset({
-          asset,
-          restoreDirectory,
-        });
-
-      restoredAssets.push(result);
-
-      if (onProgress) {
-        onProgress({
-          stage: "cloudinary",
-          status: "restoring",
-          current: index + 1,
-          total: resources.length,
-          publicId: asset.publicId,
-        });
-      }
-    } catch (error) {
-      failedAssets.push({
-        publicId:
-          asset.publicId,
-
-        resourceType:
-          asset.resourceType,
-
-        message:
-          error.message,
-      });
+    if (
+      resources.length !==
+      allResources.length
+    ) {
+      throw createServiceError(
+        `Backup contains Cloudinary assets outside "${CLOUDINARY_BACKUP_FOLDER}" folder`,
+        400,
+        "RESTORE_CLOUDINARY_INVALID_FOLDER_CONTENT",
+      );
     }
-  }
 
-  if (failedAssets.length > 0) {
-    const error = createServiceError(
-      `Cloudinary restore incomplete. ${failedAssets.length} asset(s) failed to restore.`,
-      500,
-      "CLOUDINARY_RESTORE_INCOMPLETE",
+    console.log(
+      `[Restore] Starting Cloudinary restore for folder "${CLOUDINARY_BACKUP_FOLDER}"...`,
     );
 
-    error.failures =
-      failedAssets;
+    console.log(
+      `[Restore] Assets to restore: ${resources.length}`,
+    );
 
-    throw error;
-  }
+    const restoredAssets =
+      [];
 
-  return {
-    totalAssets:
-      resources.length,
+    const failedAssets =
+      [];
 
-    restoredAssets:
-      restoredAssets.length,
+    for (
+      let index = 0;
+      index < resources.length;
+      index += 1
+    ) {
+      const asset =
+        resources[index];
 
-    failedAssets: 0,
+      try {
+        console.log(
+          `[Restore] Cloudinary ${index + 1}/${resources.length}: ${asset.publicId}`,
+        );
+
+        const result =
+          await restoreCloudinaryAsset({
+            asset,
+            restoreDirectory,
+          });
+
+        restoredAssets.push(
+          result,
+        );
+
+        if (onProgress) {
+          onProgress({
+            stage:
+              "cloudinary",
+
+            status:
+              "restoring",
+
+            current:
+              index + 1,
+
+            total:
+              resources.length,
+
+            publicId:
+              asset.publicId,
+          });
+        }
+      } catch (error) {
+        console.error(
+          `[Restore] Failed Cloudinary asset: ${asset.publicId}`,
+          error.message,
+        );
+
+        failedAssets.push({
+          publicId:
+            asset.publicId ||
+            null,
+
+          resourceType:
+            asset.resourceType ||
+            null,
+
+          message:
+            error.message,
+        });
+      }
+    }
+
+    if (
+      failedAssets.length > 0
+    ) {
+      const error =
+        createServiceError(
+          `Cloudinary restore incomplete. ${failedAssets.length} asset(s) failed to restore.`,
+          500,
+          "CLOUDINARY_RESTORE_INCOMPLETE",
+        );
+
+      error.failures =
+        failedAssets;
+
+      throw error;
+    }
+
+    console.log(
+      `[Restore] Cloudinary folder "${CLOUDINARY_BACKUP_FOLDER}" restored successfully: ${restoredAssets.length} assets`,
+    );
+
+    return {
+      folder:
+        CLOUDINARY_BACKUP_FOLDER,
+
+      totalAssets:
+        resources.length,
+
+      restoredAssets:
+        restoredAssets.length,
+
+      failedAssets: 0,
+    };
   };
-};
 
 // ==================== Restore Full Backup ====================
 
-const restoreFullBackup = async ({
-  zipFilePath,
-  dropExisting = true,
-  onProgress,
-}) => {
-  validateRestoreConfiguration();
+const restoreFullBackup =
+  async ({
+    zipFilePath,
+    dropExisting = true,
+    onProgress,
+  }) => {
+    validateRestoreConfiguration();
 
-  let packageData = null;
+    let packageData =
+      null;
 
-  try {
-    // ==================== Validate Backup ====================
+    try {
+      console.log(
+        "====================================",
+      );
 
-    if (onProgress) {
-      onProgress({
-        stage: "validation",
-        status: "started",
-      });
-    }
+      console.log(
+        "[Restore] Starting full restore...",
+      );
 
-    packageData =
-      await validateBackupPackage(
+      console.log(
+        "[Restore] Backup file:",
         zipFilePath,
       );
 
-    if (onProgress) {
-      onProgress({
-        stage: "validation",
-        status: "completed",
-      });
-    }
+      // ==================== Validate Backup ====================
 
-    // ==================== Restore MongoDB ====================
-
-    if (onProgress) {
-      onProgress({
-        stage: "mongodb",
-        status: "started",
-      });
-    }
-
-    const mongoResult =
-      await restoreMongoDatabase({
-        databaseArchivePath:
-          packageData.databaseArchivePath,
-        dropExisting,
-      });
-
-    if (onProgress) {
-      onProgress({
-        stage: "mongodb",
-        status: "completed",
-      });
-    }
-
-    // ==================== Restore Cloudinary ====================
-
-    if (onProgress) {
-      onProgress({
-        stage: "cloudinary",
-        status: "started",
-        total:
-          packageData
-            .cloudinaryManifest
-            .resources.length,
-      });
-    }
-
-    const cloudinaryResult =
-      await restoreCloudinaryAssets({
-        manifest:
-          packageData.cloudinaryManifest,
-
-        restoreDirectory:
-          packageData.restoreDirectory,
-
-        onProgress,
-      });
-
-    if (onProgress) {
-      onProgress({
-        stage: "cloudinary",
-        status: "completed",
-      });
-    }
-
-    // ==================== Result ====================
-
-    return {
-      success: true,
-
-      restoredAt:
-        new Date().toISOString(),
-
-      backup: {
-        version:
-          packageData.backupInfo.version,
-
-        application:
-          packageData.backupInfo
-            .application || "LSA",
-
-        createdAt:
-          packageData.backupInfo
-            .createdAt || null,
-      },
-
-      mongodb: {
-        restored:
-          mongoResult.restored,
-      },
-
-      cloudinary: {
-        totalAssets:
-          cloudinaryResult.totalAssets,
-
-        restoredAssets:
-          cloudinaryResult
-            .restoredAssets,
-
-        failedAssets:
-          cloudinaryResult
-            .failedAssets,
-      },
-    };
-  } finally {
-    if (
-      packageData?.restoreDirectory
-    ) {
-      await removeDirectorySafely(
-        packageData.restoreDirectory,
+      console.log(
+        "[Restore] Validating backup package...",
       );
+
+      if (onProgress) {
+        onProgress({
+          stage:
+            "validation",
+
+          status:
+            "started",
+        });
+      }
+
+      packageData =
+        await validateBackupPackage(
+          zipFilePath,
+        );
+
+      if (onProgress) {
+        onProgress({
+          stage:
+            "validation",
+
+          status:
+            "completed",
+        });
+      }
+
+      console.log(
+        "[Restore] Backup validation completed",
+      );
+
+      console.log(
+        "[Restore] Backup created at:",
+        packageData.backupInfo
+          .createdAt ||
+          "unknown",
+      );
+
+      console.log(
+        "[Restore] Cloudinary folder:",
+        packageData.backupInfo
+          .cloudinary?.folder ||
+          CLOUDINARY_BACKUP_FOLDER,
+      );
+
+      console.log(
+        "[Restore] Cloudinary assets:",
+        packageData
+          .cloudinaryManifest
+          .resources.length,
+      );
+
+      // ==================== Restore MongoDB ====================
+
+      if (onProgress) {
+        onProgress({
+          stage:
+            "mongodb",
+
+          status:
+            "started",
+        });
+      }
+
+      const mongoResult =
+        await restoreMongoDatabase({
+          databaseArchivePath:
+            packageData.databaseArchivePath,
+
+          dropExisting,
+        });
+
+      if (onProgress) {
+        onProgress({
+          stage:
+            "mongodb",
+
+          status:
+            "completed",
+        });
+      }
+
+      // ==================== Restore Cloudinary ====================
+
+      if (onProgress) {
+        onProgress({
+          stage:
+            "cloudinary",
+
+          status:
+            "started",
+
+          total:
+            packageData
+              .cloudinaryManifest
+              .resources.length,
+        });
+      }
+
+      const cloudinaryResult =
+        await restoreCloudinaryAssets({
+          manifest:
+            packageData.cloudinaryManifest,
+
+          restoreDirectory:
+            packageData.restoreDirectory,
+
+          onProgress,
+        });
+
+      if (onProgress) {
+        onProgress({
+          stage:
+            "cloudinary",
+
+          status:
+            "completed",
+
+          total:
+            cloudinaryResult.totalAssets,
+        });
+      }
+
+      // ==================== Result ====================
+
+      console.log(
+        "[Restore] Full restore completed successfully",
+      );
+
+      console.log(
+        "[Restore] MongoDB: restored",
+      );
+
+      console.log(
+        `[Restore] Cloudinary "${CLOUDINARY_BACKUP_FOLDER}": ${cloudinaryResult.restoredAssets} assets restored`,
+      );
+
+      console.log(
+        "====================================",
+      );
+
+      return {
+        success: true,
+
+        restoredAt:
+          new Date().toISOString(),
+
+        backup: {
+          version:
+            packageData.backupInfo
+              .version,
+
+          application:
+            packageData.backupInfo
+              .application ||
+            "LSA",
+
+          createdAt:
+            packageData.backupInfo
+              .createdAt ||
+            null,
+        },
+
+        mongodb: {
+          restored:
+            mongoResult.restored,
+
+          dropExisting:
+            mongoResult.dropExisting,
+        },
+
+        cloudinary: {
+          folder:
+            CLOUDINARY_BACKUP_FOLDER,
+
+          totalAssets:
+            cloudinaryResult.totalAssets,
+
+          restoredAssets:
+            cloudinaryResult.restoredAssets,
+
+          failedAssets:
+            cloudinaryResult.failedAssets,
+        },
+      };
+    } catch (error) {
+      console.error(
+        "====================================",
+      );
+
+      console.error(
+        "[Restore] FAILED",
+      );
+
+      console.error(
+        "Message:",
+        error.message,
+      );
+
+      console.error(
+        "Code:",
+        error.code,
+      );
+
+      console.error(
+        "Status:",
+        error.statusCode,
+      );
+
+      console.error(
+        "Stack:",
+        error.stack,
+      );
+
+      if (error.failures) {
+        console.error(
+          "Cloudinary failures:",
+          JSON.stringify(
+            error.failures,
+            null,
+            2,
+          ),
+        );
+      }
+
+      console.error(
+        "====================================",
+      );
+
+      throw error;
+    } finally {
+      if (
+        packageData
+          ?.restoreDirectory
+      ) {
+        console.log(
+          "[Restore] Cleaning temporary restore directory...",
+        );
+
+        await removeDirectorySafely(
+          packageData.restoreDirectory,
+        );
+      }
     }
-  }
-};
+  };
 
 // ==================== Inspect Backup ====================
 
 const inspectBackup = async (
   zipFilePath,
 ) => {
-  let packageData = null;
+  let packageData =
+    null;
 
   try {
     packageData =
@@ -959,19 +1466,27 @@ const inspectBackup = async (
         zipFilePath,
       );
 
+    const resources =
+      packageData
+        .cloudinaryManifest
+        .resources;
+
     return {
       valid: true,
 
       version:
-        packageData.backupInfo.version,
+        packageData.backupInfo
+          .version,
 
       application:
         packageData.backupInfo
-          .application || "LSA",
+          .application ||
+        "LSA",
 
       createdAt:
         packageData.backupInfo
-          .createdAt || null,
+          .createdAt ||
+        null,
 
       database: {
         included: true,
@@ -980,15 +1495,22 @@ const inspectBackup = async (
       cloudinary: {
         included: true,
 
+        folder:
+          CLOUDINARY_BACKUP_FOLDER,
+
         assetCount:
-          packageData
-            .cloudinaryManifest
-            .resources.length,
+          resources.length,
+
+        allAssetsInsideFolder:
+          resources.every(
+            isCloudinaryAssetInsideLSAFolder,
+          ),
       },
     };
   } finally {
     if (
-      packageData?.restoreDirectory
+      packageData
+        ?.restoreDirectory
     ) {
       await removeDirectorySafely(
         packageData.restoreDirectory,
@@ -999,13 +1521,14 @@ const inspectBackup = async (
 
 // ==================== Cleanup Restore Upload ====================
 
-const cleanupRestoreUpload = async (
-  filePath,
-) => {
-  await removeFileSafely(
+const cleanupRestoreUpload =
+  async (
     filePath,
-  );
-};
+  ) => {
+    await removeFileSafely(
+      filePath,
+    );
+  };
 
 // ==================== Exports ====================
 
