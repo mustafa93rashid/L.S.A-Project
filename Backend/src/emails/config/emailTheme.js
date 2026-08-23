@@ -31,7 +31,7 @@ const EMAIL_THEME = {
     tagline: "Engineering & Energy Solutions",
 
     logo: {
-      url: "https://res.cloudinary.com/dwfyjisit/image/upload/v1785780767/Logo2_xkktdk.webp",
+      url: "https://res.cloudinary.com/zj7njgea/image/upload/v1787496286/Untitled_design.png",
       width: 170,
       alt: "LSA Logo",
     },
