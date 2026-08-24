@@ -40,79 +40,38 @@
 // })
 
 
-// import path from 'node:path'
-// import { fileURLToPath } from 'node:url'
-// import { defineConfig } from 'vite'
-// import react from '@vitejs/plugin-react'
-// import tailwindcss from '@tailwindcss/vite'
-
-// const dirname = path.dirname(fileURLToPath(import.meta.url))
-
-// export default defineConfig({
-//   plugins: [react(), tailwindcss()],
-
-//   resolve: {
-//     alias: {
-//       '@': path.resolve(dirname, './src'),
-//     },
-//   },
-
-//   server: {
-//     proxy: {
-//       '/api': {
-//         target: 'https://l-s-a-project.onrender.com',
-//         changeOrigin: true,
-//         secure: true,
-//       },
-
-//       '/socket.io': {
-//         target: 'https://l-s-a-project.onrender.com',
-//         changeOrigin: true,
-//         secure: true,
-//         ws: true,
-//       },
-//     },
-//   },
-// })
-
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
 
-  const backendUrl =
-    env.VITE_BACKEND_URL
+  resolve: {
+    alias: {
+      '@': path.resolve(dirname, './src'),
+    },
+  },
 
-  return {
-    plugins: [react(), tailwindcss()],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://l-s-a-project.onrender.com',
+        changeOrigin: true,
+        secure: true,
+      },
 
-    resolve: {
-      alias: {
-        '@': path.resolve(dirname, './src'),
+      '/socket.io': {
+        target: 'https://l-s-a-project.onrender.com',
+        changeOrigin: true,
+        secure: true,
+        ws: true,
       },
     },
-
-    server: {
-      proxy: {
-        '/api': {
-          target: backendUrl,
-          changeOrigin: true,
-          secure: true,
-        },
-
-        '/socket.io': {
-          target: backendUrl,
-          changeOrigin: true,
-          secure: true,
-          ws: true,
-        },
-      },
-    },
-  }
+  },
 })
+
