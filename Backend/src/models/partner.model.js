@@ -19,6 +19,12 @@ const partnerSchema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+
+    displayOrder: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
   },
   {
     timestamps: true,

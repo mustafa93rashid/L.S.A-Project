@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
-import { ExternalLink, Handshake, ImageIcon, Link2 } from 'lucide-react'
+import { Handshake, Hash, ImageIcon, Link2, ListOrdered } from 'lucide-react'
 
 import { ConfirmDialog } from '@/components/overlays/ConfirmDialog'
 import { FormSection } from '@/components/forms/FormSection'
@@ -37,7 +37,11 @@ interface PartnerFormProps {
 
 // ==================== Partner Form ====================
 
-export function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
+export function PartnerForm({
+  partner,
+  onSuccess,
+  onCancel,
+}: PartnerFormProps) {
   const isEditing = Boolean(partner)
 
   // ==================== State ====================
@@ -50,14 +54,18 @@ export function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) 
 
   const createMutation = useCreatePartnerMutation()
   const updateMutation = useUpdatePartnerMutation()
-  const isSubmitting = createMutation.isPending || updateMutation.isPending
+
+  const isSubmitting =
+    createMutation.isPending || updateMutation.isPending
 
   // ==================== Form ====================
 
   const form = useForm<PartnerInput>({
     resolver: zodResolver(partnerSchema),
+
     defaultValues: {
       website: partner?.website ?? '',
+      displayOrder: partner?.displayOrder ?? 1,
     },
   })
 
@@ -70,7 +78,9 @@ export function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) 
   // ==================== Submit ====================
 
   const onSubmit = form.handleSubmit((values) => {
-    const hasLogo = Boolean(logoFile) || Boolean(partner?.logo?.url)
+    const hasLogo =
+      Boolean(logoFile) ||
+      Boolean(partner?.logo?.url)
 
     if (!hasLogo) {
       setLogoError('Partner logo is required.')
@@ -83,21 +93,32 @@ export function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) 
     const formData = buildFormData(
       {
         website: values.website,
+        displayOrder: values.displayOrder,
       },
       {
         logo: logoFile,
       },
     )
 
+    // ==================== Error Handler ====================
+
     const onError = (error: unknown) => {
-      const generalError = applyServerErrors(form, error, {
-        customFields: {
-          logo: (message: string) => setLogoError(message),
+      const generalError = applyServerErrors(
+        form,
+        error,
+        {
+          customFields: {
+            logo: (message: string) => {
+              setLogoError(message)
+            },
+          },
         },
-      })
+      )
 
       setFormError(generalError)
     }
+
+    // ==================== Update ====================
 
     if (isEditing && partner) {
       updateMutation.mutate(
@@ -107,10 +128,15 @@ export function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) 
         },
         {
           onSuccess: () => {
-            toast.success('Partner updated successfully')
+            toast.success(
+              'Partner updated successfully',
+            )
+
             guard.bypassOnce()
+
             onSuccess()
           },
+
           onError,
         },
       )
@@ -118,12 +144,19 @@ export function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) 
       return
     }
 
+    // ==================== Create ====================
+
     createMutation.mutate(formData, {
       onSuccess: () => {
-        toast.success('Partner created successfully')
+        toast.success(
+          'Partner created successfully',
+        )
+
         guard.bypassOnce()
+
         onSuccess()
       },
+
       onError,
     })
   })
@@ -131,7 +164,11 @@ export function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) 
   // ==================== Render ====================
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-6">
+    <form
+      onSubmit={onSubmit}
+      noValidate
+      className="space-y-6"
+    >
       {/* ==================== General Error ==================== */}
 
       <FormErrorAlert
@@ -143,10 +180,11 @@ export function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) 
 
       <FormSection
         title="Partner Information"
-        description="Manage the partner logo and the external website associated with this organization."
+        description="Manage the partner logo, website, and display position in the public partners section."
         icon={Handshake}
       >
         <div className="space-y-7">
+
           {/* ==================== Partner Logo ==================== */}
 
           <ImageUploadField
@@ -169,10 +207,13 @@ export function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) 
             required
           />
 
-          {/* ==================== Website ==================== */}
+          {/* ==================== Details ==================== */}
 
           <div className="border-t border-border/60 pt-6">
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.8fr)]">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+
+              {/* ==================== Website ==================== */}
+
               <div className="space-y-2">
                 <Label
                   htmlFor="partner-website"
@@ -182,53 +223,151 @@ export function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) 
                 </Label>
 
                 <div className="group relative">
-                  <div className="pointer-events-none absolute left-3 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center text-muted-foreground/45 transition-colors group-focus-within:text-foreground">
-                    <Link2 className="size-3.5" strokeWidth={1.8} />
+                  <div
+                    className="
+                      pointer-events-none
+                      absolute left-3 top-1/2
+                      flex size-7
+                      -translate-y-1/2
+                      items-center justify-center
+                      text-muted-foreground/45
+                      transition-colors
+                      group-focus-within:text-foreground
+                    "
+                  >
+                    <Link2
+                      className="size-3.5"
+                      strokeWidth={1.8}
+                    />
                   </div>
 
                   <Input
                     id="partner-website"
                     type="url"
                     placeholder="https://example.com"
-                    aria-invalid={!!form.formState.errors.website}
+                    aria-invalid={
+                      !!form.formState.errors.website
+                    }
                     className="h-11 rounded-xl pl-12"
                     {...form.register('website')}
                   />
                 </div>
 
-                <FieldError message={form.formState.errors.website?.message} />
+                <FieldError
+                  message={
+                    form.formState.errors
+                      .website?.message
+                  }
+                />
 
                 <p className="text-[10px] leading-5 text-muted-foreground">
-                  Optional external link to the partner&apos;s official website.
+                  Optional external link to the
+                  partner&apos;s official website.
                 </p>
               </div>
 
-              {/* ==================== Display Behavior ==================== */}
+              {/* ==================== Display Order ==================== */}
 
-              <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-muted/[0.08] p-4">
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute -right-8 -top-10 size-24 rounded-full bg-primary/[0.035] blur-3xl"
-                />
-
-                <div className="relative flex items-start gap-3">
+              <div className="rounded-2xl border border-border/70 bg-muted/[0.06] p-4">
+                <div className="flex items-start gap-3">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background text-muted-foreground">
-                    <ExternalLink className="size-4" strokeWidth={1.8} />
+                    <Hash
+                      className="size-4"
+                      strokeWidth={1.8}
+                    />
                   </div>
 
-                  <div className="min-w-0">
-                    <span className="text-[9px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-                      Display behavior
-                    </span>
-
-                    <p className="mt-1.5 text-[10px] leading-5 text-muted-foreground">
-                      The logo is displayed in the public partners section. When
-                      a website is provided, visitors can open the partner&apos;s
-                      official external site.
+                  <div>
+                    <p className="text-[11px] font-semibold text-foreground">
+                      Display order
                     </p>
 
+                    <p className="mt-1 text-[9px] leading-4 text-muted-foreground">
+                      Lower numbers appear first in the public team section.
+                    </p>
                   </div>
                 </div>
+
+                <Input
+                  id="tm-order"
+                  type="number"
+                  min={0}
+                  max={999}
+                  className="mt-4 h-11 rounded-xl bg-background text-center text-base font-semibold tabular-nums"
+                  aria-invalid={!!form.formState.errors.displayOrder}
+                  {...form.register('displayOrder', {
+                    valueAsNumber: true,
+                  })}
+                />
+
+                <FieldError
+                  message={form.formState.errors.displayOrder?.message}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ==================== Display Information ==================== */}
+
+          <div
+            className="
+              relative
+              overflow-hidden
+              rounded-2xl
+              border border-border/70
+              bg-muted/[0.08]
+              p-4
+            "
+          >
+            <div
+              aria-hidden="true"
+              className="
+                pointer-events-none
+                absolute -right-8 -top-10
+                size-24
+                rounded-full
+                bg-primary/[0.035]
+                blur-3xl
+              "
+            />
+
+            <div className="relative flex items-start gap-3">
+              <div
+                className="
+                  flex size-9
+                  shrink-0
+                  items-center justify-center
+                  rounded-xl
+                  border border-border/70
+                  bg-background
+                  text-muted-foreground
+                "
+              >
+                <ListOrdered
+                  className="size-4"
+                  strokeWidth={1.8}
+                />
+              </div>
+
+              <div className="min-w-0">
+                <span
+                  className="
+                    text-[9px]
+                    font-semibold
+                    uppercase
+                    tracking-[0.1em]
+                    text-muted-foreground
+                  "
+                >
+                  Display behavior
+                </span>
+
+                <p className="mt-1.5 text-[10px] leading-5 text-muted-foreground">
+                  Partners are displayed according to
+                  their display order. A lower value
+                  places the logo earlier in the public
+                  partners section.
+                </p>
               </div>
             </div>
           </div>
@@ -239,7 +378,11 @@ export function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) 
 
       <FormActions
         onCancel={onCancel}
-        submitLabel={isEditing ? 'Save changes' : 'Create partner'}
+        submitLabel={
+          isEditing
+            ? 'Save changes'
+            : 'Create partner'
+        }
         isSubmitting={isSubmitting}
       />
 
@@ -248,7 +391,9 @@ export function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) 
       <ConfirmDialog
         open={guard.isBlocked}
         onOpenChange={(open) => {
-          if (!open) guard.cancelLeave()
+          if (!open) {
+            guard.cancelLeave()
+          }
         }}
         title="Discard changes?"
         description="You have unsaved changes. Are you sure you want to discard them?"
