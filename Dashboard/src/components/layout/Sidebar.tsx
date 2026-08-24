@@ -136,8 +136,8 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
         collapsed && 'justify-center px-0',
       )}
     >
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-[13px] font-bold text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_1px_2px_rgba(0,0,0,0.35)]">
-        L
+      <div className="flex size-8 shrink-0 items-center justify-center ">
+<img src="/1.svg" alt="LSA Logo" />
       </div>
       {!collapsed ? (
         <div className="flex min-w-0 flex-col gap-1">

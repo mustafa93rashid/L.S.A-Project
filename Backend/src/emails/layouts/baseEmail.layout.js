@@ -154,18 +154,21 @@ const createBaseEmailLayout = ({
 ${
   company.logo?.url
     ? `
-      <img
-        src="${escapeHtml(company.logo.url)}"
-        width="${company.logo.width}"
-        alt="${escapeHtml(company.logo.alt)}"
-        style="
-          display: block;
-          width: ${company.logo.width}px;
-          height: auto;
-          border: 0;
-          outline: none;
-        "
-      />
+<img
+  src="${escapeHtml(company.logo.url)}"
+  width="${company.logo.width}"
+  alt="${escapeHtml(company.logo.alt)}"
+  border="0"
+  style="
+    display: block;
+    width: ${company.logo.width}px;
+    max-width: ${company.logo.width}px;
+    height: auto;
+    border: 0;
+    outline: none;
+    text-decoration: none;
+  "
+/>
     `
     : ""
 }
