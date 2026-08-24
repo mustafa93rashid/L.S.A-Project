@@ -1,5 +1,5 @@
 const nodemailer = require("nodemailer");
-
+const path = require("path");
 const {
   createVerificationEmailTemplate,
   createPasswordResetTemplate,

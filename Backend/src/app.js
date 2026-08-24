@@ -21,10 +21,10 @@ const server = http.createServer(app);
 //=========================================================================
  
 const allowedOrigins = [
-  process.env.CLIENT_URL,
   process.env.DASHBOARD_URL,
-  process.env.FRONTEND_URL,
-  process.env.FRONTEND_URL2,
+  process.env.WEBSITE_URL,
+  process.env.DASHBOARD_URL_LOCAL,
+  process.env.WEBSITE_URL_LOCAL,
 ].filter(Boolean);
 
 app.use(

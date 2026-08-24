@@ -30,11 +30,11 @@ const EMAIL_THEME = {
     name: "LSA",
     tagline: "Engineering & Energy Solutions",
 
-    logo: {
-      url: "https://res.cloudinary.com/zj7njgea/image/upload/v1787496286/Untitled_design.png",
-      width: 170,
-      alt: "LSA Logo",
-    },
+logo: {
+  url: "https://res.cloudinary.com/dwfyjisit/image/upload/f_png/v1785780767/Logo2_xkktdk.png",
+  width: 110,
+  alt: "LSA Logo",
+},
   },
 };
 

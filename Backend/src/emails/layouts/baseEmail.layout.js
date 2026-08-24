@@ -28,8 +28,11 @@ const createBaseEmailLayout = ({
 
   return `
     <!DOCTYPE html>
+
     <html lang="en">
+
       <head>
+
         <meta charset="UTF-8" />
 
         <meta
@@ -42,6 +45,7 @@ const createBaseEmailLayout = ({
         />
 
         <title>${escapeHtml(title)}</title>
+
       </head>
 
       <body
@@ -53,6 +57,9 @@ const createBaseEmailLayout = ({
           -webkit-font-smoothing: antialiased;
         "
       >
+
+        <!-- Preheader -->
+
         <div
           style="
             display: none;
@@ -65,6 +72,7 @@ const createBaseEmailLayout = ({
           ${escapeHtml(preheader)}
         </div>
 
+
         <table
           role="presentation"
           width="100%"
@@ -76,13 +84,16 @@ const createBaseEmailLayout = ({
             background-color: ${colors.background};
           "
         >
+
           <tr>
+
             <td
               align="center"
               style="
-                padding: 40px 16px;
+                padding: 20px 12px;
               "
             >
+
               <table
                 role="presentation"
                 width="100%"
@@ -91,19 +102,21 @@ const createBaseEmailLayout = ({
                 border="0"
                 style="
                   width: 100%;
-                  max-width: 640px;
+                  max-width: 580px;
                 "
               >
+
                 <tr>
+
                   <td
                     style="
                       overflow: hidden;
                       background-color: ${colors.surface};
                       border: 1px solid ${colors.border};
-                      border-radius: 20px;
-                      box-shadow: 0 18px 45px rgba(18, 41, 104, 0.10);
+                      border-radius: 14px;
                     "
                   >
+
                     <table
                       role="presentation"
                       width="100%"
@@ -111,97 +124,151 @@ const createBaseEmailLayout = ({
                       cellspacing="0"
                       border="0"
                     >
+
+                      <!-- Header -->
+
                       <tr>
+
                         <td
-                          align="center"
                           style="
-                            padding: 34px 30px;
+                            padding: 18px 24px;
                             background-color: ${colors.primary};
-                            border-bottom: 4px solid ${colors.secondary};
+                            border-bottom: 3px solid ${colors.secondary};
                           "
                         >
-                          ${
-                            company.logo?.url
-                              ? `
-                                <img
-                                  src="${escapeHtml(company.logo.url)}"
-                                  alt="${escapeHtml(company.logo.alt || company.name)}"
-                                  width="${Number(company.logo.width) || 170}"
+
+                          <table
+                            role="presentation"
+                            width="100%"
+                            cellpadding="0"
+                            cellspacing="0"
+                            border="0"
+                          >
+
+                            <tr>
+
+                              <td
+                                valign="middle"
+                              >
+
+${
+  company.logo?.url
+    ? `
+      <img
+        src="${escapeHtml(company.logo.url)}"
+        width="${company.logo.width}"
+        alt="${escapeHtml(company.logo.alt)}"
+        style="
+          display: block;
+          width: ${company.logo.width}px;
+          height: auto;
+          border: 0;
+          outline: none;
+        "
+      />
+    `
+    : ""
+}
+                              </td>
+
+
+                              <td
+                                align="right"
+                                valign="middle"
+                                style="
+                                  padding-left: 16px;
+                                "
+                              >
+
+                                <p
                                   style="
-                                    display: block;
-                                    margin: 0 auto 18px;
-                                    max-width: 100%;
-                                    height: auto;
-                                    border: 0;
+                                    margin: 0 0 3px;
+                                    color: ${colors.white};
+                                    font-size: 13px;
+                                    line-height: 1.3;
+                                    font-weight: 700;
                                   "
-                                />
+                                >
+                                  ${escapeHtml(company.name)}
+                                </p>
+
+                                <p
+                                  style="
+                                    margin: 0;
+                                    color: rgba(255, 255, 255, 0.70);
+                                    font-size: 10px;
+                                    line-height: 1.4;
+                                  "
+                                >
+                                  ${escapeHtml(company.tagline)}
+                                </p>
+
+                              </td>
+
+                            </tr>
+
+                          </table>
+
+                        </td>
+
+                      </tr>
+
+
+                      <!-- Content -->
+
+                      <tr>
+
+                        <td
+                          style="
+                            padding: 28px 30px;
+                          "
+                        >
+
+                          ${
+                            eyebrow
+                              ? `
+                                <p
+                                  style="
+                                    margin: 0 0 18px;
+                                    color: ${colors.muted};
+                                    font-size: 10px;
+                                    font-weight: 700;
+                                    letter-spacing: 1.4px;
+                                    text-transform: uppercase;
+                                  "
+                                >
+                                  ${escapeHtml(eyebrow)}
+                                </p>
                               `
                               : ""
                           }
 
-                          <p
-                            style="
-                              margin: 0 0 8px;
-                              color: rgba(255, 255, 255, 0.72);
-                              font-size: 11px;
-                              font-weight: 700;
-                              letter-spacing: 2px;
-                              text-transform: uppercase;
-                            "
-                          >
-                            ${escapeHtml(eyebrow)}
-                          </p>
-
-                          <h1
-                            style="
-                              margin: 0;
-                              color: ${colors.white};
-                              font-size: 28px;
-                              line-height: 1.2;
-                              font-weight: 800;
-                            "
-                          >
-                            ${escapeHtml(company.name)}
-                          </h1>
-
-                          <p
-                            style="
-                              margin: 8px 0 0;
-                              color: rgba(255, 255, 255, 0.82);
-                              font-size: 14px;
-                              line-height: 1.6;
-                            "
-                          >
-                            ${escapeHtml(company.tagline)}
-                          </p>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td
-                          style="
-                            padding: 42px 40px;
-                          "
-                        >
                           ${content}
+
                         </td>
+
                       </tr>
 
+
+                      <!-- Footer -->
+
                       <tr>
+
                         <td
                           align="center"
                           style="
-                            padding: 24px 32px;
+                            padding: 16px 24px;
                             background-color: ${colors.softSurface};
                             border-top: 1px solid ${colors.border};
                           "
                         >
+
                           <p
                             style="
                               margin: 0;
                               color: ${colors.muted};
-                              font-size: 12px;
-                              line-height: 1.7;
+                              font-size: 10px;
+                              line-height: 1.5;
                             "
                           >
                             ${escapeHtml(footerText)}
@@ -209,24 +276,37 @@ const createBaseEmailLayout = ({
 
                           <p
                             style="
-                              margin: 8px 0 0;
-                              color: ${colors.text};
-                              font-size: 12px;
-                              line-height: 1.6;
+                              margin: 5px 0 0;
+                              color: ${colors.muted};
+                              font-size: 10px;
+                              line-height: 1.5;
                             "
                           >
-                            © ${new Date().getFullYear()} ${escapeHtml(company.name)}. All rights reserved.
+                            © ${new Date().getFullYear()}
+                            ${escapeHtml(company.name)}.
+                            All rights reserved.
                           </p>
+
                         </td>
+
                       </tr>
+
                     </table>
+
                   </td>
+
                 </tr>
+
               </table>
+
             </td>
+
           </tr>
+
         </table>
+
       </body>
+
     </html>
   `;
 };
@@ -246,11 +326,11 @@ const createEmailHeading = ({
         ? `
           <p
             style="
-              margin: 0 0 12px;
+              margin: 0 0 6px;
               color: ${colors.secondary};
-              font-size: 12px;
-              font-weight: 800;
-              letter-spacing: 1.8px;
+              font-size: 10px;
+              font-weight: 700;
+              letter-spacing: 1.2px;
               text-transform: uppercase;
             "
           >
@@ -262,11 +342,11 @@ const createEmailHeading = ({
 
     <h2
       style="
-        margin: 0 0 18px;
+        margin: 0 0 10px;
         color: ${colors.heading};
-        font-size: 28px;
+        font-size: 22px;
         line-height: 1.3;
-        font-weight: 800;
+        font-weight: 700;
       "
     >
       ${escapeHtml(title)}
@@ -277,10 +357,10 @@ const createEmailHeading = ({
         ? `
           <p
             style="
-              margin: 0 0 28px;
+              margin: 0 0 18px;
               color: ${colors.text};
-              font-size: 16px;
-              line-height: 1.8;
+              font-size: 14px;
+              line-height: 1.65;
             "
           >
             ${description}
@@ -302,36 +382,41 @@ const createEmailButton = ({
   return `
     <table
       role="presentation"
-      width="100%"
       cellpadding="0"
       cellspacing="0"
       border="0"
       style="
-        margin: 28px 0;
+        margin: 20px 0;
       "
     >
+
       <tr>
-        <td align="center">
+
+        <td>
+
           <a
             href="${escapeHtml(url)}"
             target="_blank"
             rel="noopener noreferrer"
             style="
               display: inline-block;
-              padding: 15px 30px;
+              padding: 11px 20px;
               color: ${colors.white};
               background-color: ${colors.secondary};
-              border-radius: 999px;
+              border-radius: 7px;
               text-decoration: none;
-              font-size: 15px;
-              font-weight: 800;
-              line-height: 1;
+              font-size: 13px;
+              font-weight: 700;
+              line-height: 1.2;
             "
           >
             ${escapeHtml(label)}
           </a>
+
         </td>
+
       </tr>
+
     </table>
   `;
 };
@@ -353,6 +438,10 @@ const createInformationCard = ({
       row.value !== "",
   );
 
+  if (!visibleRows.length) {
+    return "";
+  }
+
   return `
     <table
       role="presentation"
@@ -361,28 +450,34 @@ const createInformationCard = ({
       cellspacing="0"
       border="0"
       style="
-        margin: 26px 0;
+        width: 100%;
+        margin: 18px 0;
         background-color: ${colors.softSurface};
         border: 1px solid ${colors.border};
-        border-radius: 14px;
+        border-radius: 10px;
       "
     >
+
       <tr>
+
         <td
           style="
-            padding: 22px 24px;
+            padding: 16px 18px;
           "
         >
+
           <p
             style="
-              margin: 0 0 16px;
+              margin: 0 0 8px;
               color: ${colors.primary};
-              font-size: 15px;
-              font-weight: 800;
+              font-size: 13px;
+              line-height: 1.4;
+              font-weight: 700;
             "
           >
             ${escapeHtml(title)}
           </p>
+
 
           <table
             role="presentation"
@@ -391,54 +486,62 @@ const createInformationCard = ({
             cellspacing="0"
             border="0"
           >
+
             ${visibleRows
               .map(
                 (row, index) => `
                   <tr>
+
                     <td
                       valign="top"
                       style="
                         width: 42%;
-                        padding: 11px 0;
+                        padding: 7px 0;
                         color: ${colors.muted};
                         border-top: ${
                           index === 0
                             ? "none"
                             : `1px solid ${colors.lightBorder}`
                         };
-                        font-size: 13px;
+                        font-size: 11px;
                         line-height: 1.5;
                       "
                     >
                       ${escapeHtml(row.label)}
                     </td>
 
+
                     <td
                       align="right"
                       valign="top"
                       style="
-                        padding: 11px 0;
+                        padding: 7px 0;
                         color: ${colors.heading};
                         border-top: ${
                           index === 0
                             ? "none"
                             : `1px solid ${colors.lightBorder}`
                         };
-                        font-size: 14px;
+                        font-size: 12px;
                         line-height: 1.5;
-                        font-weight: 700;
+                        font-weight: 600;
                         word-break: break-word;
                       "
                     >
                       ${escapeHtml(row.value)}
                     </td>
+
                   </tr>
                 `,
               )
               .join("")}
+
           </table>
+
         </td>
+
       </tr>
+
     </table>
   `;
 };
@@ -458,46 +561,54 @@ const createVerificationCodeCard = ({
       cellspacing="0"
       border="0"
       style="
-        margin: 28px 0;
+        width: 100%;
+        margin: 20px 0;
         background-color: ${colors.softSurface};
         border: 1px solid ${colors.border};
-        border-radius: 14px;
+        border-radius: 10px;
       "
     >
+
       <tr>
+
         <td
           align="center"
           style="
-            padding: 26px 20px;
+            padding: 18px 16px;
           "
         >
+
           <p
             style="
-              margin: 0 0 12px;
+              margin: 0 0 7px;
               color: ${colors.muted};
-              font-size: 11px;
-              font-weight: 800;
-              letter-spacing: 1.8px;
+              font-size: 10px;
+              font-weight: 700;
+              letter-spacing: 1.2px;
               text-transform: uppercase;
             "
           >
             Verification Code
           </p>
 
+
           <p
             style="
               margin: 0;
               color: ${colors.primary};
-              font-size: 38px;
+              font-size: 30px;
               line-height: 1.2;
-              font-weight: 900;
-              letter-spacing: 10px;
+              font-weight: 800;
+              letter-spacing: 7px;
             "
           >
             ${escapeHtml(verificationCode)}
           </p>
+
         </td>
+
       </tr>
+
     </table>
   `;
 };
