@@ -17,80 +17,98 @@ const {
 // ==================== Equipment Request Controller ====================
 
 class EquipmentRequestController {
+// ==================== Create Equipment Request ====================
+
+createEquipmentRequest = async (req, res) => {
+  const {
+    equipment: equipmentId,
+    fullName,
+    email,
+    phone,
+    company,
+    workLocation,
+    estimatedRequiredDays,
+    workDescription,
+  } = req.body;
+
+  // ==================== Find Equipment ====================
+
+  const equipment = await Equipment.findOne({
+    _id: equipmentId,
+    isActive: true,
+  })
+    .select(
+      "title slug image primarySpecification location availableUnits isActive",
+    )
+    .lean();
+
+  if (!equipment) {
+    return res.status(404).json({
+      success: false,
+      message: "The selected equipment is not available",
+    });
+  }
+
   // ==================== Create Equipment Request ====================
 
-  createEquipmentRequest = async (req, res) => {
-    const {
-      equipment: equipmentId,
-      fullName,
-      email,
-      phone,
-      company,
-      workLocation,
-      estimatedRequiredDays,
-      workDescription,
-    } = req.body;
+  const request = await EquipmentRequest.create({
+    equipment: equipment._id,
+    fullName,
+    email,
+    phone,
+    company,
+    workLocation,
+    estimatedRequiredDays,
+    workDescription,
+  });
 
-    const equipment = await Equipment.findOne({
-      _id: equipmentId,
-      isActive: true,
-    })
-      .select(
-        "title slug image primarySpecification location availableUnits isActive",
-      )
-      .lean();
+  // ==================== Populate Equipment ====================
 
-    if (!equipment) {
-      return res.status(404).json({
-        success: false,
-        message: "The selected equipment is not available",
-      });
-    }
+  await request.populate(
+    "equipment",
+    "title slug image primarySpecification location availableUnits",
+  );
 
-    const request = await EquipmentRequest.create({
-      equipment: equipment._id,
-      fullName,
-      email,
-      phone,
-      company,
-      workLocation,
-      estimatedRequiredDays,
-      workDescription,
+  // ==================== Send Success Response ====================
+  // من هذه النقطة الطلب يعتبر ناجحاً
+  // فشل Email أو Notification لا يؤثر على نجاح الطلب
+
+  res.status(201).json({
+    success: true,
+    message:
+      "Your equipment request has been received successfully. Our team will contact you soon.",
+
+    data: {
+      _id: request._id,
+      equipment: request.equipment,
+      fullName: request.fullName,
+      email: request.email,
+      phone: request.phone,
+      company: request.company,
+      workLocation: request.workLocation,
+      estimatedRequiredDays: request.estimatedRequiredDays,
+      workDescription: request.workDescription,
+      status: request.status,
+      createdAt: request.createdAt,
+    },
+  });
+
+  // ==================== Side Effects ====================
+  // مهم: لا تستخدم await هنا
+  // Email + Dashboard Notification يعملان بشكل مستقل
+
+  void processRequestSideEffects({
+    request,
+    equipment,
+  }).catch((error) => {
+    console.error("Equipment request side effects failed:", {
+      requestId: request._id,
+      message: error.message,
     });
+  });
 
-    await request.populate(
-      "equipment",
-      "title slug image primarySpecification location availableUnits",
-    );
-
-    await processRequestSideEffects({
-      request,
-      equipment,
-    });
-
-    return res.status(201).json({
-      success: true,
-      message:
-        "Your equipment request has been received successfully. Our team will contact you soon.",
-
-      data: {
-        _id: request._id,
-        equipment: request.equipment,
-        fullName: request.fullName,
-        email: request.email,
-        phone: request.phone,
-        company: request.company,
-        workLocation: request.workLocation,
-
-        estimatedRequiredDays: request.estimatedRequiredDays,
-
-        workDescription: request.workDescription,
-
-        status: request.status,
-        createdAt: request.createdAt,
-      },
-    });
-  };
+  return;
+};
 
   // ==================== Get All Equipment Requests ====================
 
@@ -146,42 +164,57 @@ class EquipmentRequestController {
     });
   };
 
-  // ==================== Update Equipment Request Status ====================
+// ==================== Update Equipment Request Status ====================
 
-  updateEquipmentRequestStatus = async (req, res) => {
-    const request = await EquipmentRequest.findById(req.params.id).populate(
-      "equipment",
-      "title slug",
-    );
+updateEquipmentRequestStatus = async (req, res) => {
+  const request = await EquipmentRequest.findById(req.params.id).populate(
+    "equipment",
+    "title slug",
+  );
 
-    if (!request) {
-      return res.status(404).json({
-        success: false,
-        message: "Equipment request not found",
-      });
-    }
+  if (!request) {
+    return res.status(404).json({
+      success: false,
+      message: "Equipment request not found",
+    });
+  }
 
-    const { status } = req.body;
+  const { status } = req.body;
 
-    updateRequestTimeline(request, status);
+  updateRequestTimeline(request, status);
 
-    request.updatedBy = getCurrentUserId(req);
+  request.updatedBy = getCurrentUserId(req);
 
-    await request.save();
+  await request.save();
 
-    await sendStatusEmailSafely({
-      request,
+  await request.populate(
+    "updatedBy",
+    "fullName email role",
+  );
+
+  // ==================== Send Success Response ====================
+
+  res.status(200).json({
+    success: true,
+    message: "Equipment request status updated successfully",
+    data: request,
+  });
+
+  // ==================== Status Email ====================
+
+  void sendStatusEmailSafely({
+    request,
+    status,
+  }).catch((error) => {
+    console.error("Equipment request status side effect failed:", {
+      requestId: request._id,
       status,
+      message: error.message,
     });
+  });
 
-    await request.populate("updatedBy", "fullName email role");
-
-    return res.status(200).json({
-      success: true,
-      message: "Equipment request status updated successfully",
-      data: request,
-    });
-  };
+  return;
+};
 
   // ==================== Delete Equipment Request ====================
 

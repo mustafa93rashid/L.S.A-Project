@@ -14,57 +14,74 @@ const {
 // ==================== Contact Message Controller ====================
 
 class ContactMessageController {
+// ==================== Create Contact Message ====================
+
+createContactMessage = async (req, res) => {
+  const {
+    fullName,
+    email,
+    phone,
+    service,
+    projectDescription,
+  } = req.body;
+
   // ==================== Create Contact Message ====================
 
-  createContactMessage = async (req, res) => {
-    const { fullName, email, phone, service, projectDescription } = req.body;
+  const contactMessage = await ContactMessage.create({
+    fullName,
+    email,
+    phone,
 
-    const contactMessage = await ContactMessage.create({
-      fullName,
-      email,
-      phone,
+    service: service || "General Inquiry",
 
-      service: service || "General Inquiry",
+    projectDescription,
 
-      projectDescription,
+    status: "new",
+  });
 
-      status: "new",
+  // ==================== Send Success Response ====================
+  // من هذه النقطة الرسالة تعتبر مستلمة بنجاح
+  // فشل Email أو Notification لا يؤثر على نجاح الطلب
+
+  res.status(201).json({
+    success: true,
+
+    message:
+      "Your message has been received successfully. Our team will contact you soon.",
+
+    data: {
+      _id: contactMessage._id,
+
+      fullName: contactMessage.fullName,
+
+      email: contactMessage.email,
+
+      phone: contactMessage.phone,
+
+      service: contactMessage.service,
+
+      projectDescription: contactMessage.projectDescription,
+
+      status: contactMessage.status,
+
+      createdAt: contactMessage.createdAt,
+    },
+  });
+
+  // ==================== Side Effects ====================
+  // مهم: لا تستخدم await هنا
+
+  void processContactMessageSideEffects({
+    contactMessage,
+  }).catch((error) => {
+    console.error("Contact message side effects failed:", {
+      contactMessageId: contactMessage._id,
+      message: error.message,
     });
+  });
 
-    await processContactMessageSideEffects({
-      contactMessage,
-    });
-
-    return res.status(201).json({
-      success: true,
-
-      message:
-        "Your message has been received successfully. Our team will contact you soon.",
-
-      data: {
-        _id: contactMessage._id,
-
-        fullName: contactMessage.fullName,
-
-        email: contactMessage.email,
-
-        phone: contactMessage.phone,
-
-        service: contactMessage.service,
-
-        projectDescription: contactMessage.projectDescription,
-
-        status: contactMessage.status,
-
-        customerEmailSent: contactMessage.customerEmailSent,
-
-        dashboardNotificationCreated:
-          contactMessage.dashboardNotificationCreated,
-
-        createdAt: contactMessage.createdAt,
-      },
-    });
-  };
+  return;
+};
 
   // ==================== Get All Contact Messages ====================
 

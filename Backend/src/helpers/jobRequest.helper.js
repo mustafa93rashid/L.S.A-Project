@@ -20,7 +20,6 @@ const JOB_REQUEST_POPULATE_FIELDS = [
     path: "job",
     select: "title location employmentType department status deadline",
   },
-
   {
     path: "updatedBy",
     select: "fullName email role",
@@ -47,7 +46,6 @@ const JOB_REQUEST_STATUSES = [
 ];
 
 const CV_FOLDER = "resumes";
-
 const CV_PREFIX = "job-request-cv";
 
 // ==================== Get Current User ID ====================
@@ -85,21 +83,18 @@ const buildDashboardFilter = (query) => {
           $options: "i",
         },
       },
-
       {
         lastName: {
           $regex: searchTerm,
           $options: "i",
         },
       },
-
       {
         email: {
           $regex: searchTerm,
           $options: "i",
         },
       },
-
       {
         phone: {
           $regex: searchTerm,
@@ -117,7 +112,10 @@ const buildDashboardFilter = (query) => {
 const buildPagination = (query) => {
   const page = Math.max(Number(query.page) || 1, 1);
 
-  const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+  const limit = Math.min(
+    Math.max(Number(query.limit) || 20, 1),
+    100,
+  );
 
   return {
     page,
@@ -128,7 +126,11 @@ const buildPagination = (query) => {
 
 // ==================== Build Pagination Response ====================
 
-const buildPaginationResponse = ({ page, limit, total }) => {
+const buildPaginationResponse = ({
+  page,
+  limit,
+  total,
+}) => {
   const totalPages = Math.ceil(total / limit);
 
   return {
@@ -150,7 +152,8 @@ const formatCv = ({ uploadedFile, file }) => {
     originalName: file.originalname,
     mimeType: file.mimetype,
     size: file.size,
-    resourceType: uploadedFile.resourceType || RESOURCE_TYPES.RAW,
+    resourceType:
+      uploadedFile.resourceType || RESOURCE_TYPES.RAW,
   };
 };
 
@@ -188,62 +191,78 @@ const deleteCvSafely = async (cv) => {
   try {
     await deleteResource({
       publicId: cv.publicId,
-
-      resourceType: cv.resourceType || RESOURCE_TYPES.RAW,
+      resourceType:
+        cv.resourceType || RESOURCE_TYPES.RAW,
     });
   } catch (error) {
-    console.error("Failed to delete job request CV:", {
-      publicId: cv.publicId,
-      message: error.message,
-      code: error.code,
-    });
+    console.error(
+      "Failed to delete job request CV:",
+      {
+        publicId: cv.publicId,
+        message: error.message,
+        code: error.code,
+      },
+    );
   }
 };
 
 // ==================== Send Received Email Safely ====================
 
-const sendReceivedEmailSafely = async ({ jobRequest, job }) => {
+const sendReceivedEmailSafely = async ({
+  jobRequest,
+  job,
+}) => {
   try {
     await sendJobRequestReceivedEmail({
       to: jobRequest.email,
 
-      fullName: `${jobRequest.firstName} ${jobRequest.lastName}`,
+      fullName:
+        `${jobRequest.firstName} ${jobRequest.lastName}`,
 
       jobTitle: job.title,
 
       requestId: jobRequest._id,
     });
   } catch (error) {
-    console.error("Job request received email failed:", {
-      jobRequestId: jobRequest._id,
-
-      email: jobRequest.email,
-
-      message: error.message,
-    });
+    console.error(
+      "Job request received email failed:",
+      {
+        jobRequestId: jobRequest._id,
+        email: jobRequest.email,
+        message: error.message,
+      },
+    );
   }
 };
 
 // ==================== Create Notification Safely ====================
 
-const createNotificationSafely = async ({ jobRequest, job }) => {
+const createNotificationSafely = async ({
+  jobRequest,
+  job,
+}) => {
   try {
     await createJobRequestNotification({
       jobRequest,
       job,
     });
   } catch (error) {
-    console.error("Job request notification failed:", {
-      jobRequestId: jobRequest._id,
-
-      message: error.message,
-    });
+    console.error(
+      "Job request notification failed:",
+      {
+        jobRequestId: jobRequest._id,
+        message: error.message,
+      },
+    );
   }
 };
 
 // ==================== Process Job Request Side Effects ====================
 
-const processJobRequestSideEffects = async ({ jobRequest, job }) => {
+const processJobRequestSideEffects = async ({
+  jobRequest,
+  job,
+}) => {
   await Promise.allSettled([
     sendReceivedEmailSafely({
       jobRequest,
@@ -259,7 +278,11 @@ const processJobRequestSideEffects = async ({ jobRequest, job }) => {
 
 // ==================== Send Status Email Safely ====================
 
-const sendStatusEmailSafely = async ({ jobRequest, job, status }) => {
+const sendStatusEmailSafely = async ({
+  jobRequest,
+  job,
+  status,
+}) => {
   if (!STATUS_EMAILS.includes(status)) {
     return;
   }
@@ -268,35 +291,40 @@ const sendStatusEmailSafely = async ({ jobRequest, job, status }) => {
     await sendJobRequestStatusEmail({
       to: jobRequest.email,
 
-      fullName: `${jobRequest.firstName} ${jobRequest.lastName}`,
+      fullName:
+        `${jobRequest.firstName} ${jobRequest.lastName}`,
 
       jobTitle: job.title,
 
       status,
     });
   } catch (error) {
-    console.error("Job request status email failed:", {
-      jobRequestId: jobRequest._id,
-
-      email: jobRequest.email,
-
-      status,
-
-      message: error.message,
-    });
+    console.error(
+      "Job request status email failed:",
+      {
+        jobRequestId: jobRequest._id,
+        email: jobRequest.email,
+        status,
+        message: error.message,
+      },
+    );
   }
 };
 
 // ==================== Update Job Request Status ====================
 
-const updateJobRequestStatus = (jobRequest, status) => {
+const updateJobRequestStatus = (
+  jobRequest,
+  status,
+) => {
   const previousStatus = jobRequest.status;
 
   if (previousStatus === status) {
     return;
   }
 
-  const previousDateField = STATUS_DATE_FIELDS[previousStatus];
+  const previousDateField =
+    STATUS_DATE_FIELDS[previousStatus];
 
   if (previousDateField) {
     jobRequest[previousDateField] = null;
@@ -304,7 +332,8 @@ const updateJobRequestStatus = (jobRequest, status) => {
 
   jobRequest.status = status;
 
-  const newDateField = STATUS_DATE_FIELDS[status];
+  const newDateField =
+    STATUS_DATE_FIELDS[status];
 
   if (newDateField) {
     jobRequest[newDateField] = new Date();
@@ -313,32 +342,45 @@ const updateJobRequestStatus = (jobRequest, status) => {
 
 // ==================== Build Job Request Statistics ====================
 
-const buildJobRequestStatistics = async (JobRequest) => {
-  const groupedStatuses = await JobRequest.aggregate([
-    {
-      $group: {
-        _id: "$status",
-
-        count: {
-          $sum: 1,
+const buildJobRequestStatistics = async (
+  JobRequest,
+) => {
+  const groupedStatuses =
+    await JobRequest.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: {
+            $sum: 1,
+          },
         },
       },
-    },
-  ]);
+    ]);
 
-  const statusCounts = JOB_REQUEST_STATUSES.reduce((result, status) => {
-    result[status] = 0;
+  const statusCounts =
+    JOB_REQUEST_STATUSES.reduce(
+      (result, status) => {
+        result[status] = 0;
 
-    return result;
-  }, {});
+        return result;
+      },
+      {},
+    );
 
   groupedStatuses.forEach((item) => {
-    if (Object.prototype.hasOwnProperty.call(statusCounts, item._id)) {
+    if (
+      Object.prototype.hasOwnProperty.call(
+        statusCounts,
+        item._id,
+      )
+    ) {
       statusCounts[item._id] = item.count;
     }
   });
 
-  const total = Object.values(statusCounts).reduce(
+  const total = Object.values(
+    statusCounts,
+  ).reduce(
     (sum, count) => sum + count,
     0,
   );
@@ -351,7 +393,11 @@ const buildJobRequestStatistics = async (JobRequest) => {
 
 // ==================== Check Duplicate Application ====================
 
-const jobApplicationExists = async ({ JobRequest, jobId, email }) => {
+const jobApplicationExists = async ({
+  JobRequest,
+  jobId,
+  email,
+}) => {
   return JobRequest.exists({
     job: jobId,
     email,
@@ -380,6 +426,7 @@ module.exports = {
   sendStatusEmailSafely,
 
   updateJobRequestStatus,
+
   buildJobRequestStatistics,
 
   jobApplicationExists,

@@ -20,86 +20,103 @@ const {
 // ==================== Job Request Controller ====================
 
 class JobRequestController {
-  // ==================== Create Job Request ====================
+// ==================== Create Job Request ====================
 
-  createJobRequest = async (req, res) => {
-    const { job: jobId, firstName, lastName, email, phone } = req.body;
+createJobRequest = async (req, res) => {
+  let uploadedCv = null;
 
-    const job = await Job.findOne({
-      _id: jobId,
-      status: "published",
-    })
-      .select("title location employmentType department status deadline")
-      .lean();
+  try {
+    const {
+      job: jobId,
+      firstName,
+      lastName,
+      email,
+      phone,
+    } = req.body;
+
+    // ==================== Find Job ====================
+
+    const job = await Job.findById(jobId);
 
     if (!job) {
       return res.status(404).json({
         success: false,
-        message: "The selected job is not available",
+        message: "Job not found",
       });
     }
 
-    if (job.deadline && new Date(job.deadline) < new Date()) {
+    // ==================== Check Job Status ====================
+
+    if (job.status !== "published") {
       return res.status(400).json({
         success: false,
-        message: "The application deadline for this job has passed",
+        message: "This job is not currently available",
       });
     }
 
-    const duplicateApplication = await jobApplicationExists({
+    // ==================== Check Duplicate Application ====================
+
+    const exists = await jobApplicationExists({
       JobRequest,
-      jobId: job._id,
+      jobId,
       email,
     });
 
-    if (duplicateApplication) {
+    if (exists) {
       return res.status(409).json({
         success: false,
         message: "You have already applied for this job",
       });
     }
 
-    const cv = await uploadCv(req.file);
+    // ==================== Upload CV ====================
 
-    try {
-      const jobRequest = await JobRequest.create({
-        job: job._id,
-        firstName,
-        lastName,
-        email,
-        phone,
-        cv,
-        status: "new",
+    uploadedCv = await uploadCv(req.file);
+
+    // ==================== Create Job Request ====================
+
+    const jobRequest = await JobRequest.create({
+      job: jobId,
+      firstName,
+      lastName,
+      email,
+      phone,
+      cv: uploadedCv,
+      status: "new",
+    });
+
+    // ==================== Send Success Response ====================
+
+    res.status(201).json({
+      success: true,
+      message: "Your application has been submitted successfully",
+      data: jobRequest,
+    });
+
+    // ==================== Side Effects ====================
+    // Email + Notification لا يؤثران على نجاح الطلب
+
+    void processJobRequestSideEffects({
+      jobRequest,
+      job,
+    }).catch((error) => {
+      console.error("Job request side effects failed:", {
+        jobRequestId: jobRequest._id,
+        message: error.message,
       });
+    });
 
-      await jobRequest.populate(JOB_REQUEST_POPULATE_FIELDS);
+    return;
+  } catch (error) {
+    // ==================== Cleanup CV ====================
 
-      await processJobRequestSideEffects({
-        jobRequest,
-        job,
-      });
-
-      return res.status(201).json({
-        success: true,
-        message: "Your job application has been submitted successfully",
-
-        data: {
-          _id: jobRequest._id,
-          job: jobRequest.job,
-          firstName: jobRequest.firstName,
-          lastName: jobRequest.lastName,
-          email: jobRequest.email,
-          phone: jobRequest.phone,
-          status: jobRequest.status,
-          createdAt: jobRequest.createdAt,
-        },
-      });
-    } catch (error) {
-      await deleteCvSafely(cv);
-
-      throw error;
+    if (uploadedCv) {
+      await deleteCvSafely(uploadedCv);
     }
-  };
+
+    throw error;
+  }
+};
 
   // ==================== Get All Job Requests ====================
 
@@ -155,43 +172,56 @@ class JobRequestController {
     });
   };
 
-  // ==================== Update Job Request Status ====================
+// ==================== Update Job Request Status ====================
 
-  updateJobRequestStatus = async (req, res) => {
-    const jobRequest = await JobRequest.findById(req.params.id).populate(
-      "job",
-      "title location employmentType department",
-    );
+updateJobRequestStatus = async (req, res) => {
+  const jobRequest = await JobRequest.findById(req.params.id).populate(
+    "job",
+    "title location employmentType department",
+  );
 
-    if (!jobRequest) {
-      return res.status(404).json({
-        success: false,
-        message: "Job request not found",
-      });
-    }
+  if (!jobRequest) {
+    return res.status(404).json({
+      success: false,
+      message: "Job request not found",
+    });
+  }
 
-    const { status } = req.body;
+  const { status } = req.body;
 
-    updateJobRequestStatus(jobRequest, status);
+  updateJobRequestStatus(jobRequest, status);
 
-    jobRequest.updatedBy = getCurrentUserId(req);
+  jobRequest.updatedBy = getCurrentUserId(req);
 
-    await jobRequest.save();
+  await jobRequest.save();
 
-    await sendStatusEmailSafely({
-      jobRequest,
-      job: jobRequest.job,
+  await jobRequest.populate("updatedBy", "fullName email role");
+
+  // ==================== Send Success Response ====================
+
+  res.status(200).json({
+    success: true,
+    message: "Job request status updated successfully",
+    data: jobRequest,
+  });
+
+  // ==================== Send Status Email ====================
+  // لا ننتظر الإيميل ولا نربط نجاح العملية به
+
+  void sendStatusEmailSafely({
+    jobRequest,
+    job: jobRequest.job,
+    status,
+  }).catch((error) => {
+    console.error("Job request status side effect failed:", {
+      jobRequestId: jobRequest._id,
       status,
+      message: error.message,
     });
+  });
 
-    await jobRequest.populate("updatedBy", "fullName email role");
-
-    return res.status(200).json({
-      success: true,
-      message: "Job request status updated successfully",
-      data: jobRequest,
-    });
-  };
+  return;
+};
 
   // ==================== Delete Job Request ====================
 

@@ -33,7 +33,10 @@ const getCurrentUserId = (req) => {
 // ==================== Escape Regular Expression ====================
 
 const escapeRegex = (value) => {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return String(value).replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&",
+  );
 };
 
 // ==================== Build Dashboard Filter ====================
@@ -163,7 +166,6 @@ const createNotificationSafely = async ({ request, equipment }) => {
     });
 
     request.dashboardNotificationCreated = true;
-
     request.dashboardNotificationCreatedAt = new Date();
 
     await request.save({
@@ -179,18 +181,19 @@ const createNotificationSafely = async ({ request, equipment }) => {
 
 // ==================== Process Request Side Effects ====================
 
-const processRequestSideEffects = async ({ request, equipment }) => {
-  await Promise.allSettled([
-    sendReceivedEmailSafely({
-      request,
-      equipment,
-    }),
+const processRequestSideEffects = async ({
+  request,
+  equipment,
+}) => {
+  await sendReceivedEmailSafely({
+    request,
+    equipment,
+  });
 
-    createNotificationSafely({
-      request,
-      equipment,
-    }),
-  ]);
+  await createNotificationSafely({
+    request,
+    equipment,
+  });
 };
 
 // ==================== Update Request Timeline ====================
