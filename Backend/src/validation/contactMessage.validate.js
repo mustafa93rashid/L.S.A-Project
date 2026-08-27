@@ -51,6 +51,17 @@ const createContactMessageValidation = [
     .matches(PHONE_REGEX)
     .withMessage("Phone number format is invalid"),
 
+      body("clientRequestId")
+    .notEmpty()
+    .withMessage("Client request ID is required")
+    .bail()
+    .isString()
+    .withMessage("Client request ID must be a string")
+    .bail()
+    .trim()
+    .isUUID()
+    .withMessage("Client request ID must be a valid UUID"),
+    
   body("service")
     .optional()
     .isString()

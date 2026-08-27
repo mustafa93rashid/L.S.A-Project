@@ -29,38 +29,198 @@ createEquipmentRequest = async (req, res) => {
     workLocation,
     estimatedRequiredDays,
     workDescription,
+    clientRequestId,
   } = req.body;
+
+  // ==================== Check Existing Request ====================
+  // نفس clientRequestId يعني نفس محاولة الإرسال.
+  // لا ننشئ طلباً جديداً ولا نكرر Email أو Notification.
+
+  const existingRequest =
+    await EquipmentRequest.findOne({
+      clientRequestId,
+    }).populate(
+      "equipment",
+      "title slug image primarySpecification location availableUnits",
+    );
+
+  if (existingRequest) {
+    return res.status(200).json({
+      success: true,
+
+      alreadyReceived: true,
+
+      message:
+        "Your equipment request has already been received successfully. Our team will contact you soon.",
+
+      data: {
+        _id:
+          existingRequest._id,
+
+        clientRequestId:
+          existingRequest.clientRequestId,
+
+        equipment:
+          existingRequest.equipment,
+
+        fullName:
+          existingRequest.fullName,
+
+        email:
+          existingRequest.email,
+
+        phone:
+          existingRequest.phone,
+
+        company:
+          existingRequest.company,
+
+        workLocation:
+          existingRequest.workLocation,
+
+        estimatedRequiredDays:
+          existingRequest.estimatedRequiredDays,
+
+        workDescription:
+          existingRequest.workDescription,
+
+        status:
+          existingRequest.status,
+
+        createdAt:
+          existingRequest.createdAt,
+      },
+    });
+  }
 
   // ==================== Find Equipment ====================
 
-  const equipment = await Equipment.findOne({
-    _id: equipmentId,
-    isActive: true,
-  })
-    .select(
-      "title slug image primarySpecification location availableUnits isActive",
-    )
-    .lean();
+  const equipment =
+    await Equipment.findOne({
+      _id: equipmentId,
+      isActive: true,
+    })
+      .select(
+        "title slug image primarySpecification location availableUnits isActive",
+      )
+      .lean();
 
   if (!equipment) {
     return res.status(404).json({
       success: false,
-      message: "The selected equipment is not available",
+
+      message:
+        "The selected equipment is not available",
     });
   }
 
-  // ==================== Create Equipment Request ====================
+  let request;
 
-  const request = await EquipmentRequest.create({
-    equipment: equipment._id,
-    fullName,
-    email,
-    phone,
-    company,
-    workLocation,
-    estimatedRequiredDays,
-    workDescription,
-  });
+  try {
+    // ==================== Create Equipment Request ====================
+
+    request =
+      await EquipmentRequest.create({
+        clientRequestId,
+
+        equipment:
+          equipment._id,
+
+        fullName,
+
+        email,
+
+        phone,
+
+        company,
+
+        workLocation,
+
+        estimatedRequiredDays,
+
+        workDescription,
+
+        status:
+          "new",
+      });
+  } catch (error) {
+    // ==================== Race Condition Protection ====================
+    //
+    // قد يصل طلبان بنفس clientRequestId في نفس اللحظة.
+    // الـunique index هو خط الحماية النهائي.
+
+    const isClientRequestIdDuplicate =
+      error?.code === 11000 &&
+      (
+        error?.keyPattern
+          ?.clientRequestId ||
+        error?.keyValue
+          ?.clientRequestId
+      );
+
+    if (
+      isClientRequestIdDuplicate
+    ) {
+      const duplicateRequest =
+        await EquipmentRequest.findOne({
+          clientRequestId,
+        }).populate(
+          "equipment",
+          "title slug image primarySpecification location availableUnits",
+        );
+
+      if (duplicateRequest) {
+        return res.status(200).json({
+          success: true,
+
+          alreadyReceived: true,
+
+          message:
+            "Your equipment request has already been received successfully. Our team will contact you soon.",
+
+          data: {
+            _id:
+              duplicateRequest._id,
+
+            clientRequestId:
+              duplicateRequest.clientRequestId,
+
+            equipment:
+              duplicateRequest.equipment,
+
+            fullName:
+              duplicateRequest.fullName,
+
+            email:
+              duplicateRequest.email,
+
+            phone:
+              duplicateRequest.phone,
+
+            company:
+              duplicateRequest.company,
+
+            workLocation:
+              duplicateRequest.workLocation,
+
+            estimatedRequiredDays:
+              duplicateRequest.estimatedRequiredDays,
+
+            workDescription:
+              duplicateRequest.workDescription,
+
+            status:
+              duplicateRequest.status,
+
+            createdAt:
+              duplicateRequest.createdAt,
+          },
+        });
+      }
+    }
+
+    throw error;
+  }
 
   // ==================== Populate Equipment ====================
 
@@ -70,41 +230,76 @@ createEquipmentRequest = async (req, res) => {
   );
 
   // ==================== Send Success Response ====================
-  // من هذه النقطة الطلب يعتبر ناجحاً
-  // فشل Email أو Notification لا يؤثر على نجاح الطلب
+  //
+  // من هذه النقطة الطلب يعتبر ناجحاً.
+  // فشل Email أو Notification لا يؤثر على نجاح الطلب.
 
   res.status(201).json({
     success: true,
+
+    alreadyReceived: false,
+
     message:
       "Your equipment request has been received successfully. Our team will contact you soon.",
 
     data: {
-      _id: request._id,
-      equipment: request.equipment,
-      fullName: request.fullName,
-      email: request.email,
-      phone: request.phone,
-      company: request.company,
-      workLocation: request.workLocation,
-      estimatedRequiredDays: request.estimatedRequiredDays,
-      workDescription: request.workDescription,
-      status: request.status,
-      createdAt: request.createdAt,
+      _id:
+        request._id,
+
+      clientRequestId:
+        request.clientRequestId,
+
+      equipment:
+        request.equipment,
+
+      fullName:
+        request.fullName,
+
+      email:
+        request.email,
+
+      phone:
+        request.phone,
+
+      company:
+        request.company,
+
+      workLocation:
+        request.workLocation,
+
+      estimatedRequiredDays:
+        request.estimatedRequiredDays,
+
+      workDescription:
+        request.workDescription,
+
+      status:
+        request.status,
+
+      createdAt:
+        request.createdAt,
     },
   });
 
   // ==================== Side Effects ====================
-  // مهم: لا تستخدم await هنا
-  // Email + Dashboard Notification يعملان بشكل مستقل
+  //
+  // تعمل فقط للطلب الجديد.
+  // Retry لنفس clientRequestId لن يصل إلى هذه النقطة.
 
   void processRequestSideEffects({
     request,
     equipment,
   }).catch((error) => {
-    console.error("Equipment request side effects failed:", {
-      requestId: request._id,
-      message: error.message,
-    });
+    console.error(
+      "Equipment request side effects failed:",
+      {
+        requestId:
+          request._id,
+
+        message:
+          error.message,
+      },
+    );
   });
 
   return;

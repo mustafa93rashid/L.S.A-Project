@@ -25,98 +25,251 @@ class JobRequestController {
 createJobRequest = async (req, res) => {
   let uploadedCv = null;
 
-  try {
-    const {
-      job: jobId,
-      firstName,
-      lastName,
-      email,
-      phone,
-    } = req.body;
+  const {
+    job: jobId,
+    firstName,
+    lastName,
+    email,
+    phone,
+    clientRequestId,
+  } = req.body;
 
+  // ==================== Check Existing Request ====================
+  //
+  // مهم جدًا أن يتم هذا قبل:
+  // - البحث عن duplicate application
+  // - رفع CV
+  // - إرسال Email
+  // - إنشاء Notification
+
+  const existingJobRequest =
+    await JobRequest.findOne({
+      clientRequestId,
+    }).populate(
+      "job",
+      "title location employmentType department status deadline",
+    );
+
+  if (existingJobRequest) {
+    return res.status(200).json({
+      success: true,
+
+      alreadyReceived: true,
+
+      message:
+        "Your application has already been received successfully.",
+
+      data:
+        existingJobRequest,
+    });
+  }
+
+  try {
     // ==================== Find Job ====================
 
-    const job = await Job.findById(jobId);
+    const job =
+      await Job.findById(
+        jobId,
+      );
 
     if (!job) {
       return res.status(404).json({
         success: false,
-        message: "Job not found",
+
+        message:
+          "Job not found",
       });
     }
 
     // ==================== Check Job Status ====================
 
-    if (job.status !== "published") {
+    if (
+      job.status !==
+      "published"
+    ) {
       return res.status(400).json({
         success: false,
-        message: "This job is not currently available",
+
+        message:
+          "This job is not currently available",
       });
     }
 
     // ==================== Check Duplicate Application ====================
+    //
+    // هذا يختلف عن clientRequestId.
+    //
+    // clientRequestId:
+    // يمنع تكرار نفس محاولة الإرسال.
+    //
+    // job + email:
+    // يمنع الشخص من التقديم مرة ثانية على نفس الوظيفة.
 
-    const exists = await jobApplicationExists({
-      JobRequest,
-      jobId,
-      email,
-    });
+    const exists =
+      await jobApplicationExists({
+        JobRequest,
+        jobId,
+        email,
+      });
 
     if (exists) {
       return res.status(409).json({
         success: false,
-        message: "You have already applied for this job",
+
+        message:
+          "You have already applied for this job",
       });
     }
 
     // ==================== Upload CV ====================
 
-    uploadedCv = await uploadCv(req.file);
+    uploadedCv =
+      await uploadCv(
+        req.file,
+      );
 
-    // ==================== Create Job Request ====================
+    let jobRequest;
 
-    const jobRequest = await JobRequest.create({
-      job: jobId,
-      firstName,
-      lastName,
-      email,
-      phone,
-      cv: uploadedCv,
-      status: "new",
-    });
+    try {
+      // ==================== Create Job Request ====================
+
+      jobRequest =
+        await JobRequest.create({
+          job:
+            jobId,
+
+          clientRequestId,
+
+          firstName,
+
+          lastName,
+
+          email,
+
+          phone,
+
+          cv:
+            uploadedCv,
+
+          status:
+            "new",
+        });
+    } catch (error) {
+      // ==================== Race Condition Protection ====================
+
+      const isClientRequestIdDuplicate =
+        error?.code === 11000 &&
+        (
+          error?.keyPattern
+            ?.clientRequestId ||
+          error?.keyValue
+            ?.clientRequestId
+        );
+
+      if (
+        isClientRequestIdDuplicate
+      ) {
+        // نحن رفعنا CV لهذه المحاولة،
+        // لكن Mongo أخبرنا أن نفس request
+        // تم إنشاؤه بالفعل من طلب آخر.
+        //
+        // لذلك يجب حذف CV الزائد.
+
+        if (uploadedCv) {
+          await deleteCvSafely(
+            uploadedCv,
+          );
+
+          uploadedCv = null;
+        }
+
+        const duplicateJobRequest =
+          await JobRequest.findOne({
+            clientRequestId,
+          }).populate(
+            "job",
+            "title location employmentType department status deadline",
+          );
+
+        if (
+          duplicateJobRequest
+        ) {
+          return res.status(200).json({
+            success: true,
+
+            alreadyReceived: true,
+
+            message:
+              "Your application has already been received successfully.",
+
+            data:
+              duplicateJobRequest,
+          });
+        }
+      }
+
+      throw error;
+    }
+
+    // ==================== Prevent Cleanup ====================
+    //
+    // الـCV أصبح مرتبطًا الآن بـJobRequest ناجح.
+    // لذلك لا نريد حذفه في catch الخارجي.
+
+    uploadedCv = null;
 
     // ==================== Send Success Response ====================
 
     res.status(201).json({
       success: true,
-      message: "Your application has been submitted successfully",
-      data: jobRequest,
+
+      alreadyReceived: false,
+
+      message:
+        "Your application has been submitted successfully",
+
+      data:
+        jobRequest,
     });
 
     // ==================== Side Effects ====================
-    // Email + Notification لا يؤثران على نجاح الطلب
+    //
+    // تعمل فقط عند إنشاء JobRequest جديد.
+    //
+    // Retry لنفس clientRequestId لن يصل إلى هنا.
 
     void processJobRequestSideEffects({
       jobRequest,
       job,
     }).catch((error) => {
-      console.error("Job request side effects failed:", {
-        jobRequestId: jobRequest._id,
-        message: error.message,
-      });
+      console.error(
+        "Job request side effects failed:",
+        {
+          jobRequestId:
+            jobRequest._id,
+
+          message:
+            error.message,
+        },
+      );
     });
 
     return;
   } catch (error) {
     // ==================== Cleanup CV ====================
+    //
+    // إذا تم رفع CV لكن فشلت العملية قبل حفظ
+    // JobRequest، نحذفه من Cloudinary.
 
     if (uploadedCv) {
-      await deleteCvSafely(uploadedCv);
+      await deleteCvSafely(
+        uploadedCv,
+      );
     }
 
     throw error;
   }
-};
+}; 
 
   // ==================== Get All Job Requests ====================
 

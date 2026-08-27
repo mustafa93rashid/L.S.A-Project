@@ -11,88 +11,217 @@ const {
   buildContactMessageStatistics,
 } = require("../helpers/contactMessage.helper");
 
+// ==================== Helpers ====================
+
+const serializeContactMessage = (contactMessage) => ({
+  _id: contactMessage._id,
+
+  clientRequestId:
+    contactMessage.clientRequestId,
+
+  fullName:
+    contactMessage.fullName,
+
+  email:
+    contactMessage.email,
+
+  phone:
+    contactMessage.phone,
+
+  service:
+    contactMessage.service,
+
+  projectDescription:
+    contactMessage.projectDescription,
+
+  status:
+    contactMessage.status,
+
+  createdAt:
+    contactMessage.createdAt,
+});
+
 // ==================== Contact Message Controller ====================
 
 class ContactMessageController {
-// ==================== Create Contact Message ====================
-
-createContactMessage = async (req, res) => {
-  const {
-    fullName,
-    email,
-    phone,
-    service,
-    projectDescription,
-  } = req.body;
-
   // ==================== Create Contact Message ====================
 
-  const contactMessage = await ContactMessage.create({
-    fullName,
-    email,
-    phone,
+  createContactMessage = async (req, res) => {
+    const {
+      fullName,
+      email,
+      phone,
+      service,
+      projectDescription,
+      clientRequestId,
+    } = req.body;
 
-    service: service || "General Inquiry",
+    // ==================== Check Existing Request ====================
+    // إذا كان نفس clientRequestId موجودًا سابقًا،
+    // نعتبر الطلب مستلمًا بنجاح ولا ننشئ نسخة جديدة.
 
-    projectDescription,
+    const existingContactMessage =
+      await ContactMessage.findOne({
+        clientRequestId,
+      });
 
-    status: "new",
-  });
+    if (existingContactMessage) {
+      return res.status(200).json({
+        success: true,
 
-  // ==================== Send Success Response ====================
-  // من هذه النقطة الرسالة تعتبر مستلمة بنجاح
-  // فشل Email أو Notification لا يؤثر على نجاح الطلب
+        alreadyReceived: true,
 
-  res.status(201).json({
-    success: true,
+        message:
+          "Your message has already been received successfully. Our team will contact you soon.",
 
-    message:
-      "Your message has been received successfully. Our team will contact you soon.",
+        data:
+          serializeContactMessage(
+            existingContactMessage,
+          ),
+      });
+    }
 
-    data: {
-      _id: contactMessage._id,
+    let contactMessage;
 
-      fullName: contactMessage.fullName,
+    try {
+      // ==================== Create Contact Message ====================
 
-      email: contactMessage.email,
+      contactMessage =
+        await ContactMessage.create({
+          fullName,
 
-      phone: contactMessage.phone,
+          email,
 
-      service: contactMessage.service,
+          phone,
 
-      projectDescription: contactMessage.projectDescription,
+          clientRequestId,
 
-      status: contactMessage.status,
+          service:
+            service ||
+            "General Inquiry",
 
-      createdAt: contactMessage.createdAt,
-    },
-  });
+          projectDescription,
 
-  // ==================== Side Effects ====================
-  // مهم: لا تستخدم await هنا
+          status: "new",
+        });
+    } catch (error) {
+      // ==================== Race Condition Protection ====================
+      //
+      // قد يصل طلبان بنفس clientRequestId في نفس اللحظة.
+      // كلاهما قد يمر من findOne قبل أن يتم إنشاء الأول.
+      //
+      // لذلك Unique Index في MongoDB هو الحماية النهائية.
 
-  void processContactMessageSideEffects({
-    contactMessage,
-  }).catch((error) => {
-    console.error("Contact message side effects failed:", {
-      contactMessageId: contactMessage._id,
-      message: error.message,
+      const isClientRequestIdDuplicate =
+        error?.code === 11000 &&
+        (
+          error?.keyPattern?.clientRequestId ||
+          error?.keyValue?.clientRequestId
+        );
+
+      if (
+        isClientRequestIdDuplicate
+      ) {
+        const duplicateContactMessage =
+          await ContactMessage.findOne({
+            clientRequestId,
+          });
+
+        if (
+          duplicateContactMessage
+        ) {
+          return res.status(200).json({
+            success: true,
+
+            alreadyReceived: true,
+
+            message:
+              "Your message has already been received successfully. Our team will contact you soon.",
+
+            data:
+              serializeContactMessage(
+                duplicateContactMessage,
+              ),
+          });
+        }
+      }
+
+      // أي خطأ آخر يذهب إلى error handler
+      throw error;
+    }
+
+    // ==================== Send Success Response ====================
+    //
+    // بمجرد الوصول لهذه النقطة:
+    // الرسالة محفوظة في MongoDB وتعتبر مستلمة.
+    //
+    // Email / Notification لا يؤثر فشلهما على نجاح الطلب.
+
+    res.status(201).json({
+      success: true,
+
+      alreadyReceived: false,
+
+      message:
+        "Your message has been received successfully. Our team will contact you soon.",
+
+      data:
+        serializeContactMessage(
+          contactMessage,
+        ),
     });
-  });
 
-  return;
-};
+    // ==================== Side Effects ====================
+    //
+    // تعمل فقط عند إنشاء Contact Message جديد.
+    //
+    // إذا كان الطلب Retry لنفس clientRequestId
+    // فلن يصل إلى هذه النقطة.
+
+    void processContactMessageSideEffects({
+      contactMessage,
+    }).catch((error) => {
+      console.error(
+        "Contact message side effects failed:",
+        {
+          contactMessageId:
+            contactMessage._id,
+
+          message:
+            error.message,
+        },
+      );
+    });
+
+    return;
+  };
 
   // ==================== Get All Contact Messages ====================
 
   getAllContactMessages = async (req, res) => {
-    const filter = buildDashboardFilter(req.query);
+    const filter =
+      buildDashboardFilter(
+        req.query,
+      );
 
-    const { page, limit, skip } = buildPagination(req.query);
+    const {
+      page,
+      limit,
+      skip,
+    } = buildPagination(
+      req.query,
+    );
 
-    const [contactMessages, total] = await Promise.all([
-      ContactMessage.find(filter)
-        .populate(CONTACT_MESSAGE_POPULATE_FIELDS)
+    const [
+      contactMessages,
+      total,
+    ] = await Promise.all([
+      ContactMessage.find(
+        filter,
+      )
+        .populate(
+          CONTACT_MESSAGE_POPULATE_FIELDS,
+        )
         .sort({
           createdAt: -1,
         })
@@ -100,92 +229,143 @@ createContactMessage = async (req, res) => {
         .limit(limit)
         .lean(),
 
-      ContactMessage.countDocuments(filter),
+      ContactMessage.countDocuments(
+        filter,
+      ),
     ]);
 
     return res.status(200).json({
       success: true,
 
-      count: contactMessages.length,
+      count:
+        contactMessages.length,
 
-      pagination: buildPaginationResponse({
-        page,
-        limit,
-        total,
-      }),
+      pagination:
+        buildPaginationResponse({
+          page,
+          limit,
+          total,
+        }),
 
-      data: contactMessages,
+      data:
+        contactMessages,
     });
   };
 
   // ==================== Get Contact Message By ID ====================
 
-  getContactMessageById = async (req, res) => {
-    const contactMessage = await ContactMessage.findById(req.params.id)
-      .populate(CONTACT_MESSAGE_POPULATE_FIELDS)
-      .lean();
+  getContactMessageById = async (
+    req,
+    res,
+  ) => {
+    const contactMessage =
+      await ContactMessage.findById(
+        req.params.id,
+      )
+        .populate(
+          CONTACT_MESSAGE_POPULATE_FIELDS,
+        )
+        .lean();
 
     if (!contactMessage) {
       return res.status(404).json({
         success: false,
-        message: "Contact message not found",
+
+        message:
+          "Contact message not found",
       });
     }
 
     return res.status(200).json({
       success: true,
-      data: contactMessage,
+
+      data:
+        contactMessage,
     });
   };
 
   // ==================== Update Contact Message Status ====================
 
-  updateContactMessageStatus = async (req, res) => {
-    const contactMessage = await ContactMessage.findById(req.params.id);
+  updateContactMessageStatus = async (
+    req,
+    res,
+  ) => {
+    const contactMessage =
+      await ContactMessage.findById(
+        req.params.id,
+      );
 
     if (!contactMessage) {
       return res.status(404).json({
         success: false,
-        message: "Contact message not found",
+
+        message:
+          "Contact message not found",
       });
     }
 
-    const { status } = req.body;
+    const { status } =
+      req.body;
 
-    const statusChanged = applyContactMessageStatus(contactMessage, status);
+    const statusChanged =
+      applyContactMessageStatus(
+        contactMessage,
+        status,
+      );
 
     if (!statusChanged) {
-      await contactMessage.populate(CONTACT_MESSAGE_POPULATE_FIELDS);
+      await contactMessage.populate(
+        CONTACT_MESSAGE_POPULATE_FIELDS,
+      );
 
       return res.status(200).json({
         success: true,
-        message: "Contact message already has this status",
-        data: contactMessage,
+
+        message:
+          "Contact message already has this status",
+
+        data:
+          contactMessage,
       });
     }
 
-    contactMessage.updatedBy = getCurrentUserId(req);
+    contactMessage.updatedBy =
+      getCurrentUserId(req);
 
     await contactMessage.save();
 
-    await contactMessage.populate(CONTACT_MESSAGE_POPULATE_FIELDS);
+    await contactMessage.populate(
+      CONTACT_MESSAGE_POPULATE_FIELDS,
+    );
 
     return res.status(200).json({
       success: true,
-      message: "Contact message status updated successfully",
-      data: contactMessage,
+
+      message:
+        "Contact message status updated successfully",
+
+      data:
+        contactMessage,
     });
   };
 
   // ==================== Delete Contact Message ====================
 
-  deleteContactMessage = async (req, res) => {
-    const contactMessage = await ContactMessage.findById(req.params.id);
+  deleteContactMessage = async (
+    req,
+    res,
+  ) => {
+    const contactMessage =
+      await ContactMessage.findById(
+        req.params.id,
+      );
 
     if (!contactMessage) {
       return res.status(404).json({
         success: false,
-        message: "Contact message not found",
+
+        message:
+          "Contact message not found",
       });
     }
 
@@ -193,20 +373,29 @@ createContactMessage = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Contact message deleted successfully",
+
+      message:
+        "Contact message deleted successfully",
     });
   };
 
   // ==================== Get Contact Message Statistics ====================
 
-  getContactMessageStatistics = async (req, res) => {
-    const statistics = await buildContactMessageStatistics();
+  getContactMessageStatistics = async (
+    req,
+    res,
+  ) => {
+    const statistics =
+      await buildContactMessageStatistics();
 
     return res.status(200).json({
       success: true,
-      data: statistics,
+
+      data:
+        statistics,
     });
   };
 }
 
-module.exports = new ContactMessageController();
+module.exports =
+  new ContactMessageController();

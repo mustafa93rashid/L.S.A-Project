@@ -120,6 +120,10 @@ const buildPaginationResponse = ({ page, limit, total }) => {
 // ==================== Send Received Email Safely ====================
 
 const sendReceivedEmailSafely = async ({ contactMessage }) => {
+  if (contactMessage.customerEmailSent) {
+    return;
+  }
+
   try {
     await sendContactMessageReceivedEmail({
       to: contactMessage.email,
@@ -128,11 +132,13 @@ const sendReceivedEmailSafely = async ({ contactMessage }) => {
       messageId: contactMessage._id,
     });
 
+    const sentAt = new Date();
+
     await ContactMessage.findByIdAndUpdate(
       contactMessage._id,
       {
         customerEmailSent: true,
-        customerEmailSentAt: new Date(),
+        customerEmailSentAt: sentAt,
       },
       {
         runValidators: false,
@@ -140,14 +146,11 @@ const sendReceivedEmailSafely = async ({ contactMessage }) => {
     );
 
     contactMessage.customerEmailSent = true;
-
-    contactMessage.customerEmailSentAt = new Date();
+    contactMessage.customerEmailSentAt = sentAt;
   } catch (error) {
     console.error("Contact message received email failed:", {
       contactMessageId: contactMessage._id,
-
       email: contactMessage.email,
-
       message: error.message,
     });
   }
@@ -156,17 +159,22 @@ const sendReceivedEmailSafely = async ({ contactMessage }) => {
 // ==================== Create Notification Safely ====================
 
 const createNotificationSafely = async ({ contactMessage }) => {
+  if (contactMessage.dashboardNotificationCreated) {
+    return;
+  }
+
   try {
     await createContactMessageNotification({
       contactMessage,
     });
 
+    const createdAt = new Date();
+
     await ContactMessage.findByIdAndUpdate(
       contactMessage._id,
       {
         dashboardNotificationCreated: true,
-
-        dashboardNotificationCreatedAt: new Date(),
+        dashboardNotificationCreatedAt: createdAt,
       },
       {
         runValidators: false,
@@ -174,12 +182,10 @@ const createNotificationSafely = async ({ contactMessage }) => {
     );
 
     contactMessage.dashboardNotificationCreated = true;
-
-    contactMessage.dashboardNotificationCreatedAt = new Date();
+    contactMessage.dashboardNotificationCreatedAt = createdAt;
   } catch (error) {
     console.error("Contact message notification failed:", {
       contactMessageId: contactMessage._id,
-
       message: error.message,
     });
   }

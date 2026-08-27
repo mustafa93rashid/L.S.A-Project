@@ -55,6 +55,14 @@ const equipmentRequestSchema = new mongoose.Schema(
       maxlength: 200,
     },
 
+    // ==================== Idempotency ====================
+
+clientRequestId: {
+  type: String,
+  required: true,
+  trim: true,
+},
+
     // ==================== Work Information ====================
 
     workLocation: {
@@ -145,6 +153,16 @@ const equipmentRequestSchema = new mongoose.Schema(
 );
 
 // ==================== Indexes ====================
+
+equipmentRequestSchema.index(
+  {
+    clientRequestId: 1,
+  },
+  {
+    unique: true,
+    name: "equipment_request_client_request_id_unique",
+  },
+);
 
 equipmentRequestSchema.index({
   status: 1,

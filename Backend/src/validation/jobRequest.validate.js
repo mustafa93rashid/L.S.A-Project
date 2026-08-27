@@ -101,6 +101,23 @@ const createJobRequestValidation = [
     })
     .withMessage("Last name must be between 2 and 100 characters"),
 
+    body("clientRequestId")
+  .notEmpty()
+  .withMessage(
+    "Client request ID is required",
+  )
+  .bail()
+  .isString()
+  .withMessage(
+    "Client request ID must be a string",
+  )
+  .bail()
+  .trim()
+  .isUUID()
+  .withMessage(
+    "Client request ID must be a valid UUID",
+  ),
+  
   body("email")
     .isString()
     .withMessage("Email must be a string")

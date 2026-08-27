@@ -56,6 +56,14 @@ const jobRequestSchema = new mongoose.Schema(
       maxlength: 30,
     },
 
+    // ==================== Idempotency ====================
+
+clientRequestId: {
+  type: String,
+  required: true,
+  trim: true,
+},
+
     // ==================== CV Document ====================
 
     cv: {
@@ -143,6 +151,16 @@ const jobRequestSchema = new mongoose.Schema(
 );
 
 // ==================== Indexes ====================
+
+jobRequestSchema.index(
+  {
+    clientRequestId: 1,
+  },
+  {
+    unique: true,
+    name: "job_request_client_request_id_unique",
+  },
+);
 
 jobRequestSchema.index({
   status: 1,

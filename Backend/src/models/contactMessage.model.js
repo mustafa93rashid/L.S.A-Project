@@ -48,6 +48,14 @@ const contactMessageSchema = new mongoose.Schema(
       maxlength: 30,
     },
 
+        // ==================== Idempotency ====================
+
+    clientRequestId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
     // ==================== Inquiry Information ====================
 
     service: {
@@ -130,6 +138,16 @@ const contactMessageSchema = new mongoose.Schema(
 );
 
 // ==================== Indexes ====================
+
+contactMessageSchema.index(
+  {
+    clientRequestId: 1,
+  },
+  {
+    unique: true,
+    name: "contact_message_client_request_id_unique",
+  },
+);
 
 contactMessageSchema.index({
   status: 1,
