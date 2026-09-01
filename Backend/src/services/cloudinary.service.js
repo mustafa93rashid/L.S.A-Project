@@ -15,6 +15,8 @@ const CLOUDINARY_FOLDERS = Object.freeze({
 
   SERVICE_CARDS: "services/cards",
 
+  NEWS: "news",
+
   SERVICE_HEROES: "services/heroes",
 
   PROJECT_CARDS: "projects/cards",

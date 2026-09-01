@@ -200,6 +200,12 @@ const uploadJourneyImage = () => {
   return createImageUpload(1).single("image");
 };
 
+// ==================== News Image Upload ====================
+
+const uploadNewsImage = () => {
+  return createImageUpload(1).single("image");
+};
+
 // ==================== Team Member Image Upload ====================
 
 const uploadTeamMemberImage = () => {
@@ -314,6 +320,7 @@ module.exports = {
 
   uploadPartnerLogo,
   uploadJourneyImage,
+  uploadNewsImage,
   uploadTeamMemberImage,
   uploadServiceImages,
   uploadProjectImages,

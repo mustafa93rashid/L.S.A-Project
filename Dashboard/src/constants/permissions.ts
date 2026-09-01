@@ -17,6 +17,8 @@ export const MODULES = {
   EQUIPMENT_CATEGORIES: 'equipmentCategories',
   CONTACT_INFO: 'contactInfo',
   EQUIPMENT_REQUESTS: 'equipmentRequests',
+    NEWS: 'news',
+
   JOBS: 'jobs',
   JOB_REQUESTS: 'jobRequests',
   CONTACT_MESSAGES: 'contactMessages',
@@ -42,6 +44,7 @@ export const MODULE_ROLES: Record<ModuleKey, Role[]> = {
   [MODULES.CONTACT_MESSAGES]: [ROLES.SUPERADMIN, ROLES.MANAGER, ROLES.CONTENT_MANAGER],
   [MODULES.COMPANY_PROFILE]: [ROLES.SUPERADMIN, ROLES.MANAGER, ROLES.CONTENT_MANAGER],
   [MODULES.BACKUPS]: [ROLES.SUPERADMIN, ROLES.MANAGER],
+  [MODULES.NEWS]: [ROLES.SUPERADMIN, ROLES.MANAGER, ROLES.CONTENT_MANAGER],
 }
 
 export function hasModuleAccess(role: Role | undefined, moduleKey: ModuleKey): boolean {

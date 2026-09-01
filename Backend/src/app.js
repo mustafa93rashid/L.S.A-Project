@@ -108,6 +108,9 @@ app.use("/api/v1/company-profile", require("./routers/companyProfile.routes"));
 // Backup routes
 app.use("/api/v1/backups", require("./routers/backup.routes"));
 
+// News routes
+app.use("/api/v1/news", require("./routers/news.routes")); 
+
 //=========================================================================
 // Error Handling Middleware
 //=========================================================================

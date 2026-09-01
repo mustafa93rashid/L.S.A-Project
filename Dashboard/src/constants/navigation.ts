@@ -9,6 +9,7 @@ import {
   Layers,
   Mail,
   Milestone,
+  Newspaper,
   Phone,
   Truck,
   UserRound,
@@ -16,6 +17,7 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
+
 import { MODULES, type ModuleKey } from '@/constants/permissions'
 
 export interface NavItem {
@@ -80,6 +82,13 @@ export const NAV_ITEMS: NavItem[] = [
     module: MODULES.PROJECTS,
     group: 'Content',
   },
+  {
+  label: 'News',
+  path: '/news',
+  icon: Newspaper,
+  module: MODULES.NEWS,
+  group: 'Content',
+},
   {
     label: 'Contact Information',
     path: '/contact-info',

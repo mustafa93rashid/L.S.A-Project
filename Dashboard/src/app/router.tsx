@@ -224,6 +224,22 @@ const ProjectEditPage = lazy(
 )
 
 // =====================================================
+// News
+// =====================================================
+
+const NewsPage = lazy(
+  () => import('@/pages/news/NewsPage'),
+)
+
+const NewsCreatePage = lazy(
+  () => import('@/pages/news/NewsCreatePage'),
+)
+
+const NewsEditPage = lazy(
+  () => import('@/pages/news/NewsEditPage'),
+)
+
+// =====================================================
 // Company Profile
 // =====================================================
 
@@ -594,7 +610,69 @@ export const router = createHashRouter([
               },
             ],
           },
+// =============================================
+// News
+// =============================================
 
+{
+  path: 'news',
+
+  element: (
+    <RequireRole
+      roles={
+        MODULE_ROLES[
+          MODULES.NEWS
+        ]
+      }
+    >
+      <Outlet />
+    </RequireRole>
+  ),
+
+  children: [
+    {
+      index: true,
+
+      element: (
+        <SuspendedOutlet>
+          <NewsPage />
+        </SuspendedOutlet>
+      ),
+
+      handle: {
+        crumb: 'News',
+      },
+    },
+
+    {
+      path: 'new',
+
+      element: (
+        <SuspendedOutlet>
+          <NewsCreatePage />
+        </SuspendedOutlet>
+      ),
+
+      handle: {
+        crumb: 'Add News',
+      },
+    },
+
+    {
+      path: ':id/edit',
+
+      element: (
+        <SuspendedOutlet>
+          <NewsEditPage />
+        </SuspendedOutlet>
+      ),
+
+      handle: {
+        crumb: 'Edit News',
+      },
+    },
+  ],
+},
           // =============================================
           // Company Journey
           // =============================================

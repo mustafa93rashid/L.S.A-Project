@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Briefcase, FolderKanban, Handshake, Layers, Truck, UserRound, Users as UsersIcon, Wrench } from 'lucide-react'
+import { Briefcase, FolderKanban, Handshake, Layers, Newspaper, Truck, UserRound, Users as UsersIcon, Wrench } from 'lucide-react'
 import { useSessionStore } from '@/stores/session.store'
 import { hasModuleAccess, MODULES } from '@/constants/permissions'
 import { QuickActions, type QuickAction } from '../navigation/QuickActions'
@@ -16,7 +16,7 @@ export function GlobalQuickActions() {
   const canViewEquipment = hasModuleAccess(role, MODULES.EQUIPMENT)
   const canViewEquipmentCategories = hasModuleAccess(role, MODULES.EQUIPMENT_CATEGORIES)
   const canViewUsers = hasModuleAccess(role, MODULES.USERS)
-
+  const canViewNews = hasModuleAccess(role, MODULES.NEWS)
 
   const actions = useMemo<QuickAction[]>(() => {
     const items: QuickAction[] = []
@@ -29,9 +29,10 @@ export function GlobalQuickActions() {
     if (canViewEquipment) items.push({ key: 'equipment', label: 'Manage Equipment', icon: Truck, href: '/equipment' })
     if (canViewEquipmentCategories) items.push({ key: 'category', label: 'Add Category', icon: Layers, href: '/equipment-categories/new' })
     if (canViewUsers) items.push({ key: 'users', label: 'Open Users', icon: UsersIcon, href: '/users' })
+    if (canViewNews) items.push({ key: 'news', label: 'Create News', icon: Newspaper, href: '/news/new' })
 
     return items
-  }, [canViewServices, canViewProjects, canViewTeamMembers, canViewPartners, canViewJobs, canViewEquipment, canViewEquipmentCategories, canViewUsers])
+  }, [canViewServices, canViewProjects, canViewTeamMembers, canViewPartners, canViewJobs, canViewEquipment, canViewEquipmentCategories, canViewUsers, canViewNews])
 
 
   return <QuickActions actions={actions} />
